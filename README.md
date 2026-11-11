@@ -12,7 +12,7 @@ The private ChatGPT Sites prototype uses synthetic trip data. It supports family
 
 ## Project plan
 
-See [Waypoint — Field Atlas: design direction and visual references](docs/design.md) for the photo-inspired visual system, responsive layouts, reusable tokens, and interaction guidance. Start there before changing the planner's design.
+See [Waypoint — Departure Board: current design direction and visual references](docs/design.md) for the photo-inspired visual system, responsive layouts, reusable tokens, and interaction guidance. Start there before changing the planner's design.
 
 See [the product brief, architecture, and implementation plan](docs/plan.md) for confirmed requirements, proposed behavior, open decisions, and acceptance criteria.
 

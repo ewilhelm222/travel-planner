@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Waypoint Departure Board: an interactive visual design reference with a fictional itinerary.">
+  <title>Waypoint — Departure Board design reference</title>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="reference.css">
+</head>
+<body>
+  <a class="skip" href="#itinerary">Skip to itinerary</a>
+  <div class="study-bar"><span>DEPARTURE BOARD <span class="study-separator">/</span> DESIGN REFERENCE · FICTIONAL TRIP</span><button id="offline-demo" aria-pressed="false">Preview offline state</button></div>
+  <div class="app">
+    <aside class="rail" aria-label="Design motif">
+      <svg class="compass" viewBox="0 0 32 32" aria-hidden="true"><path d="m16 3 5 11 8 2-11 5-2 8-5-11-8-2 11-5Z" fill="currentColor"/><circle cx="16" cy="16" r="3" fill="#f4f0e7"/></svg>
+      <span class="rail-caption">TAKE THE LONG WAY</span><span class="rail-index">EST. / ANYWHERE</span>
+    </aside>
+    <div class="workspace">
+      <header class="topbar"><a class="wordmark" href="reference.html" aria-label="Waypoint design reference">WAYPOINT<span>↗</span></a><span class="edition">INDEPENDENT PLANS. SHARED ADVENTURES.</span><div class="account"><button id="focus-plan" class="text-action" aria-pressed="false">Focus on the plan ↓</button><span class="private">◇ Private trip</span><span class="avatar" aria-label="Sample organizer">C</span></div></header>
+      <main>
+        <section class="trip-intro" aria-labelledby="trip-title">
+          <div class="trip-copy"><p class="eyebrow">JAPAN / 12—14 JUN 2027</p><h1 id="trip-title">GO YOUR<br><em>OWN WAY.</em></h1><p class="subtitle">Meet for dinner.<span>Kyoto / Osaka · 京都 / 大阪</span></p><div class="trip-facts"><span>12–14 June 2027</span><span>3 families</span><span>2 cities, many possibilities</span></div></div>
+          <figure class="cover"><div class="poster-top"><span>DIFFERENT CITIES<br>SAME TRIP</span><span>↗<br>02 / JP</span></div><svg viewBox="0 0 420 230" aria-hidden="true"><g fill="none" stroke="currentColor"><circle cx="210" cy="115" r="100" stroke-width="1"/><circle cx="210" cy="115" r="70" stroke-width="1"/><path d="M0 115h420M210 0v230" stroke-width="1"/><path d="M36 191 145 80l55 55L341 28M276 28h65v65" stroke-width="24" stroke-linejoin="miter"/></g><circle cx="36" cy="191" r="12" fill="currentColor"/></svg><figcaption>TAKE THE LONG WAY.<br><span>LEAVE ROOM FOR THE UNEXPECTED.</span></figcaption></figure>
+        </section>
+        <section class="route-strip" aria-label="Parallel family stays"><div><span class="eyebrow">THE ROUTE /</span><span class="route-note">Parallel plans. One place to keep them.</span></div><div class="stay-routes"><p><span class="family-label cedar">Cedar + Maple</span><strong>Kyoto</strong><span class="route-rule"></span><span class="stay-dates">12–14 JUN</span></p><p><span class="family-label birch">Birch</span><strong>Osaka</strong><span class="route-rule dashed"></span><span class="stay-dates">12–14 JUN</span></p></div><button class="text-action online-action" id="move-preview">Preview a stay move ↗</button></section>
+        <div class="toolbar"><nav class="views" aria-label="Itinerary view"><button id="board-tab" aria-pressed="true">Itinerary</button><button id="route-tab" aria-pressed="false">Route sketch</button></nav><label class="filter-label" for="family-filter">Travelers <select id="family-filter"><option value="all">Everyone</option><option value="cedar">Cedar family</option><option value="maple">Maple family</option><option value="birch">Birch family</option></select></label><button class="save-button online-action" id="save-info">↓ Reading copy</button></div>
+        <div id="offline-banner" class="offline-banner" hidden><strong>Offline · reading copy</strong><span>Illustrative download: 10 Nov 2026, 8:30 pm PST · revision 12. Connect to make changes.</span></div>
+        <div class="board-caption"><p id="filter-status" role="status">All three families · shared plans appear once</p><span>Times are local to each activity</span></div>
+        <label class="mobile-date" for="day-filter">Day <select id="day-filter"><option value="12">Saturday 12 June</option><option value="13">Sunday 13 June</option><option value="14">Monday 14 June</option></select></label>
+        <section id="itinerary" class="board" aria-label="Fictional itinerary by date">
+          <section class="day" data-day="12"><header class="day-header"><div><p>SATURDAY</p><h2><span>12</span> June</h2></div><span class="day-note">Arrive & settle in</span></header>
+            <section class="city-lane" data-families="cedar maple"><div class="city-heading"><h3>Kyoto <span>京都</span></h3><span class="city-marker">01</span></div><p class="lodging">⌂ Cedar + Maple · staying in Kyoto</p>
+              <button class="activity" data-families="cedar maple" data-detail="market"><span class="card-meta"><span>AFTERNOON</span><span class="state flexible">◇ Flexible</span></span><strong>Eat your way through Kyoto</strong><span class="card-description">Wander the market. Follow whatever smells good.</span><span class="card-bottom"><span class="participants"><span class="chip cedar">Cedar</span><span class="chip maple">Maple</span></span><span class="card-arrow">↗</span></span></button>
+            </section>
+            <section class="city-lane" data-families="birch"><div class="city-heading"><h3>Osaka <span>大阪</span></h3><span class="city-marker">02</span></div><p class="lodging">⌂ Birch · staying in Osaka</p><button class="activity" data-families="birch" data-detail="arrival"><span class="card-meta"><span>16:00</span><span class="state flexible">◇ Flexible</span></span><strong>Touch down. Head out.</strong><span class="card-description">An easy evening near the hotel.</span><span class="card-bottom"><span class="chip birch">Birch</span><span class="card-arrow">↗</span></span></button></section>
+          </section>
+          <section class="day" data-day="13"><header class="day-header"><div><p>SUNDAY</p><h2><span>13</span> June</h2></div><span class="day-note">Apart, then together</span></header>
+            <section class="city-lane" data-families="cedar maple birch"><div class="city-heading"><h3>Kyoto <span>京都</span></h3><span class="city-marker">01</span></div><p class="lodging">⌂ Cedar + Maple · staying in Kyoto</p>
+              <button class="activity" data-families="cedar" data-detail="walk"><span class="card-meta"><span>MORNING</span><span class="state flexible">◇ Flexible</span></span><strong>Take the scenic route</strong><span class="card-description">A garden walk, with time to get a little lost.</span><span class="card-bottom"><span class="chip cedar">Cedar</span><span class="card-arrow">↗</span></span></button>
+              <button class="activity shared fixed" data-families="cedar maple birch" data-detail="dinner"><span class="shared-label">↗ THE RENDEZVOUS</span><span class="card-meta"><span>18:30</span><span class="state booked">▣ Fixed booking</span></span><strong>EVERYONE. ONE TABLE.</strong><span class="card-description">One shared plan. Bring stories from your day.</span><span class="card-bottom"><span class="participants"><span class="chip cedar">Cedar</span><span class="chip maple">Maple</span><span class="chip birch">Birch</span></span><span class="card-arrow">↗</span></span></button>
+            </section>
+            <section class="city-lane" data-families="birch"><div class="city-heading"><h3>Osaka <span>大阪</span></h3><span class="city-marker">02</span></div><p class="lodging">⌂ Birch · staying in Osaka</p><p class="journey"><span class="journey-icon">↗</span><span><strong>Osaka → Kyoto → Osaka</strong><br>Birch · join the Kyoto dinner; return to Osaka.<br><span class="muted">Times to confirm · travel plan</span></span></p></section>
+          </section>
+          <section class="day" data-day="14"><header class="day-header"><div><p>MONDAY</p><h2><span>14</span> June</h2></div><span class="day-note">Leave some space</span></header>
+            <section class="city-lane" data-families="cedar maple"><div class="city-heading"><h3>Kyoto <span>京都</span></h3><span class="city-marker">01</span></div><p class="lodging">⌂ Cedar + Maple · staying in Kyoto</p><button class="activity" data-families="maple" data-detail="museum"><span class="card-meta"><span>10:00</span><span class="state booked">▣ Fixed booking</span></span><strong>Make something.</strong><span class="card-description">A small craft workshop. Sample booking only.</span><span class="card-bottom"><span class="chip maple">Maple</span><span class="card-arrow">↗</span></span></button><div class="open-space" data-families="cedar"><span>↝</span><p>A little unplanned time.</p><small>Cedar · an open afternoon</small></div></section>
+            <section class="city-lane" data-families="birch"><div class="city-heading"><h3>Osaka <span>大阪</span></h3><span class="city-marker">02</span></div><p class="lodging">⌂ Birch · staying in Osaka</p><button class="activity" data-families="birch" data-detail="water"><span class="card-meta"><span>AFTERNOON</span><span class="state flexible">◇ Flexible</span></span><strong>Follow the river</strong><span class="card-description">A riverside stroll and a long lunch.</span><span class="card-bottom"><span class="chip birch">Birch</span><span class="card-arrow">↗</span></span></button></section>
+          </section>
+        </section>
+        <section id="route-view" class="route-view" hidden aria-label="Schematic route, not navigation"><p class="eyebrow">A SKETCH OF THE JOURNEY</p><h2>Two bases. One shared evening.</h2><p>Planned connections · no route or journey-time estimates</p><svg viewBox="0 0 800 240" role="img" aria-label="Kyoto hosts Cedar and Maple. Birch stays in Osaka and visits Kyoto for the shared Sunday dinner."><path d="M120 110H665" stroke="#243ae8" stroke-width="3"/><path d="M665 125Q400 255 120 125" stroke="#131514" stroke-width="2" fill="none" stroke-dasharray="6 6"/><circle cx="120" cy="110" r="9" fill="#243ae8"/><circle cx="665" cy="110" r="9" fill="#131514"/><text x="78" y="70">Kyoto 京都</text><text x="625" y="70">Osaka 大阪</text><text x="260" y="99" class="diagram-small">Birch joins dinner in Kyoto ←</text><text x="265" y="210" class="diagram-small">→ Return to Osaka · times to confirm</text></svg><p id="route-filter-status">Everyone: Cedar + Maple in Kyoto; Birch in Osaka. Shared dinner in Kyoto on 13 June.</p><p class="route-family-context">Routes remain as trip context when travelers are filtered. The text above describes the selected family.</p></section>
+        <aside class="ideas"><div><span class="idea-icon">✳</span><div><h2>NOT ON THE ITINERARY. YET.</h2><p>Good trips need a few wild cards.</p></div></div><div class="idea-tags"><span>Tea & a quiet courtyard</span><span>A bookshop detour</span></div><button class="text-action online-action" id="idea-info">Explore ideas ↗</button></aside>
+        <footer><span>WAYPOINT <span class="rust">✳</span> MAKE PLANS. TAKE DETOURS.</span><span>Design study · synthetic data · no live edits</span></footer>
+      </main>
+    </div>
+  </div>
+  <dialog id="detail" aria-labelledby="detail-title"><div class="drawer-top"><span class="eyebrow" id="detail-eyebrow">THE PLAN, UP CLOSE</span><button id="close-detail" aria-label="Close detail">×</button></div><h2 id="detail-title"></h2><div id="detail-body"></div><form method="dialog"><button class="primary">Back to the trip</button></form></dialog>
+  <script src="reference.js"></script>
+</body>
+</html>

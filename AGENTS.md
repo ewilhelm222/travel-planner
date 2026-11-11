@@ -1,9 +1,11 @@
 # Travel planner guidance
 
-Read `docs/design.md` before visual or interaction changes. The organizer has
-adopted its **Waypoint — Field Atlas** direction for ongoing implementation.
-Use `docs/design/tokens.css` for colors, type, spacing, and shapes; inspect the
-reference images and interactive study when changing layout.
+Read `docs/design.md` before visual or interaction changes. The organizer
+requested a bolder second direction, **Waypoint — Departure Board**, after
+reviewing Field Atlas. Use `docs/design/departure/tokens.css` and the new
+reference for this proposed direction. The first study is archived in
+`docs/design-field-atlas.md`; do not mistake its earlier adoption for approval
+of the new study or silently switch an ongoing implementation.
 
 `docs/plan.md` governs confirmed requirements and data behavior. Design studies
 illustrate proposals; they do not establish completed features or approved
