@@ -1,9 +1,13 @@
 # Multiple trips, events, and guest schedules
 
-Status: November 11, 2026. The Departure Board design and multi-event planner are
+Status: November 11, 2026. The multi-event planner and current published styling are
 deployed to the existing Site. The organizer explicitly approved the public entry
 point on November 11, 2026. Camp Earnest's guest link now works without sign-in;
 private planning and editing remain separately protected.
+
+See [traveler management](travelers.md) for the latest roster feature and release
+provenance. The organizer has reported successful phone editing and guest viewing
+on desktop and phone.
 
 ## Working behavior
 
@@ -84,7 +88,8 @@ Paste JSON provides a working alternative.
 
 ## Verification and remaining work
 
-Eighteen Node tests pass. The API checks cover anonymous private-read rejection,
+The original multi-event release passed eighteen Node tests; the traveler release
+now passes 23. The API checks cover anonymous private-read rejection,
 forged local identity-header rejection, independent trips, atomic competing saves,
 cross-origin write rejection, limited guest projection, guest write rejection,
 unknown tokens, token replacement/revocation, and stale sharing revisions.

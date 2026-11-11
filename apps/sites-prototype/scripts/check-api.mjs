@@ -7,7 +7,7 @@ assert.equal((await anon('/api/trip?id=synthetic-trip', { headers: { 'oai-authen
 const login = await anon('/signin-with-chatgpt?return_to=/');
 const cookie = login.headers.getSetCookie().map(v => v.split(';')[0]).join('; ');
 assert.ok(cookie);
-const req = (path, method = 'GET', body, extra = {}) => fetch(origin + path, { method, headers: { Cookie: cookie, Origin: origin, ...(body ? { 'Content-Type': 'application/json' } : {}), ...extra }, ...(body ? { body: JSON.stringify(body) } : {}) });
+const req = (path, method = 'GET', body, extra = {}) => fetch(origin + path, { method, headers: { Cookie: cookie, Origin: origin, 'X-Waypoint-Participant-Model':'people-v1', ...(body ? { 'Content-Type': 'application/json' } : {}), ...extra }, ...(body ? { body: JSON.stringify(body) } : {}) });
 const create = await req('/api/trips', 'POST', { template: 'thanksgiving' });
 assert.equal(create.status, 201, await create.clone().text());
 const initial = await create.json(), id = initial.snapshot.trip.id, path = `/api/trip?id=${id}`;
@@ -44,3 +44,17 @@ assert.equal(revoked.status, 200);
 assert.equal((await anon('/api/shared', { headers: { Authorization: `Share ${nextToken}` } })).status, 404);
 assert.equal((await req(sharePath, 'POST', { revision: 1, action: 'rotate' })).status, 409);
 console.log('PASS: multi-trip isolation, private APIs, forged identity rejection, atomic saves, private-field projection, guest write rejection, and share rotation/revocation.');
+
+let current=(await (await req(path)).json()).snapshot;
+let family=await req(path,'PATCH',{action:'family',revision:current.revision,family:{id:'api-family',name:'Test household',color:'blue'}});assert.equal(family.status,200);current=(await family.json()).snapshot;
+let person=await req(path,'PATCH',{action:'traveler',revision:current.revision,person:{id:'api-person',name:'PRIVATE PERSON',familyId:'api-family'}});assert.equal(person.status,200);current=(await person.json()).snapshot;
+const competing=await Promise.all(['api-second','api-third'].map(id=>req(path,'PATCH',{action:'traveler',revision:current.revision,person:{id,name:'Other synthetic traveler'}})));assert.deepEqual(competing.map(r=>r.status).sort(),[200,409]);current=(await (await req(path)).json()).snapshot;
+const legacy=await req(path,'PATCH',{revision:current.revision,activityId:a.id,patch:{participants:[]}},{'X-Waypoint-Participant-Model':''});assert.equal(legacy.status,409,'An older client must not silently drop individual assignments.');
+let assign=await req(path,'PATCH',{revision:current.revision,activityId:a.id,patch:{participants:['api-person']}});assert.equal(assign.status,200);current=(await assign.json()).snapshot;
+const newLink=await(await req(sharePath,'POST',{action:'rotate',revision:current.revision})).json();const rosterToken=new URL(newLink.url).hash.slice(1);
+const privateRoster=await(await anon('/api/shared',{headers:{Authorization:`Share ${rosterToken}`}})).json();assert.ok(!JSON.stringify(privateRoster).includes('PRIVATE PERSON'));assert.ok(!JSON.stringify(privateRoster).includes('api-person'));
+let publishName=await req(path,'PATCH',{action:'traveler',revision:newLink.revision,person:{id:'api-person',name:'Public display name',familyId:'api-family',showOnGuest:true}});assert.equal(publishName.status,200);current=(await publishName.json()).snapshot;
+const publicRoster=await(await anon('/api/shared',{headers:{Authorization:`Share ${rosterToken}`}})).json();assert.equal(publicRoster.trip.people.find(p=>p.id==='api-person').name,'Public display name');
+assert.equal((await anon(path,{method:'PATCH',headers:{Origin:origin,'Content-Type':'application/json',Authorization:`Share ${rosterToken}`},body:JSON.stringify({action:'traveler',revision:current.revision,person:{id:'bad',name:'Bad'}})})).status,401);
+await req(sharePath,'POST',{action:'revoke',revision:current.revision});
+console.log('PASS: roster persistence, atomic roster conflicts, legacy-client protection, private/public names, and anonymous roster-write rejection.');

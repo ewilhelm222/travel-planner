@@ -46,7 +46,7 @@ test("session expiry preserves the reading copy; access denial clears it", () =>
 
 test("actual client retains an expired-session copy until explicit sign-out", async () => {
   let script = await readFile(new URL("../public/planner.js", import.meta.url), "utf8");
-  for (const file of ["reading-copy.mjs", "offline-export.mjs", "board.mjs"]) script = script.replaceAll(`import("/${file}")`, `import(${JSON.stringify(new URL(`../public/${file}`, import.meta.url).href)})`).replaceAll(`import('/${file}')`, `import(${JSON.stringify(new URL(`../public/${file}`, import.meta.url).href)})`);
+  for (const file of ["reading-copy.mjs", "offline-export.mjs", "board.mjs", "participants.mjs"]) script = script.replaceAll(`import("/${file}")`, `import(${JSON.stringify(new URL(`../public/${file}`, import.meta.url).href)})`).replaceAll(`import('/${file}')`, `import(${JSON.stringify(new URL(`../public/${file}`, import.meta.url).href)})`);
   const key = "waypoint-downloaded-trip-v1";
   const snapshot = { trip: createSampleTrip(), revision: 4 };
   const storage = new Map([[key, JSON.stringify({ user: { id: "first-user", name: "Sample traveler" }, snapshot, downloadedAt: "2026-11-10T20:00:00Z" })]]);
@@ -143,7 +143,7 @@ test("offline installation accepts only the known clean-URL shell redirect", asy
   }
   const marker = '<meta name="waypoint-shell" content="1">';
   const cached = await install("https://planner.test/offline", marker);
-  assert.equal(cached.size, 7);
+  assert.equal(cached.size, 8);
   assert.equal(cached.get("/offline.html"), marker);
   await assert.rejects(install("https://planner.test/signin-with-chatgpt", marker), /Offline assets unavailable/);
   await assert.rejects(install("https://planner.test/offline", "<title>Sign in required</title>"), /Offline assets unavailable/);

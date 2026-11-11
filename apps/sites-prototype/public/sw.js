@@ -1,5 +1,5 @@
-const CACHE = "waypoint-shell-v10";
-const ASSETS = ["/offline.html", "/planner.js", "/planner.css", "/favicon.svg", "/reading-copy.mjs", "/offline-export.mjs", "/board.mjs"];
+const CACHE = "waypoint-shell-v12";
+const ASSETS = ["/offline.html", "/planner.js", "/planner.css", "/favicon.svg", "/reading-copy.mjs", "/offline-export.mjs", "/board.mjs", "/participants.mjs"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(async cache => {
     // Do not replace working offline scripts with HTML sign-in responses.

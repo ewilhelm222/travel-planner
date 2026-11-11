@@ -19,6 +19,8 @@ export async function PATCH(request: Request) { try {
         return response({ error: "A saved revision is required." }, 400);
     if (a.row!.revision !== input.revision)
         return conflict();
+    if(snapshot(a.row!).trip.people?.length && input.patch && "participants" in input.patch && request.headers.get("X-Waypoint-Participant-Model")!=="people-v1")
+        return response({error:"Reload the planner before changing participants. This trip now has individual travelers; your draft is still here."},409);
     let trip;
     try {
         trip = applyTripChange(snapshot(a.row!).trip, input);
