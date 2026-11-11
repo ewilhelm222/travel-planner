@@ -1,8 +1,10 @@
-(() => {
+(async () => {
   "use strict";
+  const { responsePolicy } = await import("/reading-copy.mjs");
+  const { buildOfflineHtml } = await import("/offline-export.mjs");
   const KEY = "waypoint-downloaded-trip-v1";
   const app = document.querySelector("#app");
-  const state = { user: null, snapshot: null, downloadedAt: null, online: navigator.onLine, filter: "all", busy: false, message: "", offlineReady: false };
+  const state = { user: null, snapshot: null, downloadedAt: null, online: navigator.onLine, filter: "all", busy: false, message: "", offlineReady: false, offlineIssue: false, needsSignIn: false };
   const escape = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const dateLabel = (date, options) => new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", ...options });
   const icon = (name, size = 18) => {
@@ -38,29 +40,41 @@
     try {
       const result = await fetch("/api/trip", { method, cache: "no-store", credentials: "same-origin", signal: controller.signal,
         ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}) });
-      if (result.status === 401 || result.status === 403) {
-        await clearDownloaded();
-        const error = new Error("Sign in again to open this private trip."); error.status = result.status; throw error;
+      const policy = responsePolicy(result.status, result.headers.get("Content-Type") || "");
+      if (policy) {
+        if (policy.clearCopy) await clearDownloaded();
+        state.needsSignIn = policy.needsSignIn;
+        state.online = false;
+        const error = new Error(policy.message); error.status = result.status === 403 ? 403 : 401; throw error;
       }
-      if (!result.headers.get("Content-Type")?.includes("application/json")) {
-        await clearDownloaded();
-        const error = new Error("Your sign-in needs refreshing. Sign in again to continue."); error.status = 401; throw error;
-      }
+      if (!result.headers.get("Content-Type")?.includes("application/json")) throw new Error("The server response could not be read. Keep the downloaded copy and try again later.");
       const data = await result.json();
       if (!result.ok) { const error = new Error(data.error || "The request failed."); error.status = result.status; throw error; }
       return data;
     } finally { clearTimeout(timer); }
   }
 
+  async function updateOfflineReadiness() {
+    if (!("caches" in window)) return;
+    try {
+      const cache = await caches.open("waypoint-shell-v5");
+      state.offlineReady = (await Promise.all(["/offline.html", "/planner.js", "/planner.css", "/reading-copy.mjs", "/offline-export.mjs"].map(path => cache.match(path)))).every(Boolean);
+      if (state.offlineReady) state.offlineIssue = false;
+      updateStatus();
+    } catch { state.offlineReady = false; updateStatus(); }
+  }
+
   async function offlineShell() {
     if (!("serviceWorker" in navigator)) return;
     try {
-      await navigator.serviceWorker.register("/sw.js");
+      const registration = await navigator.serviceWorker.register("/sw.js");
+      const installing = registration.installing;
+      if (installing) installing.addEventListener("statechange", () => {
+        if (installing.state === "redundant") { state.offlineIssue = true; updateStatus(); }
+      });
       await Promise.race([navigator.serviceWorker.ready, new Promise((_, reject) => setTimeout(() => reject(new Error("Offline setup timed out")), 10000))]);
-      const cache = await caches.open("waypoint-shell-v1");
-      state.offlineReady = (await Promise.all(["/offline.html", "/planner.js", "/planner.css"].map(path => cache.match(path)))).every(Boolean);
-      updateStatus();
-    } catch { state.offlineReady = false; updateStatus(); }
+      await updateOfflineReadiness();
+    } catch (error) { console.warn("Offline setup unavailable", error.message); state.offlineReady = false; state.offlineIssue = true; updateStatus(); }
   }
 
   async function load(method = "GET") {
@@ -69,7 +83,7 @@
       const data = await request(method);
       // An account switch replaces, rather than merges, the previous reading copy.
       if (state.user && state.user.id !== data.user.id) localStorage.removeItem(KEY);
-      state.user = data.user; state.snapshot = data.snapshot; state.online = true; state.message = "";
+      state.user = data.user; state.snapshot = data.snapshot; state.online = true; state.needsSignIn = false; state.message = "";
       if (state.snapshot) remember();
       render(); offlineShell();
     } catch (error) {
@@ -108,11 +122,11 @@
 
   function render() {
     const trip = state.snapshot?.trip;
-    app.innerHTML = `<div class="topbar"><a class="brand" href="/">${icon("compass", 27)}<span>waypoint<span class="brand-dot">.</span></span></a><span class="private-label">${icon("lock", 13)} PRIVATE TRIP</span><div class="account">${state.user ? `<span class="avatar">${escape(state.user.name.slice(0,1).toUpperCase())}</span><span class="account-name">${escape(state.user.name)}</span><button class="text-button" id="sign-out">Sign out</button>` : '<a href="/signin-with-chatgpt?return_to=%2F" target="_top">Sign in</a>'}</div></div>
+    app.innerHTML = `<div class="topbar"><a class="brand" href="/">${icon("compass", 27)}<span>waypoint<span class="brand-dot">.</span></span></a><span class="private-label">${icon("lock", 13)} PRIVATE TRIP</span><div class="account">${state.user ? `<span class="avatar">${escape(state.user.name.slice(0,1).toUpperCase())}</span><span class="account-name">${escape(state.user.name)}</span>${state.needsSignIn ? '<a class="sign-in-link" href="/signin-with-chatgpt?return_to=%2F" target="_top">Sign in to update</a>' : ""}<button class="text-button" id="sign-out">Sign out</button>` : '<a href="/signin-with-chatgpt?return_to=%2F" target="_top">Sign in</a>'}</div></div>
       <main><div class="prototype-note"><span class="sample-dot"></span> A working prototype <span class="note-divider">/</span> Fictional families and plans. No real bookings.</div>
       <header class="trip-header"><div><span class="eyebrow">A TRIP TO MAKE YOUR OWN</span><h1>${escape(trip?.title || "Good trips start here")}<span class="title-dot">.</span></h1><p class="trip-subtitle">${escape(trip?.subtitle || "A shared plan, with room for everyone.")}</p>${trip ? `<div class="trip-facts"><span>${icon("pin",15)} Japan</span><span>April 12–15, 2027</span><span>2 families</span><span>3 nights</span></div>` : ""}</div><div class="route-sketch" aria-label="Sample itinerary: Kyoto to Osaka"><span class="route-city">Kyoto</span><svg viewBox="0 0 180 70" aria-hidden="true"><path d="M12 53C40 53 42 13 90 18S140 55 168 20" fill="none" stroke="#a7b2a2" stroke-width="2" stroke-dasharray="4 5"/><circle cx="12" cy="53" r="5" fill="#48634e"/><circle cx="168" cy="20" r="5" fill="#c77950"/></svg><span class="route-city right">Osaka</span><span class="sketch-caption">One journey. A little room to wander.</span></div></header>
-      <div class="toolbar"><div class="view-title">${icon("compass",18)} Itinerary board</div><div class="filter" role="group" aria-label="Show travelers"><button data-filter="all" aria-pressed="${state.filter === "all"}">Everyone</button>${(trip?.families || []).map(f => `<button data-filter="${escape(f.id)}" aria-pressed="${state.filter === f.id}"><span class="family-dot ${escape(f.color)}"></span>${escape(f.name)}</button>`).join("")}</div><div class="tools"><button class="icon-button" id="refresh" title="Load latest plan" aria-label="Load latest plan">${icon("refresh")}</button>${trip ? `<button class="secondary" id="export">${icon("download",15)} Export JSON</button>` : ""}</div></div>
-      <div id="status" role="status" aria-live="polite"></div><div id="message" role="alert"></div>
+      <div class="toolbar"><div class="view-title">${icon("compass",18)} Itinerary board</div><div class="filter" role="group" aria-label="Show travelers"><button data-filter="all" aria-pressed="${state.filter === "all"}">Everyone</button>${(trip?.families || []).map(f => `<button data-filter="${escape(f.id)}" aria-pressed="${state.filter === f.id}"><span class="family-dot ${escape(f.color)}"></span>${escape(f.name)}</button>`).join("")}</div><div class="tools"><button class="icon-button" id="refresh" title="Load latest plan" aria-label="Load latest plan">${icon("refresh")}</button>${trip ? `<button class="secondary" id="offline-file">${icon("download",15)} Save offline trip</button><button class="secondary" id="export">JSON</button>` : ""}</div></div>
+      <div id="status" role="status" aria-live="polite"></div><p class="layout-link"><a href="/parallel-stays.html">Explore a split-stay board layout ↗</a></p><div id="message" role="alert"></div>
       ${trip ? `<div class="board">${trip.stays.map(staySection).join("")}</div><div class="board-end">${icon("leaf",20)}<span>Leave a little space for the unexpected.</span></div>` : `<section class="welcome"><div class="welcome-icon">${icon("compass",36)}</div><h2>A small trip, a useful first step.</h2><p>Open a sample itinerary to try family views, shared notes, and saving a reading copy for later.</p><button class="primary" id="start-demo" ${!state.online || !state.user ? "disabled" : ""}>Start the sample trip ${icon("arrow",17)}</button></section>`}
       <footer><span>WAYPOINT <span>·</span> Built for the people you travel with.</span><span>Prototype 01</span></footer></main>
       <dialog id="editor" aria-labelledby="edit-title"><form id="edit-form"><div class="dialog-heading"><span class="eyebrow">ACTIVITY DETAILS</span><button type="button" class="icon-button" id="close-editor" aria-label="Close activity">${icon("close",20)}</button></div><h2 id="edit-title">A little detail goes a long way.</h2><div id="editor-fields"></div><p id="edit-message" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button" id="copy-draft" hidden>Copy my draft</button><button type="button" class="secondary" id="reload-after-conflict" hidden>Load latest plan</button><button type="submit" class="primary" id="save">Save changes ${icon("check",16)}</button></div></form></dialog>`;
@@ -122,10 +136,16 @@
   function updateStatus() {
     const target = document.querySelector("#status"); if (!target) return;
     const downloaded = state.downloadedAt ? new Date(state.downloadedAt).toLocaleString([], { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" }) : null;
-    target.innerHTML = `<span class="connection ${state.online ? "" : "offline"}"><span></span>${state.busy ? "Updating…" : state.online ? "Connected" : "Offline · reading only"}</span><span>${state.snapshot ? `Revision ${state.snapshot.revision} · ` : ""}${downloaded ? `Downloaded ${escape(downloaded)}${state.offlineReady ? " · Ready to read offline" : state.online ? " · Offline setup pending" : ""}` : "No downloaded itinerary yet"}</span>`;
+    target.innerHTML = `<span class="connection ${state.online ? "" : "offline"}"><span></span>${state.busy ? "Updating…" : state.needsSignIn ? "Sign-in expired · reading only" : state.online ? "Connected" : "Offline · reading only"}</span><span>${state.snapshot ? `Revision ${state.snapshot.revision} · ` : ""}${downloaded ? `Downloaded ${escape(downloaded)}${state.offlineReady ? " · Ready to read offline" : state.offlineIssue ? " · Browser offline setup unavailable; use Save offline trip" : state.online ? " · Offline setup pending" : ""}` : "No downloaded itinerary yet"}</span>`;
     document.querySelector("#message").textContent = state.message;
     document.querySelector("#refresh").disabled = state.busy || !navigator.onLine;
     const start = document.querySelector("#start-demo"); if (start) start.disabled = state.busy || !navigator.onLine || !state.user;
+  }
+
+  function downloadFile(contents, mime, filename) {
+    const url = URL.createObjectURL(new Blob([contents], { type: mime }));
+    const anchor = document.createElement("a"); anchor.href = url; anchor.download = filename; anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   function openEditor(id) {
@@ -156,10 +176,16 @@
       try { await navigator.clipboard.writeText(text); document.querySelector("#edit-message").textContent = "Draft copied. You can now load the latest plan."; }
       catch { document.querySelector("#edit-message").textContent = "Select and copy your notes before loading the latest plan."; }
     }
+    if (button.id === "offline-file") {
+      try {
+        downloadFile(buildOfflineHtml(state.snapshot, { downloadedAt: state.downloadedAt }), "text/html;charset=utf-8", "waypoint-offline-trip.html");
+        state.message = "Offline trip saved. Keep the HTML file in your phone's Files app and test opening it before departure. It is a private snapshot, not a live plan; you can also print it to PDF.";
+      } catch (error) { state.message = error.message; }
+      updateStatus();
+    }
     if (button.id === "export") {
       const data = { schemaVersion: 1, exportedAt: new Date().toISOString(), downloadedAt: state.downloadedAt, revision: state.snapshot.revision, trip: state.snapshot.trip };
-      const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], { type:"application/json" }));
-      const anchor = document.createElement("a"); anchor.href = url; anchor.download = "waypoint-sample-trip.json"; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      downloadFile(JSON.stringify(data,null,2), "application/json", "waypoint-sample-trip.json");
     }
     if (button.id === "sign-out") {
       button.disabled = true;
@@ -183,7 +209,10 @@
       document.querySelector("#edit-message").textContent = error.status ? error.message : "The save was not confirmed. Your draft is still here. Load the latest plan to check before trying again.";
       if (error.status === 409 || !error.status || error.status >= 500) {
         document.querySelector("#reload-after-conflict").hidden = false; document.querySelector("#copy-draft").hidden = false;
-      } else if (error.status === 401 || error.status === 403) { document.querySelector("#editor").close(); render(); }
+      } else if (error.status === 401) {
+        document.querySelector("#copy-draft").hidden = false;
+        document.querySelector("#reload-after-conflict").hidden = false;
+      } else if (error.status === 403) { document.querySelector("#editor").close(); render(); }
       else document.querySelector("#save").disabled = false;
     } finally { state.busy = false; updateStatus(); }
   });
@@ -191,9 +220,15 @@
   window.addEventListener("offline", () => { state.online = false; state.message = "Your downloaded plan is available. Editing will resume after reconnecting and refreshing."; const save = document.querySelector("#save"); if (save) save.disabled = true; updateStatus(); });
   window.addEventListener("online", () => { if (!document.querySelector("#editor")?.open) load(); else { state.message = "Connection returned. Keep your draft, then load the latest plan before editing again."; updateStatus(); } });
   restore(); state.online = navigator.onLine; render();
-  if ("caches" in window) caches.open("waypoint-shell-v1").then(async cache => {
-    state.offlineReady = (await Promise.all(["/offline.html", "/planner.js", "/planner.css"].map(path => cache.match(path)))).every(Boolean);
-    updateStatus();
-  }).catch(() => {});
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.addEventListener("controllerchange", updateOfflineReadiness);
+    navigator.serviceWorker.addEventListener("message", event => {
+      if (event.data?.type === "waypoint-offline-failed") {
+        console.warn("Offline assets unavailable", JSON.stringify(event.data.assets));
+        state.offlineIssue = true; state.offlineReady = false; updateStatus();
+      }
+    });
+  }
+  updateOfflineReadiness();
   load();
 })();

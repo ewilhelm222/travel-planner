@@ -4,6 +4,8 @@ Discovery baseline: November 10, 2026.
 
 This document captures the discovery conversation. Confirmed decisions are distinguished from implementation proposals and unresolved questions. Implementation has since begun with the private synthetic-data prototype; see [prototype status and verification](prototype.md) for evidence and remaining checks. The full planner described here is not yet implemented.
 
+Architecture feedback is tracked in [issue #1](https://github.com/ewilhelm222/travel-planner/issues/1). See [the review response](review-1.md) for implemented fixes, revised recommendations, and remaining decisions.
+
 ## Purpose and intended users
 
 Build a private travel planner for trips that the organizer personally joins. The initial planning group includes Eric and Christy, Yang, and Dan and Daphna, with their families. Participation can change, and individuals may arrive, depart, or do activities separately.
@@ -45,11 +47,12 @@ These features form the recommended implementation baseline. Details below remai
 4. Distinguish flexible plans from fixed bookings without requiring every activity to have an exact time.
 5. View the same records on the board, whole-trip map, and day map, preserving participant filters.
 6. Read the plan and open external directions on a phone; make small edits while online.
-7. Recover an accidental edit and export a complete trip snapshot as JSON.
+7. Recover an accidental edit, export the complete data as JSON, and save a self-contained HTML reading copy that does not depend on the host, login, or browser storage.
 
 ### Board and participant behavior
 
-- Group days under stays that can be collapsed; show major journeys as connecting bridges.
+- Retain stays as useful trip-level groups, while also reviewing a date-aligned overview with city lanes for parallel family routes. Do not finalize a stay-column-only layout before that review. Show major journeys with their actual participants.
+- The synthetic parallel-stay design study derives activities from date, place, and participants; it does not require an activity to belong to a stay.
 - Keep unscheduled ideas available separately from the dated itinerary.
 - Represent a shared activity once, with multiple participants. Filtering must not create separate editable copies.
 - Use families as convenient participant defaults, while allowing individuals to split off or join others.
@@ -59,7 +62,7 @@ These features form the recommended implementation baseline. Details below remai
 
 ### Rearrangement and recovery
 
-- Preview a stay move, including affected travelers, flexible activities, unchanged bookings, and shared activities.
+- Preview a stay move, including affected travelers, flexible activities, unchanged bookings, and shared activities. Offer to shift flexible activities at that place/date whose participants are all moving; leave fixed bookings unchanged and flag activities with mixed moving/nonmoving participants for manual resolution. A preview is not an automatic update.
 - A move affecting one family must not silently move another family's itinerary.
 - Prefer simple, explainable warnings: an activity outside a participant's stay, an overlapping fixed commitment, or a shared booking affected by changed dates.
 - Do not silently reschedule bookings or claim to validate real-world travel feasibility without the required information.
@@ -70,7 +73,9 @@ These features form the recommended implementation baseline. Details below remai
 
 Proposed small mobile edits include notes, participation, activity order, and moving an activity to another day. Exact mobile editing scope should be reviewed with the first working board.
 
-Cache the last successfully downloaded itinerary, including useful addresses and notes, and show when it was downloaded. Make the offline state explicit and disable writes. Define sign-out behavior so a shared device does not retain another person's private itinerary indefinitely.
+Cache the last successfully downloaded itinerary, including useful addresses and notes, and show when it was downloaded. Make the offline state explicit and disable writes. Expired authentication pauses editing but preserves that reading copy. Explicit in-app sign-out clears it; a new authenticated account replaces the previous account's copy. An explicit access denial clears the browser copy as well.
+
+Provide a self-contained HTML file with the itinerary, participants, notes, addresses, lodging, journeys, revision, and export/download times. It has no external assets or scripts and can also be printed to PDF. This is the recommended primary in-country reading path for China until connectivity and authentication have been demonstrated on the actual travel setup. Browser caches are a convenience, not a permanent offline guarantee. File-opening on the target phone must still be tested; updates require a new download. The user has not yet decided whether live in-country editing is essential.
 
 Offline map backgrounds are not part of the initial guarantee. Verify that the app itself can reopen offline after a successful online visit; caching data alone does not satisfy this requirement.
 
@@ -78,7 +83,9 @@ Offline map backgrounds are not part of the initial guarantee. Verify that the a
 
 - At trip scale, show stays and major journeys, including participant-specific routes.
 - At day scale, show activities in itinerary order with schematic connections. Label these as planned connections rather than actual routes or travel-time estimates.
-- Link to external navigation for directions. Provider choice, especially for China, remains open.
+- Use a schematic map without background tiles as the recommended baseline. Any background tiles are optional and must not be required to read the itinerary.
+- For China, prefer reviewed Amap links and optional Apple Maps links over a Google-only navigation workflow. Test actual devices and connections before promising either provider's availability.
+- Store local-script place names and addresses alongside English text, plus coordinate-system metadata (`WGS84`, `GCJ02`, `BD09`, or `unknown`) and source provenance. Never mix coordinate systems or approximate conversion with a constant offset. If the coordinate system is unknown, use a reviewed name/address lookup rather than pretending the coordinates are navigation-ready.
 - Allow missing or uncertain locations without inventing coordinates; agree on how users confirm a location.
 - Start with a documented, versioned JSON export that preserves identities, relationships, order, participants, and notes.
 - CSV can be added for tabular convenience. A supported external editing API and direct database access are future options, not first-version commitments.
@@ -89,7 +96,7 @@ Offline map backgrounds are not part of the initial guarantee. Verify that the a
 
 Use one responsive web application hosted by ChatGPT Sites, with Sites-managed durable relational storage and ChatGPT identity. Keep application access checks on the server. Browser storage is a downloaded reading copy, never the authoritative shared trip database.
 
-Use a server-capable Sites starter compatible with the supported runtime. The exact framework and libraries should be selected during implementation, rather than treated as established requirements. Keep hosting-specific identity and storage access behind small interfaces where practical.
+The prototype uses the supplied Vinext/Cloudflare Worker starter and managed D1. Keep hosting-specific identity and storage access behind small interfaces. An owner-controlled Cloudflare Worker + D1 deployment is the preferred fallback to investigate because it matches the runtime; Cloudflare Access email codes are a candidate replacement for ChatGPT sign-in. This is a recommendation, not an approved host migration. Account availability, in-country reachability, authentication validation, data transfer, backups, and an independent deployment trial remain required. DigitalOcean remains an alternative needing runtime/storage adaptation, not necessarily a full rewrite.
 
 GitHub is the project documentation and intended application source repository. Before implementation, establish how the checkout will synchronize with the Sites-managed deployment source repository and preserve source provenance. Do not assume these are automatically the same repository.
 
@@ -99,24 +106,25 @@ GitHub is the project documentation and intended application source repository. 
 | --- | --- |
 | Trip | Name, broad dates, membership, and trip settings. |
 | Person and family group | Travelers, useful group defaults, and optional links to signed-in accounts. A traveler need not be an app user. |
-| Place | A geographic location, address, coordinates when known, and source/navigation links. |
+| Place | English and local-script name/address, coordinates when known, their coordinate system and provenance, plus reviewed navigation links. |
 | Stay | A particular visit to a place over a date range, with participants. Returning to a city creates another stay. |
-| Activity | An idea or scheduled occurrence with notes, participants, order, optional timing/location, and flexibility or booking state. |
+| Activity | An independent idea or scheduled occurrence with date, place, participants, order, optional timing, notes, flexibility/booking state, and its own revision. No required stay foreign key. |
 | Travel leg | Movement connecting places/stays, with mode, participants, and optional departure/arrival details. |
-| Change record | Actor, time, and enough revision information to explain and safely recover changes. |
+| Change record | Append-only per-record before/after snapshots, actor, time, and revisions; undo succeeds only if that record has not changed since. |
 
 These are conceptual entities, not a finalized schema. A day may be a view derived from dates rather than a separate stored record. Accommodation could begin as stay details instead of a separate booking subsystem.
 
-Use stable identifiers independent of row order. Preserve local dates and time zones, including different departure and arrival dates for overnight travel. Keep day order distinct from exact clock times. Decide how shared activities associate with different participants' stays before finalizing the schema.
+Use stable identifiers independent of row order. Preserve local dates and time zones, including different departure and arrival dates for overnight travel. Keep day order distinct from exact clock times. Derive board grouping from dates, places, and participants. Keep accommodation stays separate from activity identity, so a traveler can attend an activity in a city where they are not sleeping. The initial editable prototype still has a legacy `stayId`; do not extend that constraint into the final schema. The separate parallel-stay study demonstrates the independent-record approach without migrating live data.
 
 ### Access and collaboration
 
 - Enforce invited-trip membership for every protected read and write.
 - Separate platform access to the Site from in-app permission to edit itinerary records; travelers do not need permission to modify the website source.
-- Proposed roles are organizer and participant, with designated responsibility for family-specific or shared plans. Exact shared-item ownership and override rules remain open.
+- Keep only an organizer flag beyond ordinary membership. Use a soft confirmation when deliberately editing another family's plan, with shared-item responsibility shown clearly. No additional role hierarchy is proposed.
 - Keep everyone on a trip able to see the full plan, including other families' activities.
-- Define refresh behavior and revision checks for simultaneous editors. Live collaborative cursors and instant updates are not requirements.
-- Confirm backup, restore, and export procedures before using the app as the authoritative itinerary. Manual JSON export is not a substitute for an operational backup plan.
+- Use one revision per editable record in the full planner, rejecting stale saves. The feasibility prototype intentionally has a single trip revision. Undo is one conditional record restore from an append-only log, not a general undo stack. Live collaborative cursors and instant updates are not requirements.
+- Recommended operational backup: an automatic daily full-trip snapshot to private object storage, with a proposed 30-day retention and a tested restore. A change log is not an independent backup, and JSON/HTML user downloads are separate copies. Choose and validate the scheduler/storage path before enabling this; no daily backup job has been created. Confirm current platform recovery features instead of assuming they exist.
+- Do not add dedicated passport-number or reservation-code storage in the first version. Keep the planner focused on useful itinerary details and avoid placing those secrets in free-form notes or downloadable files.
 
 ## China starting data
 
@@ -130,7 +138,11 @@ Past Trello exports and the Ecuador spreadsheet are workflow references, not req
 
 ### 1. Verify Sites feasibility before building the full planner
 
-Create a minimal private proof with synthetic trip records when implementation is authorized.
+First resolve the China-use gate: test host reachability, fresh sign-in, an expired session, and any required editing from the actual mainland travel connection or a representative in-country tester. Test saved HTML independently with networking disabled. A US test, generic roaming claim, or VPN assumption does not establish availability or supported use. Record the date, device/browser, connection type, and outcome without storing secrets.
+
+If that test is unavailable, explicitly recommend planning online where supported and reading a verified downloaded file in China. The choice between that mode and a host migration remains a user decision. Continue platform work with synthetic data, but do not label China readiness complete.
+
+Create and validate the minimal private proof with synthetic trip records.
 
 - Confirm external invitation availability for the selected account and test access with an intended external user. Coordinate any invitation with the owner; do not send invitations merely to probe availability.
 - Confirm an unauthorized visitor cannot retrieve private data.
@@ -138,11 +150,12 @@ Create a minimal private proof with synthetic trip records when implementation i
 - Exercise a concurrent edit and verify that an older save cannot silently erase a newer edit.
 - Verify offline reopening on a target phone after an online visit, including a visible download timestamp and disabled writes.
 - Establish the GitHub-to-Sites source/deployment workflow, current hosting allowance, and recovery path.
-- Investigate access to hosting, sign-in, and maps from the expected China travel connections. Do not infer availability from a successful US test.
+- Verify and open a self-contained itinerary file on the target phone; confirm readable local-script addresses and metadata.
+- Check an ordinary Wrangler package locally and distinguish that result from an authenticated, data-migrated deployment into an owner-controlled Cloudflare account. No native Sites export or automatic migration is assumed.
 
-Exit criterion: access, persistence, and offline requirements are demonstrated or a specific limitation is documented and reviewed. If Sites fails a core requirement, revisit hosting before investing in the full app; the existing DigitalOcean server is a candidate fallback.
+Exit criterion: access, persistence, and offline requirements are demonstrated or a specific limitation is documented and reviewed. If Sites fails a core requirement, revisit hosting before investing in the full app; an owner-controlled Cloudflare deployment is the first fallback to investigate, with the existing DigitalOcean server as another option.
 
-### 2. Validate the board design and build the core workflow
+### 2. Validate the parallel-stay board before full editing
 
 - Review a simple desktop board and phone layout using staggered arrivals, a shared dinner, parallel stays, a split afternoon, and a return to a previously visited city.
 - Implement stays, travel legs, activities, participants, filtering, and persistence.
@@ -192,13 +205,13 @@ Exit criterion: the organizers can use the planner for the China trip without ma
 
 ## Open decisions and risks
 
-1. Sites external access, offline reopening, backup/restore, and travel-network feasibility need actual validation.
-2. Agree on shared-item ownership, organizer overrides, and whether locked items require confirmation or stronger enforcement.
+1. China-use mode and in-country reachability/sign-in are the first release gate. Sites external access, physical-phone offline/file opening, and backup/restore still need validation.
+2. Review the proposed organizer flag, soft family-edit confirmation, per-record revisions, and conditional record undo; avoid a larger permissions system.
 3. Review exact board grouping and what happens to shared activities when only some participants move a stay.
-4. Choose a map provider, location-entry workflow, and directions links suitable for the trip.
+4. Validate the proposed tile-free baseline, local-script addresses, coordinate-system handling, and Amap/Apple navigation workflow on target devices.
 5. Confirm the small mobile editing set and how cached private data is cleared at sign-out.
 6. Choose refresh/conflict behavior; automatic merging of simultaneous edits is not assumed.
-7. Verify current Sites hosting pricing and allowances for the trip period. Do not assume the late-2026 free period covers June 2027.
+7. Verify current Sites hosting pricing, beta limits, and allowances before the trip. The reviewer quoted provisional 2027 rates; do not treat them as a fixed bill or assume the late-2026 free period covers June 2027.
 8. Confirm the Doc's ongoing narrative role and review uncertain China source data before loading it.
 
 ## Next action

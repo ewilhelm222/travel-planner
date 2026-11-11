@@ -4,9 +4,11 @@
 
 [Open the private prototype](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site).
 
-The working name is **Waypoint**; naming is not a confirmed product decision. All itinerary content is fictional: two sample families visiting Kyoto and Osaka. No real reservations or China trip data have been loaded, and no invitations have been sent.
+The working name is **Waypoint**; naming is not a confirmed product decision. All itinerary content is fictional: two sample families in the editable board, and three sample families in the read-only layout study, visiting Kyoto and Osaka. No real reservations or China trip data have been loaded, and no invitations have been sent.
 
 The initial Site is owner-private. Its observed access mode is `custom`, with one allowed account, no groups, and no external visitors. External invitation capability is enabled for the owner. Do not make it public to work around sign-in issues.
+
+[Architecture review response](review-1.md) records the disposition of all feedback in issue #1.
 
 ## What is implemented
 
@@ -16,7 +18,9 @@ The initial Site is owner-private. Its observed access mode is `custom`, with on
 - One shared, versioned document in managed D1 storage, initialized explicitly by the signed-in user's **Start the sample trip** action.
 - Atomic revision checking: competing saves of the same revision cannot both succeed. The rejected edit stays in its dialog, with draft-copy and explicit refresh actions.
 - A service worker caches the static offline shell and assets. A separate downloaded snapshot includes the download time and last confirmed revision. Authenticated HTML and API responses are not cached by the service worker.
-- Offline reading, disabled writes when offline, and versioned JSON export.
+- Offline reading, disabled writes when offline, versioned JSON export, and a self-contained **Save offline trip** HTML download. The HTML includes all recorded notes, lodging, journeys, participants, addresses, revision, and timestamps, and can be printed to PDF.
+- Expired authentication preserves the reading copy and pauses editing; explicit sign-out still clears it. An explicit access denial clears the browser copy. Static offline modules remain available when the server returns a sign-in page instead of code.
+- A separate [parallel-stay study](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site/parallel-stays.html) aligns dates and city lanes using independent activities, staggered arrivals, a shared dinner, and a non-mutating stay-move preview.
 - In-app sign-out clears the device's downloaded data and app caches before navigating to Sites sign-out.
 
 This is a feasibility prototype. Adding/deleting activities, full drag-and-drop, stay-move previews, per-person participation, family editing protections, undo/history, maps, real-data loading, and operational backup/restore are still future work.
@@ -32,7 +36,7 @@ This is a feasibility prototype. Adding/deleting activities, full drag-and-drop,
 
 GitHub and the Sites-managed source repository are separate. The initial deployment copied this app into a separate temporary checkout and used the Sites source helper to commit, push, package, and deploy it. The GitHub repository's origin was preserved. For updates, make changes here, test/build here, synchronize the app into the same Site's deployment checkout, then use the Sites workflow. Never copy credentials, local database files, or other runtime state into either repository.
 
-The initial deployment archive was built from the matching source and submitted through `save_version_and_deploy_private`. Production schema migrations are applied by Sites during publication. The app performs no runtime schema creation. The current single-document schema deliberately tests storage and conflicts; it is not the final multi-record planner schema.
+The initial deployment archive was built from the matching source and submitted through `save_version_and_deploy_private`. Production schema migrations are applied by Sites during publication. The app performs no runtime schema creation. The current single-document schema deliberately tests storage and conflicts; it is not the final multi-record planner schema. GitHub remains canonical; reconcile any separate Sites edits back here before the next release. An ordinary generated Worker artifact passed `wrangler deploy --dry-run`, but independent Cloudflare identity, data migration, account deployment, and reachability remain unverified. Never deploy the existing Sites identity-header trust model unchanged to an unprotected host.
 
 ## Local development
 
@@ -68,7 +72,7 @@ This machine initially lacked npm. For the first build only, npm was downloaded 
 | --- | --- |
 | Production build | Passed using the Sites build helper. |
 | Type check | `tsc --noEmit` passed. |
-| Domain checks | Four Node tests passed: shared-record identity, immutable fixed timing, bounded moves, and input/calendar validation. |
+| Domain checks | Twelve Node tests passed, covering domain invariants plus self-contained HTML completeness/escaping, expiry policy, actual-client expiry/sign-out behavior, independent parallel-city grouping, non-mutating previews, and cached-shell/module behavior on auth gates. |
 | Unauthenticated API | Local API returns 401 before database access. |
 | Concurrent writes | Local D1 integration check sends simultaneous saves of one revision; exactly one returns 200 and one 409. Subsequent read confirms only one change persisted. |
 | Other rejected writes | Integration check rejects fixed-time changes and a foreign-origin mutation. |
@@ -79,17 +83,31 @@ This machine initially lacked npm. For the first build only, npm was downloaded 
 | Hosted access gate | A signed-out in-app browser shows the ChatGPT sign-in gate. No private itinerary appears there. |
 | Hosted signed-in flow | Existing owner session in Chrome can initialize the sample trip, save a note, and reload the persisted change. |
 | Hosting and schema | Private deployment succeeded; hosted initialization/read/write confirms D1 schema and binding work. |
+| Offline review regression | After adding ES modules, a stopped-server reload exposed cache matching affected by differing Origin headers. Static cache matching was corrected; another full stopped-server reload succeeded with the new modules and download control. |
+| Offline file | Browser downloaded the actual self-contained HTML; file contents were checked for completeness and no scripts. Automated browser `file:` navigation is disallowed, so target-phone file opening is not claimed. |
+| Parallel stays | Browser filter shows Birch sleeping in Osaka while attending the single shared Kyoto dinner. Move preview lists solo shifts, fixed bookings, mixed participation, and connected travel separately. |
+| Worker portability | Wrangler local dry-run packaged the standard Worker and D1 binding. No independent account resources were created, and alternative authentication/data migration were not tested. |
 | External invitations | `get_site` reports capability enabled. No invitation sent and no second person's access tested. |
 
 The in-app browser's hosted login reached a security-verification page; that path was not bypassed. Hosted owner verification succeeded in the existing Chrome session instead.
 
 ## Remaining checks before real trip data
 
+**First gate:** decide whether live editing in China is essential and test host, fresh/expired sign-in, and any required saves from the actual travel connection or an in-country tester. No host migration, roaming assumption, or VPN assumption substitutes for that test. The recommended interim mode is planning where supported and reading a verified saved file in China.
+
 1. With the owner's chosen recipient and explicit instruction to invite them, test an external ChatGPT account's access and edits. Verify an uninvited signed-in account is rejected.
-2. On a physical phone, sign in, download the plan, disable connectivity, reopen the page, and inspect notes. Reconnect and verify a fresh read precedes editing. Repeat against the hosted Site, not just localhost.
+2. On a physical phone, sign in, save the self-contained trip HTML, and open it from Files with connectivity disabled. Also download the browser copy, reopen the page offline, and inspect notes. Reconnect and verify a fresh read precedes editing. Repeat against the hosted Site, not just localhost.
 3. Verify sign-out and account-switch cleanup on the target browsers. Downloads exported by the user are independent files and cannot be cleared by app sign-out.
 4. Test the hosting/sign-in/maps combination from the expected China travel connections. No claim of mainland-China availability has been established.
 5. Confirm platform backup and restore procedures and current hosting allowance/pricing. JSON export is available, but operational recovery is not yet validated.
 6. Review board density and shared-activity behavior with staggered arrivals, parallel stays, and a realistic two-week itinerary before finalizing the record schema.
 
 The feasibility milestone is partially complete, not fully signed off. The next product work is the reviewed board's actual editing workflow, after resolving any platform failures exposed by the outstanding checks.
+
+## Review #1 release
+
+- Sites source commit: `b2327090508e5aa01ad81c5bc327c5ecd324ebe7`.
+- Saved version: `appgprj_6af3ef55c4f48191940aa66a59771eb3~appgver_07f9cc007c408191ae13e6edc9e520b9`.
+- Deployment: `appgdep_6af3fd3c3dc481919d3ae4cc6b661195`, reported `succeeded`.
+- Hosted verification: **Save offline trip** and the parallel-stay study are present; the study's move preview works without changing the saved trip. The final browser shell reports **Ready to read offline** after validating the expected same-origin clean-URL redirect for its HTML shell.
+- Twelve automated tests pass. The original API smoke checks still pass. A local full offline reload was repeated after adding cached modules. Target-phone file opening, an invited account, China reachability, and operational restore remain unverified.
