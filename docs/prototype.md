@@ -10,6 +10,37 @@ The initial Site is owner-private. Its observed access mode is `custom`, with on
 
 [Architecture review response](review-1.md) records the disposition of all feedback in issue #1.
 
+## Field Atlas design adoption — November 11, 2026
+
+The organizer adopted [the designer's Field Atlas direction](design.md) for
+ongoing work. Root `AGENTS.md` points future implementation work to that overview
+and its tokens, while the product plan continues to govern data behavior.
+
+The first visual pass applies those tokens to the editable prototype, existing
+parallel-stay study, and self-contained HTML export. It adds local serif display
+type, warm paper and forest ink, mist shared cards, explicit Flexible / Fixed
+booking labels, larger metadata, 44 px controls, visible focus, a skip link,
+full-height phone activity details, and a sand reading-copy band. Offline shell
+version 6 carries the updated assets. No new network assets are required.
+
+This pass retains the current stay-grouped editable board. The date-aligned board,
+selected-day phone agenda, compact trip-story preference, and larger interaction
+changes in the design reference remain future work, subject to the layout review.
+
+Verification: all 12 existing Node tests and the loopback API checks passed; the
+production build passed. Browser checks covered desktop rendering, a 390 px
+viewport override (375 px content width with scrollbar), no horizontal overflow,
+44 px button heights, dialog Escape/focus restoration, family filtering with all
+shared attendee labels retained, and reopening the restyled cached shell after
+stopping the server. The hosted owner session showed the new theme and reported
+Ready to read offline. No physical-phone or China-connectivity claim is made.
+The full two-week layout, complete keyboard-only workflow, and 200% browser zoom
+still need review with the forthcoming board layout.
+
+- Sites source commit: `3d0b5fbb89828ac3441e4a524c2ce1efcbb3099e`.
+- Saved version: `appgprj_6af3ef55c4f48191940aa66a59771eb3~appgver_7f25c46cbb5081918f4469d14e062e4c`.
+- Deployment: `appgdep_6af47e23eb2881919277c86b078d49c6`, reported `succeeded`.
+
 ## What is implemented
 
 - Stays with grouped days and a major train journey between them.

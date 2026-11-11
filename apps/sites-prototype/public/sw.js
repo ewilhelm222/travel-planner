@@ -1,4 +1,4 @@
-const CACHE = "waypoint-shell-v5";
+const CACHE = "waypoint-shell-v6";
 const ASSETS = ["/offline.html", "/planner.js", "/planner.css", "/favicon.svg", "/reading-copy.mjs", "/offline-export.mjs"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(async cache => {
