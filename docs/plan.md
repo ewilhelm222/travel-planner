@@ -2,7 +2,7 @@
 
 Discovery baseline: November 10, 2026.
 
-This document captures the discovery conversation. Confirmed decisions are distinguished from implementation proposals and unresolved questions. Documenting the plan does not imply that a Site has been created or that the application has been implemented.
+This document captures the discovery conversation. Confirmed decisions are distinguished from implementation proposals and unresolved questions. Implementation has since begun with the private synthetic-data prototype; see [prototype status and verification](prototype.md) for evidence and remaining checks. The full planner described here is not yet implemented.
 
 ## Purpose and intended users
 
@@ -203,9 +203,9 @@ Exit criterion: the organizers can use the planner for the China trip without ma
 
 ## Next action
 
-The next implementation step is milestone 1: a deliberately small, private Sites feasibility proof with synthetic data. Review the board interaction with representative scenarios alongside that work. Do not begin by building the entire planner or importing all real trip data.
+Milestone 1 has a deployed private proof with synthetic data. Complete the outstanding external-user, physical-phone, travel-network, and recovery checks documented in [prototype status](prototype.md). Review the board interaction with representative scenarios alongside that work, then continue to full trip editing. Do not import real trip data until the access and operational workflow are ready.
 
-The current authorized task is documenting this plan. Creating a Site, deploying code, inviting travelers, and importing live trip data are subsequent implementation work.
+The user authorized the next implementation step after reviewing this plan. The prototype has been created and privately deployed. Inviting travelers and importing live trip data have not been performed.
 
 ## References
 
