@@ -1,8 +1,9 @@
 # Multiple trips, events, and guest schedules
 
 Status: November 11, 2026. The Departure Board design and multi-event planner are
-deployed to the existing Site. Anonymous hosted access awaits explicit approval
-of the Site's public entry point. Private planning and guest preview work now.
+deployed to the existing Site. The organizer explicitly approved the public entry
+point on November 11, 2026. Camp Earnest's guest link now works without sign-in;
+private planning and editing remain separately protected.
 
 ## Working behavior
 
@@ -39,11 +40,11 @@ requires trusted ChatGPT identity plus trip ownership/editor membership for
 private reads/writes, and only configured organizers may create/import trips.
 Unrecognized signed-in accounts cannot retrieve another organizer's trip.
 
-The audience change was rejected by automatic approval review as a broader,
-persistent change to the private Site. The host remains private pending explicit
-approval. The code, records, and Camp Earnest guest link are concrete and ready;
-anonymous production access must still be checked after approval. Do not work
-around the rejected audience change or describe anonymous hosting as verified.
+The initial audience change was rejected by automatic approval review. The
+organizer subsequently explicitly approved a public entry point with protected
+editing. Sites confirmed access mode `public`, access-policy revision 2. No editor
+or invitation permissions were added. The Camp Earnest guest link was verified
+in a browser without an organizer session. China sharing remains disabled.
 
 Guest links use 256 random bits. Only a SHA-256 hash is stored in D1. The token is
 in the URL fragment and is sent to the read endpoint in an Authorization header,
@@ -96,8 +97,14 @@ overflow. Local guest browsing, day selection, and absence of write controls
 were checked. Physical phones, actual China connectivity, a second authorized
 editing account, complete 200% zoom review, and backup restore remain unverified.
 
-The live anonymous smoke check is blocked by the pending Site audience approval.
-This distinction is deliberate: local API success does not prove hosted access.
+Hosted anonymous verification succeeded after approval: Camp Earnest loads its
+schedule without sign-in, day selection works at a 390 px viewport override, the
+page has no input/edit controls, and activity details are read-only. There was no
+horizontal page overflow and exactly one day was visible on the phone layout.
+The same browser's direct visit to `/api/trips` returned the sign-in-required
+error. Command-line probes were denied at the hosting edge (403), so application
+write-authorization evidence remains the local API tests and deployed guard code;
+no live write was made during the hosted checks.
 
 ## Release provenance
 

@@ -13,8 +13,9 @@ visual system is **Departure Board**.
 
 The tentative China draft and Camp Earnest event are stored in the private app,
 with synthetic additions labeled. Real itinerary datasets and guest-link tokens
-are excluded from this repository. Anonymous hosted access is awaiting explicit
-approval of the Site's public entry point; private planning is already deployed.
+are excluded from this repository. The organizer approved the public Site entry
+point; enabled guest links now work without sign-in. Private trip data and editing
+remain protected by the application's server-side authorization.
 
 ## Project plan
 
