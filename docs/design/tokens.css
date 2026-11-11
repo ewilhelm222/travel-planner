@@ -1,0 +1,40 @@
+/* Waypoint — Field Atlas. Canonical rationale: ../design.md */
+:root {
+  color-scheme: light;
+  --paper: #f4f0e7;
+  --surface: #fffcf6;
+  --ink: #233c37;
+  --muted: #5d6864;
+  --line: #c8ccc1;
+  --forest: #345b4c;
+  --mist: #dfe8df;
+  --rust: #a84232;
+  --blush: #f4e2d9;
+  --amber: #d8a952;
+  --sand: #f1e4c8;
+  --sea: #275c72;
+  --sea-wash: #e1edf1;
+  --focus: #275c72;
+  --font-display: Charter, "Bitstream Charter", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", sans-serif;
+  --font-local: "PingFang SC", "Hiragino Sans", "Apple SD Gothic Neo", "Noto Sans CJK SC", sans-serif;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --radius-small: 4px;
+  --radius-card: 8px;
+  --radius-panel: 12px;
+  --shadow-card: 0 2px 5px #233c3709;
+  --shadow-panel: 0 20px 80px #233c3726;
+  --family-cedar: var(--forest);
+  --family-cedar-wash: var(--mist);
+  --family-maple: var(--rust);
+  --family-maple-wash: var(--blush);
+  --family-birch: var(--sea);
+  --family-birch-wash: var(--sea-wash);
+}

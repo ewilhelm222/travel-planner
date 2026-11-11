@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 280" role="img" aria-labelledby="title desc">
+  <title id="title">Coast, drawn from memory</title>
+  <desc id="desc">An original graphic of a red volcanic shore, layered green hills, pale sea, and a sun. Inspired by the travel photographs; not a map or a photograph.</desc>
+  <defs>
+    <pattern id="water" width="38" height="14" patternUnits="userSpaceOnUse"><path d="M4 7h18" stroke="#809e9a" stroke-width=".7" opacity=".38"/></pattern>
+    <clipPath id="frame"><rect width="560" height="280" rx="5"/></clipPath>
+  </defs>
+  <g clip-path="url(#frame)">
+    <path fill="#e5e8db" d="M0 0h560v280H0z"/>
+    <circle cx="422" cy="59" r="28" fill="#d8a952"/>
+    <path d="M0 150 95 70 178 115 277 45 380 122 455 100 560 151v129H0Z" fill="#a8b7a1"/>
+    <path d="m0 172 115-58 111 54 96-76 104 80 76-32 58 38v102H0Z" fill="#658671"/>
+    <path d="M0 190 140 135l123 74 113-48 184 57v62H0Z" fill="#345b4c"/>
+    <path d="M0 203c97-24 148 40 262 14s202-7 298 7v56H0Z" fill="#a84232"/>
+    <path d="M0 230c120-42 173 48 307 7s171 13 253 3v40H0Z" fill="#b7cdca"/>
+    <path fill="url(#water)" d="M0 230c120-42 173 48 307 7s171 13 253 3v40H0Z"/>
+    <g fill="none" stroke="#dfe8df" stroke-width=".8" opacity=".35"><path d="m65 174 77-21 114 72M93 168l48 2 86 48M289 202l88-25 75 30M305 207l70-15 50 12"/></g>
+    <path d="m24 34 6-13 6 13-6-4z" fill="#233c37"/>
+    <path d="M30 42v16m-8-8h16" stroke="#233c37" stroke-width=".8"/>
+    <text x="24" y="76" font-family="sans-serif" font-size="8" letter-spacing="2" fill="#345b4c">N</text>
+    <path d="M462 116q8-10 17 0 8-10 17 0" stroke="#233c37" fill="none" stroke-width="1.5"/>
+  </g>
+</svg>
