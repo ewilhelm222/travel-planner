@@ -17,6 +17,15 @@ The initial Site is owner-private. Its observed access mode is `custom`, with on
 
 [Architecture review response](review-1.md) records the disposition of all feedback in issue #1.
 
+## Night Market design adoption — November 11, 2026
+
+The organizer adopted [Night Market](design-night-market.md) and it is applied to
+`planner.css`, the guest view, the parallel-stay study, the offline shell, and
+the reading copy; the offline shell cache is version 11. A round day-medallion
+rail mirrors the existing day select. Record data, APIs, authentication, and
+concurrency handling are unchanged. Verification is listed in the design guide.
+Hosted deployment of this pass has not yet been performed.
+
 ## Field Atlas design adoption — November 11, 2026
 
 The organizer adopted [the designer's Field Atlas direction](design.md) for

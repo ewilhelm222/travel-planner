@@ -1,6 +1,8 @@
 # Waypoint — Departure Board
 
-**Direction 02 · November 11, 2026 · adopted for implementation.** The organizer requested a bolder point of view after reviewing Field Atlas. The organizer approved applying this direction to the production app on November 11, 2026. The reference remains a visual study; implemented product behavior is recorded separately. [The first direction is archived here](design-field-atlas.md). A third, purple-led alternative, [Night Market](design-night-market.md), was studied on November 11, 2026 for comparison and is not adopted.
+**Direction 02 · November 11, 2026 · superseded.** Later the same day the organizer adopted [Night Market](design-night-market.md) for the production app; start there. This document is kept as the second study and as the record of the layout decisions Night Market inherits.
+
+**Originally adopted for implementation.** The organizer requested a bolder point of view after reviewing Field Atlas. The organizer approved applying this direction to the production app on November 11, 2026. The reference remains a visual study; implemented product behavior is recorded separately. [The first direction is archived here](design-field-atlas.md).
 
 ## The point of view
 

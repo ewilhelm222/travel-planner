@@ -1,6 +1,6 @@
 # Waypoint — Night Market
 
-**Direction 03 · November 11, 2026 · proposed alternative.** The organizer asked for a third, bolder direction with purple at its heart. This is a visual study for comparison with the adopted [Departure Board](design.md) and the archived [Field Atlas](design-field-atlas.md). It does not change the adopted direction, the application, schema, records, or deployment. [The product plan](plan.md) governs requirements; [prototype status](prototype.md) records what is implemented.
+**Direction 03 · November 11, 2026 · adopted for implementation.** The organizer asked for a third, bolder direction with purple at its heart, chose it over [Departure Board](design.md) (now superseded) and the archived [Field Atlas](design-field-atlas.md), and approved applying it to the production app the same day. The visual study below remains the reference; the application pass is recorded under *Applied to the app*. Schema, records, authentication, and deployment access are unchanged. [The product plan](plan.md) governs requirements; [prototype status](prototype.md) records what is implemented.
 
 ## The point of view
 
@@ -101,7 +101,23 @@ Native labeled selects, keyboard focus with a lagoon ring, a skip link, descript
 
 Calculated text contrast: cream/night 17.6:1; orchid/night 10.7:1; lagoon/night 12.0:1; white/grape 13.8:1; magenta/grape 4.2:1 (display sizes only); ink/cream 16.9:1; muted/cream 7.1:1; ember-ink/cream 5.3:1; cedar-ink/cream 4.9:1; birch-ink/cream 6.8:1; ink/magenta 5.5:1; ink/lagoon 11.5:1; white/violet 5.8:1. Magenta is never a small-text color on violet.
 
-If adopted, start with tokens, type, controls, and card states in `apps/sites-prototype/public/planner.css`, keep both other directions available, and validate the date window and dark-surface readability on a physical phone before replacing the current board. Authentication, concurrency, exports, offline/session clearing, navigation provenance, and China-use gates are unaffected by this study.
+Authentication, concurrency, exports, offline/session clearing, navigation provenance, and China-use gates are unaffected by this design.
+
+## Applied to the app — November 11, 2026
+
+`apps/sites-prototype/public/planner.css` now carries these tokens and styles for the planner, guest view, parallel-stay study, and offline shell. The poster artwork, labels, and booking marks in `planner.js`, `board.mjs`, and `guest.mjs` follow the study; the self-contained reading copy in `offline-export.mjs` uses a cream, print-friendly version of the system; the offline shell cache is version 11. The day select is now mirrored by a round medallion rail (the select stays as the labeled native control; medallions are buttons with `aria-pressed`, and a day with a highlighted shared moment carries a magenta mark).
+
+| Before (Departure Board) | After (Night Market) |
+| --- | --- |
+| ![Departure Board planner](design/night-market/before-departure.jpg) | ![Night Market planner, compact](design/night-market/app-planning.jpg) |
+
+![Night Market planner with the poster open](design/night-market/app-desktop.jpg)
+
+![Night Market guest view](design/night-market/app-guest.jpg)
+
+<img src="design/night-market/app-mobile.jpg" width="390" alt="Night Market planner on a phone, one selected day">
+
+Verification of the application pass: 18 Node tests, `tsc --noEmit`, the production build, and the loopback API checks pass. Headless Chromium at 1423 × 742 and 390 × 844 showed no horizontal overflow and no script errors on the planner (compact and poster), the activity editor, the share dialog, the guest view and its detail dialog, the parallel-stay study with its move preview, and the rendered offline reading copy. Physical phones, hosted deployment, and real network loss were not tested in this pass; see [prototype status](prototype.md) for the outstanding checks.
 
 ## Verification
 
