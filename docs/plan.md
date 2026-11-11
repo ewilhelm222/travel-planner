@@ -10,7 +10,7 @@ Architecture feedback is tracked in [issue #1](https://github.com/ewilhelm222/tr
 
 Build a private travel planner for trips that the organizer personally joins. The initial planning group includes Eric and Christy, Yang, and Dan and Daphna, with their families. Participation can change, and individuals may arrive, depart, or do activities separately.
 
-The first trial is the China trip currently outlined in a Google Doc. This is a personal tool for a small, trusted group. Independent organizers, public trip discovery, and commercial-scale infrastructure are not targets.
+The immediate group trial is Camp Earnest at Thanksgiving, with the China trip from the Google Doc as the richer planning case. Multiple trips and events are now confirmed scope. This is a personal tool for a small, trusted group. Independent organizers, public trip discovery, and commercial-scale infrastructure are not targets.
 
 Existing Trello and Google Workspace approaches have produced successful trips. Preserve their flexibility while improving rearrangement, relationships between plans, participant views, and geographic understanding.
 
@@ -18,7 +18,7 @@ Existing Trello and Google Workspace approaches have produced successful trips. 
 
 | Area | Confirmed decision |
 | --- | --- |
-| Hosting | Start on ChatGPT Sites. Travelers have or can obtain ChatGPT accounts. |
+| Hosting | Start on ChatGPT Sites. Editing uses ChatGPT sign-in; the requested guest view must work without an account. |
 | Planning surface | A Trello-like board, grouping days into stays and representing major train, car, plane, or other journeys as bridges between stays. |
 | Participants | Switch between families, selected people, and the entire trip; support overlapping and different plans. |
 | Rearrangement | Make manual editing easy. Warnings about affected plans are useful; automatic itinerary changes are out of scope. |
@@ -26,7 +26,9 @@ Existing Trello and Google Workspace approaches have produced successful trips. 
 | Maps | Whole-trip and within-day views using pins and ordered schematic arrows. External directions are sufficient initially. |
 | Devices | Full desktop browser editing; a good phone view with small edits. |
 | Connectivity | Online editing only. The last successfully downloaded itinerary must remain readable offline. |
-| Privacy | The whole trip is private to outsiders. Everyone invited to the trip can see everything. |
+| Privacy | Trips are private by default. The organizer may enable a revocable read-only guest link for a limited schedule projection. Private planning notes and lodging details remain protected. |
+| Multiple plans | Keep independent trips and events, including one-base gatherings with optional daily activities. |
+| Guest participation | Browse only for the Thanksgiving test; no RSVP or sign-up controls. |
 | Editing protections | Primarily prevent accidental changes to another family's plans, rather than conceal information between travelers. |
 | Operations | Minimize infrastructure and maintenance. Reusing existing services is welcome, but avoiding a modest bill is not the priority. |
 | Spreadsheet editing | Direct editing of an underlying Sheet is not a requirement. |
@@ -114,7 +116,7 @@ GitHub is the project documentation and intended application source repository. 
 
 These are conceptual entities, not a finalized schema. A day may be a view derived from dates rather than a separate stored record. Accommodation could begin as stay details instead of a separate booking subsystem.
 
-Use stable identifiers independent of row order. Preserve local dates and time zones, including different departure and arrival dates for overnight travel. Keep day order distinct from exact clock times. Derive board grouping from dates, places, and participants. Keep accommodation stays separate from activity identity, so a traveler can attend an activity in a city where they are not sleeping. The initial editable prototype still has a legacy `stayId`; do not extend that constraint into the final schema. The separate parallel-stay study demonstrates the independent-record approach without migrating live data.
+Use stable identifiers independent of row order. Preserve local dates and time zones, including different departure and arrival dates for overnight travel. Keep day order distinct from exact clock times. Derive board grouping from dates, places, and participants. Keep accommodation stays separate from activity identity, so a traveler can attend an activity in a city where they are not sleeping. The multi-event implementation uses independent activity date/place/participant fields with no required `stayId`. The original Japan feasibility document is retained separately and can be copied into the new model. The current board derives dates and city lanes from these records.
 
 ### Access and collaboration
 
@@ -201,7 +203,7 @@ Exit criterion: the organizers can use the planner for the China trip without ma
 - Full alternate-itinerary branching; use unscheduled ideas and backup labels initially.
 - General-purpose Trello/Sheet importers and ongoing Doc synchronization.
 - A supported public editing API, arbitrary third-party frontends, and direct shared database access.
-- Public trip sharing, independent organizers, or broad product commercialization.
+- Public trip discovery, independent organizers, or broad product commercialization. Revocable guest schedule links are now in scope.
 
 ## Open decisions and risks
 
@@ -230,3 +232,20 @@ The user authorized the next implementation step after reviewing this plan. The 
 - [Sites private sharing and external invitations](https://learn.chatgpt.com/docs/sites/publishing-and-sharing).
 
 Service capabilities and pricing were consulted during discovery. Recheck the current documentation during implementation rather than treating this plan as a permanent statement of platform behavior.
+
+## November 11 implementation update
+
+The organizer requested multiple trips/events, a Thanksgiving trial, and an
+anonymous read-only URL view. Camp Earnest uses the supplied November 22–27 range,
+with Sunday and Friday as travel days; exact times remain open. The existing China
+Doc was reviewed and its tentative route transferred privately alongside clearly
+labeled synthetic participants and split-plan examples. Full source datasets are
+not committed. The organizer also adopted the new Departure Board visual system.
+
+The private planning app and guest projection are implemented. Sites' private gate
+covers every route. Enabling anonymous viewing requires a public Site entry point
+with server-enforced trip membership and write authorization. Automatic approval
+review rejected the audience change as broader than the guest-link authorization;
+explicit approval has been requested. No alternate path is used to bypass that
+rejection. [Current implementation status](multi-events.md) records the boundary,
+checks, and outstanding release work.

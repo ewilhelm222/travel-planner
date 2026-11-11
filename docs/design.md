@@ -1,6 +1,6 @@
 # Waypoint — Departure Board
 
-**Direction 02 · November 11, 2026 · current proposal for review.** The organizer requested a bolder point of view after reviewing Field Atlas. This is a new design proposal, not approval to migrate the production app. [The first direction is archived here](design-field-atlas.md).
+**Direction 02 · November 11, 2026 · adopted for implementation.** The organizer requested a bolder point of view after reviewing Field Atlas. The organizer approved applying this direction to the production app on November 11, 2026. The reference remains a visual study; implemented product behavior is recorded separately. [The first direction is archived here](design-field-atlas.md).
 
 ## The point of view
 
@@ -91,7 +91,7 @@ Keep native labeled selects, keyboard focus, skip link, descriptive dialogs, Esc
 
 [The product plan](plan.md) governs requirements and [prototype status](prototype.md) records implemented features. Authentication, concurrency, exports, offline/session clearing, navigation provenance, and China-use gates remain intact. This task changes documentation and a separate visual study, not application files, schema, records, or deployment access. Preserve other work in progress.
 
-Start implementation with tokens, type, controls, and card states. Review the date-aligned layout before replacing the current board. Keep both alternatives available. Update this guide and screenshots together when decisions change. This second proposal needs visual review before it is treated as an adopted production system.
+Start implementation with tokens, type, controls, and card states. Review the date-aligned layout before replacing the current board. Keep both alternatives available. Update this guide and screenshots together when decisions change. This direction is now adopted. Continue validating production layouts and interactions against the product plan rather than treating the study as proof of implementation.
 
 ## Verification
 

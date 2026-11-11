@@ -4,11 +4,17 @@ A private, collaborative travel planner for trips with family and friends. Plan 
 
 ## Status
 
-The private ChatGPT Sites prototype uses synthetic trip data. It supports family views, shared activity edits, conflict detection, browser-based offline reading, a self-contained HTML trip download, and JSON export. A separate read-only study explores parallel stays and shared activities.
+The planner now supports multiple trips and events, independent dated activities,
+unscheduled ideas, optional activity choices, participant filters, a phone agenda,
+JSON import/export, offline reading, and organizer-managed guest links. The adopted
+visual system is **Departure Board**.
 
-[Open the private prototype](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site) · [Source](apps/sites-prototype) · [Setup, verification, and remaining checks](docs/prototype.md)
+[Open the planner](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site) · [Current implementation and access status](docs/multi-events.md) · [Source](apps/sites-prototype)
 
-[Parallel-stay design study](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site/parallel-stays.html) · [Architecture review response](docs/review-1.md)
+The tentative China draft and Camp Earnest event are stored in the private app,
+with synthetic additions labeled. Real itinerary datasets and guest-link tokens
+are excluded from this repository. Anonymous hosted access is awaiting explicit
+approval of the Site's public entry point; private planning is already deployed.
 
 ## Project plan
 

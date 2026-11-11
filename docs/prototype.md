@@ -2,6 +2,13 @@
 
 ## Current result
 
+The multi-event planner with the Departure Board design is deployed. See
+[multiple trips, guest links, and current access status](multi-events.md) for the
+current implementation. The sections below preserve the initial feasibility
+proof and its verification history.
+
+## Original feasibility result
+
 [Open the private prototype](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site).
 
 The working name is **Waypoint**; naming is not a confirmed product decision. All itinerary content is fictional: two sample families in the editable board, and three sample families in the read-only layout study, visiting Kyoto and Osaka. No real reservations or China trip data have been loaded, and no invitations have been sent.
@@ -54,7 +61,7 @@ still need review with the forthcoming board layout.
 - A separate [parallel-stay study](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site/parallel-stays.html) aligns dates and city lanes using independent activities, staggered arrivals, a shared dinner, and a non-mutating stay-move preview.
 - In-app sign-out clears the device's downloaded data and app caches before navigating to Sites sign-out.
 
-This is a feasibility prototype. Adding/deleting activities, full drag-and-drop, stay-move previews, per-person participation, family editing protections, undo/history, maps, real-data loading, and operational backup/restore are still future work.
+At the end of the original feasibility pass, adding/deleting activities, full drag-and-drop, stay-move previews, per-person participation, family editing protections, undo/history, maps, real-data loading, and operational backup/restore were future work. Consult the current status above for features added since then.
 
 ## Source and deployment
 

@@ -1,45 +1,29 @@
-/* Waypoint — Field Atlas. Adapted from docs/design/tokens.css; rationale: docs/design.md */
+/* Waypoint / Departure Board — second creative direction */
 :root {
   color-scheme: light;
-  --paper: #f4f0e7;
-  --surface: #fffcf6;
-  --ink: #233c37;
-  --muted: #5d6864;
-  --line: #c8ccc1;
-  --forest: #345b4c;
-  --mist: #dfe8df;
-  --rust: #a84232;
-  --blush: #f4e2d9;
-  --amber: #d8a952;
-  --sand: #f1e4c8;
-  --sea: #275c72;
-  --sea-wash: #e1edf1;
-  --focus: #275c72;
-  --font-display: Charter, "Bitstream Charter", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", sans-serif;
-  --font-local: "PingFang SC", "Hiragino Sans", "Apple SD Gothic Neo", "Noto Sans CJK SC", sans-serif;
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --space-7: 48px;
-  --space-8: 64px;
-  --radius-small: 4px;
-  --radius-card: 8px;
-  --radius-panel: 12px;
-  --shadow-card: 0 2px 5px #233c3709;
-  --shadow-panel: 0 20px 80px #233c3726;
-  --family-cedar: var(--forest);
-  --family-cedar-wash: var(--mist);
-  --family-maple: var(--rust);
-  --family-maple-wash: var(--blush);
-  --family-birch: var(--sea);
-  --family-birch-wash: var(--sea-wash);
+  --paper: #f7f6f0;
+  --surface: #ffffff;
+  --ink: #131514;
+  --muted: #515550;
+  --blue: #243ae8;
+  --acid: #e6f449;
+  --red: #b52d22;
+  --line: #131514;
+  --font-display: Impact, Haettenschweiler, "Arial Narrow", sans-serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-local: "PingFang SC", "Hiragino Sans", "Noto Sans CJK SC", sans-serif;
+  --space-unit: 8px;
+  --radius: 0px;
+  --rule: 2px solid var(--ink);
+  --shadow: 5px 5px 0 var(--ink);
+  --family-cedar: #243ae8;
+  --family-maple: #9a251d;
+  --family-birch: #131514;
 }
 
-/* First visual pass. Board grouping and itinerary behavior remain in planner.js. */
+:root { --forest:var(--blue); --mist:var(--acid); --rust:var(--red); --blush:#ffebe8; --sand:var(--acid); --sea:var(--ink); --sea-wash:var(--surface); --focus:var(--blue); --radius-small:0px; --radius-card:0px; --radius-panel:0px; --shadow-card:none; --shadow-panel:8px 8px 0 var(--blue); }
+/* Shared planner foundations; current visual tokens come from Departure Board. */
 * { box-sizing: border-box; }
 body { margin: 0; color: var(--ink); background: var(--paper); font: 16px/1.5 var(--font-ui); font-synthesis: none; }
 button, input, textarea, select { font: inherit; }
@@ -150,7 +134,7 @@ footer > span:first-child span { padding: 0 8px; }
 .loading p { color: var(--muted); font-size: 16px; }
 .wordmark { font-size: 14px; letter-spacing: 2px; color: var(--forest); }
 dialog { border: 1px solid var(--line); border-radius: var(--radius-panel); padding: 24px; max-width: 560px; max-height: calc(100dvh - 32px); width: calc(100% - 32px); overflow-y: auto; color: var(--ink); background: var(--surface); box-shadow: var(--shadow-panel); }
-dialog::backdrop { background: #233c3766; }
+dialog::backdrop { background: #131514aa; }
 .dialog-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 dialog h2 { font: 30px/1.2 var(--font-display); letter-spacing: -.5px; margin: 12px 0 24px; }
 label { display: block; font-size: 14px; color: var(--ink); margin-bottom: 16px; }
@@ -229,3 +213,15 @@ input:disabled, textarea:disabled { background: var(--paper); color: var(--muted
 .study footer { margin-top: 32px; }
 .empty-lane { font-style: italic; color: var(--muted); font-size: 14px; }
 @media(max-width:850px) { .parallel-board { grid-template-columns: minmax(0,1fr); } .study h1 { font-size: 36px; } }
+
+/* Multi-event daily planning, with one selected day on a phone. */
+.library-bar{display:flex;align-items:end;gap:16px;flex-wrap:wrap;padding-top:24px;border-bottom:1px solid var(--line);padding-bottom:24px}.library-bar label{margin:0;max-width:100%}.library-bar select{min-width:min(320px,100%)}.file-label{position:relative;cursor:pointer}.file-label input{position:absolute;inset:0;opacity:0;width:100%;margin:0;cursor:pointer}.file-label:focus-within{outline:3px solid var(--focus);outline-offset:4px}.traveler-select{margin:0 0 0 auto;display:flex;align-items:center;gap:12px}.traveler-select select{margin:0;width:auto;max-width:200px}.date-board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(300px,calc((100% - 48px)/3));gap:24px;overflow-x:auto;padding-bottom:24px;scroll-snap-type:x proximity}.agenda-day{min-width:0;scroll-snap-align:start}.agenda-date{border-bottom:1px solid var(--line);padding:16px 0;margin-bottom:16px;position:sticky;top:0;background:var(--paper);z-index:1}.agenda-date span{font-size:13px;color:var(--muted)}.agenda-date h2{font:32px var(--font-display);margin:4px 0}.agenda-city{margin-bottom:24px}.agenda-city h3{font:25px var(--font-display);margin:16px 0}.agenda-city .lodging{border:0;padding:0 0 12px}.option-label{display:block;font-size:12px;color:var(--muted);margin:0 0 16px}.person.blue{color:var(--sea);background:var(--sea-wash)}.day-chooser{max-width:340px;margin:16px 0 24px}.ideas{border-top:1px solid var(--line);padding:24px 0 40px}.ideas h2{font:28px var(--font-display)}.idea-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}.check-label{display:flex;align-items:center;gap:12px;margin:12px 0}.check-label input{width:20px;min-height:20px;height:20px;margin:0;flex-shrink:0}fieldset{border:1px solid var(--line);border-radius:var(--radius-small);margin:16px 0;padding:16px}legend{font-size:14px}small{display:block;font-size:13px;color:var(--muted);margin-top:8px}details{margin-top:24px}summary{min-height:44px;cursor:pointer;padding:12px 0}.guest-preview{max-height:400px;overflow:auto;padding:16px;border:1px solid var(--line)}.guest-preview .agenda-day{margin-bottom:24px}.guest-notes{white-space:pre-wrap;font-size:16px;line-height:1.7}#detail .icon-button{float:right}.study-meta{overflow-wrap:anywhere}.welcome .secondary{margin:8px}
+@media(max-width:700px){.library-bar{align-items:stretch;gap:12px}.library-bar>label:first-child{width:100%}.library-bar select{min-width:0}.traveler-select{margin:0;width:100%}.traveler-select select{max-width:none;width:100%}.date-board{display:block;overflow:visible}.agenda-day[data-selected=false]{display:none}.agenda-date{position:static}.day-chooser{max-width:none}.idea-cards{grid-template-columns:minmax(0,1fr)}.trip-header h1{font-size:34px}.date-board .activity{width:100%}}
+
+/* Departure Board: adopted November 11, 2026. */
+body{font-family:var(--font-ui)}main{max-width:1600px;padding-inline:32px}.topbar{border-bottom:var(--rule);padding:20px 32px}.brand{font:38px/.9 var(--font-display);text-transform:uppercase;letter-spacing:-1px;gap:8px}.brand-dot{color:var(--blue);font:48px/.8 var(--font-ui)}.private-label,.account,.eyebrow,.trip-facts,.card-meta,.option-label,.person,#status,#filter-status,footer{font-family:var(--font-mono)}.private-label{font-size:12px;letter-spacing:0}.library-bar{border-bottom:0}.trip-header{position:relative;background:var(--blue);color:var(--surface);padding:32px;display:grid;grid-template-columns:minmax(0,1fr) 240px;margin:0 -32px;gap:24px;border-block:var(--rule)}.trip-header h1{font:clamp(64px,7.2vw,108px)/.94 var(--font-display);letter-spacing:-1.5px;overflow-wrap:anywhere;margin:20px 0}.trip-header .eyebrow,.title-dot{color:var(--acid)}.trip-subtitle{color:var(--surface);font-size:16px}.trip-facts{color:var(--surface);font-size:13px;gap:12px}.story-toggle{color:white;background:transparent;border:0;text-decoration:underline;text-underline-offset:4px;min-height:44px;font:13px var(--font-mono);padding:8px 0}.story-toggle:focus-visible{outline-color:white}.story-art{background:var(--acid);color:var(--ink);padding:24px;align-self:stretch;display:flex;flex-direction:column;justify-content:space-between;border:var(--rule)}.story-art svg{width:100%;height:auto;max-height:230px}.story-art p{font:28px/1 var(--font-display);margin:16px 0 0}.compact .trip-header{grid-template-columns:minmax(0,1fr);padding:20px 32px}.compact .trip-header h1{font-size:46px;line-height:1.04;margin:12px 0}.compact .story-art{display:none}.compact .trip-subtitle{font-size:14px;margin-bottom:16px}.toolbar{background:var(--ink);color:var(--surface);border:0;padding:16px 24px;margin:0 -32px;gap:16px}.toolbar label{color:var(--surface)}.toolbar .secondary{color:var(--surface);border:1px solid #a0a49b}.toolbar .secondary:hover{color:var(--ink);background:var(--acid)}.toolbar .secondary:focus-visible{outline-color:var(--acid)}.toolbar select{background:var(--surface);color:var(--ink);border:2px solid var(--surface)}.toolbar .view-title{background:var(--acid);color:var(--ink);align-self:stretch;display:flex;align-items:center;padding:12px 16px;font:700 13px var(--font-mono);text-transform:uppercase}.secondary,input,textarea,select{border-radius:0;border-color:var(--ink)}.primary{background:var(--blue);border:var(--rule);font-weight:700}.primary:focus-visible{outline-color:var(--ink)}.date-board{gap:0;grid-auto-columns:minmax(300px,calc(100% / 3));border:var(--rule);padding-bottom:0;max-height:75vh;overflow:auto;scroll-padding-inline:0}.agenda-day{padding:0 20px 24px;border-right:var(--rule)}.agenda-day:last-child{border-right:0}.agenda-date{border-bottom:var(--rule);margin:0 0 16px}.agenda-date>span{font:13px var(--font-mono);text-transform:uppercase}.agenda-date h2{display:flex;align-items:baseline;gap:8px;margin-top:8px}.date-number{font:64px/.9 var(--font-display)}.date-month{font:16px var(--font-mono)}.agenda-city h3{font:28px var(--font-display);text-transform:uppercase;letter-spacing:.3px}.activity{background:var(--surface);border:1px solid var(--ink);border-left:4px solid var(--blue);border-radius:0;box-shadow:none;padding:18px 16px;transition:box-shadow .12s,transform .12s}.activity.shared{background:var(--surface)}.activity.reserved{border-top:1px solid var(--ink);border-left-color:var(--red)}.activity strong{font:800 24px/1.15 var(--font-ui);letter-spacing:-.6px}.activity:hover{border-color:var(--ink);box-shadow:4px 4px 0 var(--ink);transform:translate(-2px,-2px)}.activity.rendezvous{background:var(--acid);border:2px solid var(--ink);box-shadow:4px 4px 0 var(--ink)}.activity.rendezvous strong{font:36px/1 var(--font-display);letter-spacing:0}.rendezvous .card-note{color:var(--ink)}.shared-label{display:block;border-bottom:1px solid var(--ink);padding-bottom:12px;margin-bottom:12px;font:12px var(--font-mono)}.card-meta,.kind,.booking{font-family:var(--font-mono);font-size:12px}.booking{font-weight:700}.card-note{font-size:14px;line-height:1.6}.person{background:transparent!important;border:1px solid currentColor;border-radius:0;font-size:12px;padding:3px 5px}.person.green{color:var(--family-cedar)}.person.orange{color:var(--family-maple)}.person.blue{color:var(--family-birch)}.open-card{color:var(--ink)}.ideas{background:var(--ink);color:var(--surface);padding:24px;margin:24px 0;border:var(--rule)}.ideas h2{font:32px var(--font-display);text-transform:uppercase;color:var(--acid)}.ideas .activity{color:var(--ink)}#status.reading-copy{background:var(--acid);border:var(--rule);color:var(--ink)}#message:not(:empty){background:#e9ebff;border-left:4px solid var(--blue);color:var(--ink)}dialog{border:3px solid var(--ink);border-radius:0;background:var(--paper);box-shadow:8px 8px 0 var(--blue)}dialog h2{font:40px/1.05 var(--font-display);letter-spacing:0}.icon-button{border:var(--rule)}.icon-button:hover{background:var(--acid)}.journeys{border-block:1px dashed var(--ink);color:var(--ink);font-family:var(--font-mono);font-size:13px}.welcome h2{font:40px/1 var(--font-display)}.study h1{font-family:var(--font-display)}.city-lane h4{font:800 23px/1.2 var(--font-ui)}.city-lane article{border-color:var(--ink);border-left:4px solid var(--blue);border-radius:0}.city-lane article.shared{background:var(--surface)}.city-lane article.reserved{background:var(--acid);border:2px solid var(--ink);box-shadow:4px 4px 0 var(--ink)}
+@media(max-width:760px){main{padding-inline:20px}.topbar{padding:18px 20px}.brand{font-size:32px}.brand-dot{font-size:38px}.trip-header{display:block;margin-inline:-20px;padding:28px 20px}.trip-header h1{font-size:clamp(58px,13vw,90px);line-height:.98}.story-art{display:none}.compact .trip-header{padding:20px}.compact .trip-header h1{font-size:36px}.toolbar{margin-inline:-20px;padding:16px 20px}.toolbar .tools{gap:8px}.toolbar .view-title{min-height:44px}.date-board{display:block;max-height:none;overflow:visible}.agenda-day{border:0;padding:0 16px 24px}.agenda-day[data-selected=false]{display:none}.agenda-date{position:static}.date-number{font-size:72px}.agenda-city h3{font-size:30px}.activity strong{font-size:25px}.activity.rendezvous strong{font-size:38px}.card-note{font-size:15px}dialog{border:0;box-shadow:none}.ideas{padding:20px 16px}.trip-facts{font-size:12px}.private-label{font-size:11px}.account{font-size:13px}}
+
+.story-toggle{display:block}.trip-header .story-toggle{margin-bottom:8px}
+
+.agenda-date .date-number{font:64px/.9 var(--font-display);color:var(--ink)}.agenda-date .date-month{font:16px var(--font-mono);color:var(--ink)}@media(max-width:760px){.agenda-date .date-number{font-size:72px}}
