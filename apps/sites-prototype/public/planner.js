@@ -3,6 +3,8 @@
     const { escape, dateLabel, days, preferredDay, board, card, dayChooser } = await import('/board.mjs');
     const { responsePolicy } = await import('/reading-copy.mjs');
     const { buildOfflineHtml } = await import('/offline-export.mjs');
+    const { moveActivity, stepTarget } = await import('/move.mjs');
+    const { enableDrag } = await import('/drag.mjs');
     const KEY = 'waypoint-library-v2', OLD_KEY = 'waypoint-downloaded-trip-v1';
     const app = document.querySelector('#app');
     const state = { user: null, snapshot: null, library: [], copies: {}, canCreate: false, isOwner: false, selected: new URLSearchParams(location.search).get('trip'), filter: 'all', day: null, compact:true, online: navigator.onLine, busy: false, message: '', downloadedAt: null, offlineReady: false, needsSignIn: false };
@@ -66,8 +68,8 @@
     } }
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() { try {
-        const cache = await caches.open('waypoint-shell-v10');
-        state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
+        const cache = await caches.open('waypoint-shell-v11');
+        state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/move.mjs', '/drag.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
         status();
     }
     catch { } }
@@ -118,7 +120,9 @@
         if (control)
             control.disabled = !writable();
     } if ($('#refresh'))
-        $('#refresh').disabled = state.busy || !navigator.onLine; }
+        $('#refresh').disabled = state.busy || !navigator.onLine; const canMove = writable() && !!state.snapshot; for (const el of [$('#itinerary'), $('.idea-cards')])
+        el?.classList?.toggle('can-drag', canMove); if ($('#drag-hint'))
+        $('#drag-hint').textContent = canMove ? (phone() ? 'To move a plan, press and hold its card, then drop it on a day in the bar that appears.' : 'Drag a card to another day, between cards to reorder, or onto ideas to unschedule. Keyboard: focus a card, then Shift + arrow keys.') : ''; }
     function render() {
         const t = state.snapshot?.trip;
         const dates = t ? days(t) : [];
@@ -128,8 +132,8 @@
 <section class="library-bar"><label>Trips & events<select id="trip-select" ${!state.library.length ? 'disabled' : ''}>${state.library.map(x => `<option value="${escape(x.id)}" ${x.id === state.selected ? 'selected' : ''}>${escape(x.title)}</option>`).join('')}</select></label>${state.canCreate ? `<button class="secondary" id="new-trip" ${!writable() ? 'disabled' : ''}>New trip or event</button><button class="secondary" id="paste-import" ${!writable()?"disabled":""}>Paste JSON</button><label class="secondary file-label">Import JSON<input id="import" type="file" accept="application/json,.json" ${!writable() ? 'disabled' : ''}></label>` : ''}</section>
 <header class="trip-header"><div><button class="story-toggle" id="story-toggle">${state.compact ? "Open trip story ↗" : "Focus on the plan ↓"}</button><span class="eyebrow">${t?.kind === 'event' ? 'TIME TOGETHER' : 'INDEPENDENT PLANS. SHARED ADVENTURES.'}</span><h1>${escape(t?.title || 'A plan for every gathering')}<span class="title-dot">*</span></h1><p class="trip-subtitle">${escape(t?.subtitle || 'Choose a trip, bring an idea, and leave a little room to wander.')}</p>${t ? `<div class="trip-facts"><span>${escape(t.start)} – ${escape(t.end)}</span><span>${escape(t.timezone)}</span><span>${t.families.length} ${t.families.length===1?"group":"groups"}</span></div>` : ''}</div><aside class="story-art" aria-label="Decorative branching route"><svg viewBox="0 0 220 200" aria-hidden="true"><path d="M15 180V115H90V50H195M90 115H165V155H205" fill="none" stroke="currentColor" stroke-width="14"/><path d="m165 15 35 35-35 35" fill="none" stroke="currentColor" stroke-width="14"/><path d="M5 170H25V190H5ZM155 145H175V165H155Z" fill="var(--blue)"/></svg><p>GO YOUR OWN WAY.<br>MEET FOR DINNER.</p></aside></header>
 ${t ? `<div class="toolbar"><span class="view-title">Daily plans</span><label class="traveler-select">Travelers<select id="family"><option value="all">Everyone</option>${t.families.map(f => `<option value="${escape(f.id)}" ${state.filter === f.id ? 'selected' : ''}>${escape(f.name)}</option>`).join('')}</select></label><div class="tools"><button class="secondary" id="add" ${!writable() ? 'disabled' : ''}>Add activity</button><button class="secondary" id="settings" ${!writable() ? 'disabled' : ''}>Trip details</button>${state.isOwner ? `<button class="secondary" id="share" ${!writable() ? 'disabled' : ''}>Guest link</button>` : ''}<button class="secondary" id="offline-file">Save offline trip</button><button class="secondary" id="export">JSON</button><button class="secondary" id="refresh">Refresh</button></div></div>` : ''}
-<div id="status" role="status" aria-live="polite"></div><p id="filter-status" role="status" aria-live="polite">${t ? (state.filter === 'all' ? 'Everyone · shared plans appear once' : 'Selected group · all shared attendee labels remain visible') : ''}</p><div id="message" role="alert"></div>
-${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-board">${board(t, { filter: state.filter, day: state.day, compact:state.compact })}</div><section class="ideas"><h2>Not on the itinerary. Yet.</h2><div class="idea-cards">${t.activities.filter(a => !a.date && (state.filter === 'all' || a.participants.includes(state.filter))).map(a => card(a, t)).join('') || '<p>No unscheduled ideas yet.</p>'}</div></section>` : `<section class="welcome" id="itinerary" tabindex="-1"><h2>Start with something to explore.</h2><p>Keep separate trips and gatherings here. Each has its own activities, saved revision, and optional guest link.</p>${state.canCreate ? '<button class="primary" id="example">Add a synthetic gathering example</button><button class="secondary" id="recover">Recover the Japan prototype</button>' : '<p>Sign in with an organizer or invited editor account to plan.</p>'}</section>`}
+<div id="status" role="status" aria-live="polite"></div><p id="drag-hint" class="drag-hint"></p><p id="filter-status" role="status" aria-live="polite">${t ? (state.filter === 'all' ? 'Everyone · shared plans appear once' : 'Selected group · all shared attendee labels remain visible') : ''}</p><div id="message" role="alert"></div>
+${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-board">${board(t, { filter: state.filter, day: state.day, compact:state.compact })}</div><section class="ideas"><h2>Not on the itinerary. Yet.</h2><div class="idea-cards">${ideas(t)}</div></section>` : `<section class="welcome" id="itinerary" tabindex="-1"><h2>Start with something to explore.</h2><p>Keep separate trips and gatherings here. Each has its own activities, saved revision, and optional guest link.</p>${state.canCreate ? '<button class="primary" id="example">Add a synthetic gathering example</button><button class="secondary" id="recover">Recover the Japan prototype</button>' : '<p>Sign in with an organizer or invited editor account to plan.</p>'}</section>`}
 <footer><span>WAYPOINT ↗ Make plans. Take detours.</span><span>Guest links are optional and read-only.</span></footer></main>
 <dialog id="editor" aria-labelledby="edit-title"><form id="edit-form"><div class="dialog-heading"><span class="eyebrow">THE PLAN, UP CLOSE</span><button type="button" class="icon-button" id="close-editor" aria-label="Close activity">×</button></div><h2 id="edit-title">Activity details</h2><div id="editor-fields"></div><p id="edit-message" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button" id="copy-draft" hidden>Copy my draft</button><button type="button" class="secondary" id="reload-after-conflict" hidden>Load latest plan</button><button type="button" class="text-button" id="delete">Delete activity</button><button type="submit" class="primary" id="save">Save changes</button></div></form></dialog>
 <dialog id="create-dialog" aria-labelledby="create-title"><form id="create-form"><h2 id="create-title">New trip or event</h2><label>Name<input name="title" required maxlength="160"></label><div class="field-row"><label>First day<input type="date" name="start" required></label><label>Last day<input type="date" name="end" required></label></div><label>Time zone<input name="timezone" value="America/Los_Angeles" required></label><label>Kind<select name="kind"><option value="event">Gathering / event</option><option value="trip">Trip</option></select></label><p id="create-error" role="alert"></p><div class="dialog-actions"><button type="button" class="secondary" data-close="create-dialog">Cancel</button><button class="primary">Create</button></div></form></dialog>
@@ -141,6 +145,135 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
                 $('#itinerary').scrollLeft = selected.offsetLeft - $('#itinerary').offsetLeft;
         }
     }
+    function ideas(t) { return t.activities.filter(a => !a.date && (state.filter === 'all' || a.participants.includes(state.filter))).map(a => card(a, t)).join('') || '<p>No unscheduled ideas yet.</p>'; }
+    // ---- Drag-and-drop and keyboard moves (one shared record, same revision-checked save) ----
+    const phone = () => window.matchMedia?.('(max-width:760px)').matches;
+    const dayName = date => date ? dateLabel(date, { weekday: 'short', month: 'short', day: 'numeric' }) : 'Unscheduled ideas';
+    const groupNames = a => a.participants.map(id => state.snapshot.trip.families.find(f => f.id === id)?.name || id).join(', ');
+    function showDay(date) {
+        state.day = date;
+        persist();
+        const it = $('#itinerary');
+        for (const section of it?.querySelectorAll('.agenda-day') || [])
+            section.dataset.selected = String(section.dataset.date === date);
+        if ($('#day'))
+            $('#day').value = date;
+        const column = it?.querySelector(`[data-date="${date}"]`);
+        if (column && !phone())
+            it.scrollTo({ left: column.offsetLeft - it.offsetLeft, behavior: 'smooth' });
+    }
+    function refreshBoard(movedId, { focus = false, refused = false } = {}) {
+        const t = state.snapshot.trip, it = $('#itinerary');
+        if (!it)
+            return render();
+        const left = it.scrollLeft, top = it.scrollTop;
+        it.innerHTML = board(t, { filter: state.filter, day: state.day });
+        it.scrollLeft = left;
+        it.scrollTop = top;
+        if ($('.idea-cards'))
+            $('.idea-cards').innerHTML = ideas(t);
+        if ($('#day'))
+            $('#day').value = state.day;
+        const el = movedId && document.querySelector(`#itinerary [data-detail="${CSS.escape(movedId)}"], .idea-cards [data-detail="${CSS.escape(movedId)}"]`);
+        if (el) {
+            el.classList.add(refused ? 'drop-refused' : 'just-moved');
+            if (focus)
+                el.focus();
+            el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+    }
+    async function moveCard({ activityId, date, beforeId = null, follow = false, focus = false }) {
+        if (!writable() || !state.snapshot)
+            return;
+        const previous = state.snapshot, a = previous.trip.activities.find(x => x.id === activityId);
+        if (!a)
+            return;
+        if (a.fixed && (a.date ?? null) !== date) {
+            state.message = `“${a.title}” is a fixed booking, so it stays on ${dayName(a.date)}. To change its day, open it, clear “Fixed booking”, then move it.`;
+            refreshBoard(activityId, { refused: true, focus });
+            status();
+            return;
+        }
+        let result;
+        try {
+            result = moveActivity(previous.trip, { activityId, date, beforeId });
+        }
+        catch (e) {
+            state.message = e.message;
+            status();
+            return;
+        }
+        if (!result.changed)
+            return;
+        // Optimistic: show the card in its new place now; the server confirms or we roll back.
+        state.snapshot = { ...previous, trip: result.trip };
+        if (follow && date)
+            state.day = date;
+        refreshBoard(activityId, { focus });
+        state.busy = true;
+        state.message = `Saving: “${a.title}” → ${dayName(date)}…`;
+        status();
+        const shared = a.participants.length > 1;
+        try {
+            const saved = await request(endpoint('/api/trip'), 'PATCH', { action: 'move', revision: previous.revision, activityId, date, beforeId });
+            state.snapshot = saved.snapshot;
+            remember();
+            const where = result.from === date ? `Reordered “${a.title}” on ${dayName(date)}.` : `Moved “${a.title}” from ${dayName(result.from)} to ${dayName(date)}.`;
+            state.message = `${where}${shared && result.from !== date ? ` One shared plan, moved for ${groupNames(a)}${state.filter !== 'all' ? ' — including groups hidden by the Travelers filter' : ''}.` : ''} Saved for everyone viewing this trip.`;
+        }
+        catch (e) {
+            state.snapshot = previous;
+            state.busy = false;
+            refreshBoard(activityId, { refused: true });
+            if (e.status === 409) {
+                await load();
+                state.message = `Not moved: someone else saved a change to this trip first. Nothing was overwritten — the latest plan is now shown. Move “${a.title}” again if it is still needed.`;
+            }
+            else
+                state.message = `Not moved: ${e.message} “${a.title}” is back where it was.`;
+        }
+        finally {
+            state.busy = false;
+            status();
+        }
+    }
+    enableDrag({
+        document,
+        canDrag: () => writable() && !!state.snapshot && !document.querySelector('dialog[open]'),
+        currentDay: () => state.day,
+        onDayHover: showDay,
+        onDrop: drop => moveCard({ ...drop, follow: drop.viaChip }),
+        describe: id => {
+            const a = state.snapshot?.trip.activities.find(x => x.id === id);
+            if (!a)
+                return null;
+            const note = a.fixed ? `Fixed booking · can only be reordered within ${dayName(a.date)}` : a.participants.length > 1 ? `Shared plan · moves for ${groupNames(a)}${state.filter !== 'all' ? ' (including groups hidden by the filter)' : ''}` : groupNames(a);
+            return { title: a.title, date: a.date ?? null, fixed: a.fixed, note: `${note}${phone() ? ' · hold over a day to open it' : ''}` };
+        },
+        dock: () => [...days(state.snapshot.trip).map(d => ({ date: d, top: dateLabel(d, { weekday: 'short' }), big: dateLabel(d, { day: 'numeric' }), current: d === state.day })), { date: null, top: 'Unschedule', big: 'Ideas', current: false }]
+    });
+    document.addEventListener('keydown', event => {
+        const keys = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -1, ArrowDown: 1 };
+        if (!event.shiftKey || event.altKey || event.ctrlKey || event.metaKey || !(event.key in keys))
+            return;
+        const cardEl = event.target.closest?.('.can-drag .activity[data-detail]');
+        if (!cardEl || !writable())
+            return;
+        event.preventDefault();
+        const t = state.snapshot.trip, a = t.activities.find(x => x.id === cardEl.dataset.detail);
+        if (!a?.date)
+            return;
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+            const dates = days(t), date = dates[dates.indexOf(a.date) + keys[event.key]];
+            if (date)
+                moveCard({ activityId: a.id, date, follow: true, focus: true });
+            return;
+        }
+        const visible = [...cardEl.closest('.agenda-day').querySelectorAll('.activity[data-detail]')].map(c => c.dataset.detail);
+        const target = stepTarget(visible, a.id, keys[event.key]);
+        if (target)
+            moveCard({ activityId: a.id, date: a.date, beforeId: target.beforeId, focus: true });
+    });
     function formData(a) { const t = state.snapshot.trip; const disabled = !writable(); return `<label>Activity<input name="title" value="${escape(a.title)}" maxlength="160" required ${disabled ? 'disabled' : ''}></label><div class="field-row"><label>Day<select name="date" ${disabled ? 'disabled' : ''}><option value="">Unscheduled idea</option>${days(t).map(d => `<option value="${d}" ${a.date === d ? 'selected' : ''}>${dateLabel(d, { weekday: 'short', month: 'short', day: 'numeric' })}</option>`).join('')}</select></label><label>Time or part of day<input name="time" value="${escape(a.time)}" maxlength="80" ${disabled ? 'disabled' : ''}></label></div><label>Place<select name="placeId" ${disabled ? 'disabled' : ''}><option value="">Location to confirm</option>${t.places.map(p => `<option value="${escape(p.id)}" ${a.placeId === p.id ? 'selected' : ''}>${escape(p.name)} ${escape(p.localName)}</option>`).join('')}</select></label><label class="check-label"><input type="checkbox" name="fixed" ${a.fixed ? 'checked' : ''} ${disabled ? 'disabled' : ''}> Fixed booking · protect date and time</label><label class="check-label"><input type="checkbox" name="optional" ${a.optional ? 'checked' : ''} ${disabled ? 'disabled' : ''}> Optional · offered as a choice, not a commitment</label><label class="check-label"><input type="checkbox" name="highlight" ${a.highlight?"checked":""} ${disabled?"disabled":""}> Highlight a shared moment</label><fieldset><legend>${a.optional ? 'Available to' : 'Participants'}</legend>${t.families.map(f => `<label class="check-label"><input type="checkbox" name="participants" value="${escape(f.id)}" ${a.participants.includes(f.id) ? 'checked' : ''} ${disabled ? 'disabled' : ''}>${escape(f.name)}</label>`).join('')}</fieldset><label>Guest description<textarea name="guestNotes" rows="3" maxlength="4000" ${disabled ? 'disabled' : ''}>${escape(a.guestNotes)}</textarea><small>Visible if you enable this event's guest link.</small></label><label>Guest meeting point<input name="guestLocation" maxlength="500" value="${escape(a.guestLocation)}" ${disabled ? 'disabled' : ''}></label><label>Private planning notes<textarea name="notes" rows="4" maxlength="4000" ${disabled ? 'disabled' : ''}>${escape(a.notes)}</textarea><small>Excluded from the guest link.</small></label>`; }
     function openEditor(id) { const a = state.snapshot.trip.activities.find(a => a.id === id) || { id: crypto.randomUUID(), date: state.day, time: '', title: '', placeId: state.snapshot.trip.places[0]?.id || null, participants: state.snapshot.trip.families.map(f => f.id), notes: '', guestNotes: '', guestLocation: '', fixed: false, optional: state.snapshot.trip.kind === 'event', order: state.snapshot.trip.activities.length, sourceKind: 'entered' }; const form = $('#edit-form'); form.dataset.id = a.id; form.dataset.new = String(!id); form.dataset.revision = state.snapshot.revision; $('#editor-fields').innerHTML = formData(a); $('#delete').hidden = !id || !writable(); $('#save').disabled = !writable(); $('#copy-draft').hidden = true; $('#reload-after-conflict').hidden = true; $('#edit-message').textContent = !writable() ? 'Downloaded reading copy. Connect and refresh before editing.' : a.sourceKind === 'tentative' ? 'Tentative source plan. Times, hosts, and bookings need review.' : a.sourceKind === 'synthetic' ? 'Synthetic detail for testing.' : ''; lockTiming(); $('#editor').showModal(); }
     function lockTiming() { const f = $('#edit-form'); if (!f?.elements.fixed)

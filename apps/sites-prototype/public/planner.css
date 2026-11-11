@@ -225,3 +225,27 @@ body{font-family:var(--font-ui)}main{max-width:1600px;padding-inline:32px}.topba
 .story-toggle{display:block}.trip-header .story-toggle{margin-bottom:8px}
 
 .agenda-date .date-number{font:64px/.9 var(--font-display);color:var(--ink)}.agenda-date .date-month{font:16px var(--font-mono);color:var(--ink)}@media(max-width:760px){.agenda-date .date-number{font-size:72px}}
+/* Drag-and-drop states (planner only; guest views never get .can-drag). */
+.drag-hint:not(:empty){font:12px var(--font-mono);color:var(--muted);margin:8px 0 0}
+.can-drag .activity{cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-select:none;user-select:none}
+.activity.drag-source{opacity:.35;outline:2px dashed var(--ink);outline-offset:-2px;box-shadow:none;transform:none}
+.drag-ghost{position:fixed!important;left:0;top:0;transform-origin:0 0;z-index:1000;pointer-events:none;margin:0;box-shadow:6px 6px 0 var(--blue)!important;opacity:.96}
+.agenda-day.drop-target,.ideas.drop-target{outline:3px solid var(--blue);outline-offset:-3px;background:#e9ebff}
+.ideas.drop-target{outline-color:var(--acid);background:var(--ink)}
+.agenda-day.drop-blocked-hover,.ideas.drop-blocked-hover{outline:3px dashed var(--red);outline-offset:-3px;background:#ffebe8}
+.drop-marker{height:0;border-top:4px solid var(--blue);margin:-10px 0 6px;position:relative}
+.drop-marker::before{content:"";position:absolute;left:-2px;top:-8px;width:12px;height:12px;background:var(--blue)}
+.drop-dock{position:fixed;left:0;right:0;bottom:0;z-index:999;background:var(--ink);color:var(--surface);border-top:3px solid var(--acid);padding:10px 12px calc(10px + env(safe-area-inset-bottom));font-family:var(--font-mono)}
+.drop-dock p{margin:0 0 8px;font-size:13px;overflow-wrap:anywhere}
+.drop-dock ol{display:flex;gap:8px;overflow-x:auto;list-style:none;margin:0;padding:0;scrollbar-width:none}
+.drop-dock li{flex:0 0 auto;min-width:64px;min-height:56px;border:2px solid #a0a49b;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;padding:4px 10px;text-transform:uppercase}
+.drop-dock li b{font:26px/1 var(--font-display);text-transform:none}
+.drop-dock li.current{border-color:var(--acid)}
+.drop-dock li.drop-active{background:var(--acid);color:var(--ink);border-color:var(--acid)}
+.drop-dock li.drop-blocked{opacity:.5;border-style:dashed}
+.drop-dock li.drop-blocked.drop-active{background:var(--red);color:var(--surface);border-color:var(--red)}
+.activity.just-moved{animation:waypoint-landed .8s ease-out}
+.activity.drop-refused{animation:waypoint-refused .45s ease-in-out}
+@keyframes waypoint-landed{0%{box-shadow:0 0 0 6px var(--acid);transform:translate(-2px,-2px)}100%{box-shadow:none;transform:none}}
+@keyframes waypoint-refused{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}

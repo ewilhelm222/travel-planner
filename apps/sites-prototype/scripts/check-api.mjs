@@ -43,4 +43,18 @@ const revoked = await req(sharePath, 'POST', { revision: rotated.revision, actio
 assert.equal(revoked.status, 200);
 assert.equal((await anon('/api/shared', { headers: { Authorization: `Share ${nextToken}` } })).status, 404);
 assert.equal((await req(sharePath, 'POST', { revision: 1, action: 'rotate' })).status, 409);
-console.log('PASS: multi-trip isolation, private APIs, forged identity rejection, atomic saves, private-field projection, guest write rejection, and share rotation/revocation.');
+// Drag-and-drop moves use the same atomic revision check as every other edit.
+const movePath = `/api/trip?id=${second.snapshot.trip.id}`, moveTrip = second.snapshot.trip;
+const [m1, m2] = moveTrip.activities.filter(x => x.date === '2026-11-26');
+const competing = await Promise.all([req(movePath, 'PATCH', { action: 'move', revision: 1, activityId: m1.id, date: '2026-11-27' }), req(movePath, 'PATCH', { action: 'move', revision: 1, activityId: m2.id, date: null })]);
+assert.deepEqual(competing.map(r => r.status).sort(), [200, 409]);
+const afterMove = (await (await req(movePath)).json()).snapshot;
+assert.equal(afterMove.revision, 2);
+assert.equal(afterMove.trip.activities.filter(x => x.id === m1.id || x.id === m2.id).length, 2, 'A move never duplicates a record.');
+assert.equal((await req(movePath, 'PATCH', { action: 'move', revision: 1, activityId: m1.id, date: '2026-11-28' })).status, 409, 'A stale move is rejected, not overwritten.');
+const fixedSetup = await (await req(movePath, 'PATCH', { action: 'edit', revision: 2, activityId: m1.id, patch: { fixed: true } })).json();
+const fixedMove = await req(movePath, 'PATCH', { action: 'move', revision: fixedSetup.snapshot.revision, activityId: m1.id, date: '2026-11-28' });
+assert.equal(fixedMove.status, 400);
+assert.match((await fixedMove.json()).error, /fixed booking/);
+assert.equal((await anon(movePath, { method: 'PATCH', headers: { Authorization: `Share ${nextToken}`, Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'move', revision: 3, activityId: m1.id, date: null }) })).status, 401);
+console.log('PASS: multi-trip isolation, private APIs, forged identity rejection, atomic saves, private-field projection, guest write rejection, share rotation/revocation, and revision-checked drag moves.');
