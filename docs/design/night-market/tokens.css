@@ -1,0 +1,35 @@
+/* Waypoint / Night Market — third creative direction */
+:root {
+  color-scheme: dark;
+  /* Ground */
+  --night: #140a2e;      /* page */
+  --dusk: #22114d;       /* raised dark surfaces, toolbar, ideas tray */
+  --violet: #6b3df5;     /* identity, primary actions */
+  --grape: #2d1480;      /* poster ground: deep enough for magenta display type */
+  --violet-deep: #3a1aa8;/* pressed/hover primary */
+  --orchid: #cdb8ff;     /* supporting text on dark */
+  --cream: #fff6e8;      /* reading surfaces: activity cards, dialogs */
+  --ink: #1a0f33;        /* text on cream and on bright accents */
+  --muted: #5a4d7a;      /* supporting text on cream */
+  /* Lights */
+  --magenta: #ff3d9a;    /* the one shared moment, poster interruption */
+  --lagoon: #3ee6c9;     /* routes, selected state, flexible marks */
+  --ember: #ff8a5b;      /* fixed-booking labels on dark */
+  --ember-ink: #b5401a;  /* fixed-booking labels on cream */
+  /* Families — always paired with a visible name */
+  --family-cedar: #3ee6c9;     --family-cedar-ink: #0b7a68;
+  --family-maple: #ff8a5b;     --family-maple-ink: #b5401a;
+  --family-birch: #cdb8ff;     --family-birch-ink: #5a2de0;
+  /* Type */
+  --font-display: "Avenir Next", "Inter Display", "Helvetica Neue", Arial, sans-serif; /* weight 900, tight */
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  --font-mono: "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+  --font-local: "PingFang SC", "Hiragino Sans", "Noto Sans CJK SC", "IPAPGothic", sans-serif;
+  /* Scale: 1.43 ratio from a 12 px base */
+  --t-1: 12px; --t0: 17px; --t1: 24px; --t2: 35px; --t3: 50px; --t4: 71px; --t5: 102px; --t6: 146px;
+  /* Rhythm: 12 px unit, 36 px gutters */
+  --unit: 12px; --gutter: 36px;
+  --radius: 24px; --radius-pill: 999px;
+  --ring: 0 0 0 3px var(--night), 0 0 0 6px var(--lagoon);
+  --glow: 0 0 0 4px var(--night), 0 0 48px 4px rgba(255, 61, 154, .55);
+}

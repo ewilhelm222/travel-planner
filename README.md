@@ -18,7 +18,7 @@ approval of the Site's public entry point; private planning is already deployed.
 
 ## Project plan
 
-See [Waypoint — Departure Board: current design direction and visual references](docs/design.md) for the photo-inspired visual system, responsive layouts, reusable tokens, and interaction guidance. Start there before changing the planner's design.
+See [Waypoint — Departure Board: current design direction and visual references](docs/design.md) for the photo-inspired visual system, responsive layouts, reusable tokens, and interaction guidance. Start there before changing the planner's design. Two alternatives are kept for comparison: the archived [Field Atlas](docs/design-field-atlas.md) and the proposed [Night Market](docs/design-night-market.md).
 
 See [the product brief, architecture, and implementation plan](docs/plan.md) for confirmed requirements, proposed behavior, open decisions, and acceptance criteria.
 
