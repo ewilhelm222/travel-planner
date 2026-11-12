@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { chromium } = require('playwright');
 // Browser check for drag-and-drop against a disposable local dev server with synthetic data.
 // Usage: node scripts/check-drag-browser.cjs <screenshot-dir> [origin]
