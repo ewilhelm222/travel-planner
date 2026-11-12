@@ -11,11 +11,11 @@ the non-drag alternative.
 ## Desktop
 
 Press and drag a card. The card being moved is dimmed with a dashed outline and a
-floating copy follows the pointer. The day under the pointer is outlined in blue
-and a blue bar shows where the card will land. Dropping on **Ideas** in the bar at
+floating copy follows the pointer. The day under the pointer is outlined in lagoon
+and a lagoon bar shows where the card will land. Dropping on **Ideas** in the bar at
 the bottom unschedules it. Days beyond the visible board scroll into view when the
 pointer nears an edge, or when you hover over a day chip in the bottom bar.
-Escape cancels. A moved card briefly flashes acid yellow.
+Escape cancels. A moved card briefly flashes lagoon.
 
 Keyboard: focus a card, then **Shift + ←/→** moves it to the previous/next day and
 **Shift + ↑/↓** reorders it within the day. Focus stays on the moved card.
@@ -52,7 +52,7 @@ between its cards to place it precisely.
 - `public/drag.mjs`: small pointer/touch controller. The board is plain JavaScript
   rendering HTML strings, so a React drag library (dnd-kit) does not fit, and the
   phone day-chip pattern needed custom behavior anyway.
-- The offline shell cache is now `waypoint-shell-v11` and includes both modules.
+- The offline shell cache is now `waypoint-shell-v13` and includes the traveler, move, and drag modules.
 - Tests: `tests/move.test.mjs`, the move checks in `scripts/check-api.mjs`, and the
   browser walkthrough `scripts/check-drag-browser.cjs`.
 
