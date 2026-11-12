@@ -1,6 +1,6 @@
 # Moving activities by drag-and-drop
 
-Status: November 11, 2026. Implemented on a branch for review; not deployed.
+Status: November 12, 2026. Phone pickup and drop panel reworked after the first hosted trial.
 
 Activities can be moved between days, reordered within a day, and moved to or
 from **Not on the itinerary. Yet.** (unscheduled ideas) by direct manipulation.
@@ -22,11 +22,22 @@ Keyboard: focus a card, then **Shift + ←/→** moves it to the previous/next d
 
 ## Phone
 
-The phone shows one day, so a bar of day chips appears at the bottom while
-dragging. **Press and hold** a card (about 0.4 s) to pick it up. A quick swipe
-still scrolls, and a tap still opens the activity. Drop on a chip to move the
-card to the end of that day. Hold over a chip briefly to show that day, then drop
-between its cards to place it precisely.
+The phone shows one day, so a **Drop on a day** panel slides up from the bottom
+while dragging, with every day (and **Ideas**) as a large chip.
+
+1. **Press and hold** a card for about a third of a second until it lifts. A
+   quick swipe still scrolls and a tap still opens the activity.
+2. A small copy of the card rides just above your fingertip, so neither the
+   finger nor the card hides the target.
+3. Slide onto a day chip and let go to move the card to the end of that day.
+   Pause on a chip to show that day, then drop between its cards to place it.
+4. Slide to the strip at the bottom of the panel and let go to cancel.
+
+The drag styles ship inside `public/drag.mjs` rather than `planner.css`. On the
+first hosted trial a phone paired the new script with an older cached stylesheet,
+which left the floating card and the day panel unstyled; bundling them prevents
+that mismatch. The cancel strip also keeps the chips clear of Safari's floating
+toolbar.
 
 ## Rules
 
@@ -61,6 +72,7 @@ ordering inside the ideas tray, and testing on a physical phone.
 
 | Desktop | Phone |
 | --- | --- |
-| ![Dragging](design/drag-drop/desktop-2-dragging.jpg) | <img src="design/drag-drop/phone-2-hover-day-chip.jpg" width="260"> |
+| ![Dragging](design/drag-drop/desktop-2-dragging.jpg) | <img src="design/drag-drop/phone-1-picked-up.jpg" width="260"> |
+| | <img src="design/drag-drop/phone-2-hover-day-chip.jpg" width="260"> |
 | ![Fixed booking refused](design/drag-drop/desktop-5-fixed-blocked.jpg) | <img src="design/drag-drop/phone-3-placing.jpg" width="260"> |
 | ![Conflict](design/drag-drop/desktop-6-conflict.jpg) | <img src="design/drag-drop/phone-4-after.jpg" width="260"> |

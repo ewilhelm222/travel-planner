@@ -93,7 +93,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v13');
+            const cache = await caches.open('waypoint-shell-v14');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -162,7 +162,7 @@
             $('#refresh').disabled = state.busy || !navigator.onLine;
         const canMove = writable() && !!state.snapshot;
         for (const el of [$('#itinerary'), $('.idea-cards')]) el?.classList?.toggle('can-drag', canMove);
-        if ($('#drag-hint')) $('#drag-hint').textContent = canMove ? (phone() ? 'To move a plan, press and hold its card, then drop it on a day in the bar that appears.' : 'Drag a card to another day, between cards to reorder, or onto ideas to unschedule. Keyboard: focus a card, then Shift + arrow keys.') : '';
+        if ($('#drag-hint')) $('#drag-hint').textContent = canMove ? (phone() ? 'To move a plan: press and hold its card until it lifts, then slide it onto a day in the panel that appears at the bottom.' : 'Drag a card to another day, between cards to reorder, or onto ideas to unschedule. Keyboard: focus a card, then Shift + arrow keys.') : '';
     }
     function render() {
         const t = state.snapshot?.trip;
@@ -292,7 +292,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
             if (!a)
                 return null;
             const note = a.fixed ? `Fixed booking · can only be reordered within ${dayName(a.date)}` : a.participants.length > 1 || a.participants.some(id => state.snapshot.trip.families.some(g => g.id === id && isWholeTripGroup(g))) ? `Shared plan · moves for ${groupNames(a)}${state.filter !== 'all' ? ' (including travelers hidden by the filter)' : ''}` : groupNames(a);
-            return { title: a.title, date: a.date ?? null, fixed: a.fixed, note: `${note}${phone() ? ' · hold over a day to open it' : ''}` };
+            return { title: a.title, date: a.date ?? null, fixed: a.fixed, note: `${note}${phone() ? ' · Pause on a day to open it and place the card between others.' : ''}` };
         },
         dock: () => [...days(state.snapshot.trip).map(d => ({ date: d, top: dateLabel(d, { weekday: 'short' }), big: dateLabel(d, { day: 'numeric' }), current: d === state.day })), { date: null, top: 'Unschedule', big: 'Ideas', current: false }]
     });
