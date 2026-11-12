@@ -11,3 +11,13 @@ test('Everyone includes ungrouped additions and groups can be renamed without br
 test('private traveler names, IDs and injected fields cannot enter guest output', () => { const t = fixture(); t.people[0].email = 'PRIVATE EMAIL'; t.activities[0].participants = ['pat']; const guest = publicTrip(t), json = JSON.stringify(guest); assert.ok(!json.includes('Pat')); assert.ok(!json.includes('"pat"')); assert.ok(!json.includes('PRIVATE EMAIL')); assert.ok(guest.people.some(p => p.name === 'Lee')); assert.ok(guest.people.some(p => p.hidden && p.name === 'Some members of Cedar family')); assert.equal(matchesSelection(guest.activities[0], 'cedar', guest), true); assert.ok(!buildOfflineHtml({ trip: guest, revision: 1 }).includes('Pat')); assert.ok(buildOfflineHtml({ trip: t, revision: 1 }).includes('Pat')); });
 test('roster validation rejects missing names, invalid groups and collisions; unpublishing removes a name', () => { const t = fixture(); for (const person of [{ id: 'x', name: '' }, { id: 'x', name: 'X', familyId: 'outside' }, { id: 'cedar', name: 'X' }])
     assert.throws(() => applyTripChange(t, { action: 'traveler', person })); assert.throws(() => normalizeTrip({ ...t, people: [t.people[0], t.people[0]] }, t.id), /unique/); const hidden = applyTripChange(t, { action: 'traveler', person: { ...t.people[1], showOnGuest: false } }); assert.ok(!JSON.stringify(publicTrip(hidden)).includes('Lee')); const normalized = normalizeTrip({ ...t, people: [{ ...t.people[0], email: 'private', owner_id: 'attacker' }] }, t.id); assert.ok(!('email' in normalized.people[0])); assert.ok(!('owner_id' in normalized.people[0])); });
+
+test('moving individual plans preserves roster, assignments, and guest privacy', () => {
+ const trip = fixture(); trip.activities[0].participants = ['pat'];
+ const next = applyTripChange(trip, { action: 'move', activityId: trip.activities[0].id, date: '2026-11-28' });
+ assert.deepEqual(next.people, trip.people);
+ assert.deepEqual(next.activities[0].participants, ['pat']);
+ assert.equal(matchesSelection(next.activities[0], 'pat', next), true);
+ assert.equal(matchesSelection(next.activities[0], 'lee', next), false);
+ assert.ok(!JSON.stringify(publicTrip(next)).includes('"pat"'));
+});

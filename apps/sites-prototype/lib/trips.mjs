@@ -1,4 +1,5 @@
 import { isWholeTripGroup } from "../public/participants.mjs";
+import { moveActivity } from "../public/move.mjs";
 const text = (v, max = 4000) => typeof v === "string" ? v.trim().slice(0, max) : "";
 export const validDate = v => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
 const id = v => typeof v === "string" && /^[a-zA-Z0-9_-]{1,80}$/.test(v);
@@ -100,6 +101,10 @@ export function applyTripChange(trip, change) {
         for (const key of ["title", "subtitle", "start", "end", "timezone", "kind"])
             if (key in (change.patch || {}))
                 next[key] = change.patch[key];
+    }
+    else if (change.action === "move") {
+        // Drag-and-drop: one record changes day/order for every participant.
+        return normalizeTrip(moveActivity(trip, { activityId: change.activityId, date: change.date ?? null, beforeId: change.beforeId ?? null }).trip, trip.id);
     }
     else if (change.action === "add") {
         if (!id(change.activity?.id) || next.activities.some(a => a.id === change.activity.id))

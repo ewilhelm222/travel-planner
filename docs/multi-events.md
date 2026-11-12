@@ -16,7 +16,9 @@ on desktop and phone.
 - A horizontal date board for longer trips, with city sections, lodging context,
   participant-specific journeys, and a single shared activity record. Phones show
   one selected day. Compact mode defaults on and its preference is remembered.
-- Add, edit, move to another day, and delete activities. Independent activities
+- Add, edit, move to another day, and delete activities. Drag-and-drop and keyboard
+  moves between days, within a day, and to/from ideas are described in
+  [drag-drop.md](drag-drop.md) (branch, not yet deployed). Independent activities
   can be unscheduled ideas; no stay foreign key is required. Explicit fixed
   bookings protect date/time until deliberately made flexible.
 - Optional activities communicate availability rather than attendance or RSVPs.
