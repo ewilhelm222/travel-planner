@@ -15,7 +15,9 @@ on desktop and phone.
   saved documents, ownership, revisions, and guest-sharing state.
 - A horizontal date board for longer trips, with city sections, lodging context,
   participant-specific journeys, and a single shared activity record. Phones show
-  one selected day. Compact mode defaults on and its preference is remembered.
+  one selected day, schedule first, with adding and managing below it; see
+  [schedule-first.md](schedule-first.md) (branch, not yet deployed). Compact mode
+  defaults on and its preference is remembered.
 - Add, edit, move to another day, and delete activities. Drag-and-drop and keyboard
   moves between days, within a day, and to/from ideas are described in
   [drag-drop.md](drag-drop.md) (branch, not yet deployed). Independent activities
