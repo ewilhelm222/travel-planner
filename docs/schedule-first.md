@@ -66,7 +66,7 @@ then **About this schedule** with Refresh and Save a reading copy.
 - `scripts/check-drag-browser.cjs` passes unchanged: desktop drag, keyboard,
   fixed booking, 409 conflict, guest (no drag), and phone long-press drag between
   days.
-- Desktop at 1440 × 900 is pixel-for-pixel the same arrangement as before.
+- Desktop at 1440 × 900 shows the same arrangement as before (compared by screenshot).
 
 Not verified: a physical phone (iOS Safari's toolbar and the pinned day rail in
 particular), the hosted Site, and a real trip's data.
