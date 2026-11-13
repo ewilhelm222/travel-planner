@@ -10,7 +10,7 @@ JSON import/export, offline reading, organizer-managed guest links, and a travel
 roster with family/group and individual activity assignments. The published
 interface preserves the newer **Night Market** styling from the Site source.
 
-[Open the planner](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site) · [Current implementation and access status](docs/multi-events.md) · [Managing travelers](docs/travelers.md) · [Schedule-first phone layout](docs/schedule-first.md) · [Source](apps/sites-prototype)
+[Open the planner](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site) · [Current implementation and access status](docs/multi-events.md) · [Managing travelers](docs/travelers.md) · [Schedule-first phone layout](docs/schedule-first.md) · [Editors](docs/editors.md) · [Source](apps/sites-prototype)
 
 The tentative China draft and Camp Earnest event are stored in the private app,
 with synthetic additions labeled. Real itinerary datasets and guest-link tokens

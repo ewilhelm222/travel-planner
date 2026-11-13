@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../app/chatgpt-auth";
-import { canEdit } from "./trips.mjs";
+import { tripRole } from "./trips.mjs";
 export const response = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "private, no-store", "Vary": "Cookie", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow" } });
 export const db = () => { if (!env.DB)
     throw new Error("Database unavailable"); return env.DB; };
@@ -31,8 +31,8 @@ export type Row = {
 export async function row(id: string) { return db().prepare("SELECT * FROM planner_trips WHERE id = ?").bind(id).first<Row>(); }
 export const snapshot = (r: Row) => ({ trip: JSON.parse(r.document), revision: r.revision, updatedAt: r.updated_at, updatedBy: r.updated_by });
 export async function access(request: Request) { const user = await getChatGPTUser(); if (!user)
-    return { error: response({ error: "Sign in to view or edit your trips." }, 401) }; const r = await row(new URL(request.url).searchParams.get("id") || ""); if (!r || !canEdit(r, user))
-    return { error: response({ error: "This trip is unavailable to this account." }, 403) }; return { user, row: r }; }
+    return { error: response({ error: "Sign in to view or edit your trips." }, 401) }; const r = await row(new URL(request.url).searchParams.get("id") || ""); const role = tripRole(r, user); if (!r || !role)
+    return { error: response({ error: "This trip is unavailable to this account." }, 403) }; return { user, row: r, role, isOwner: role === "organizer" }; }
 export const userView = (u: {
     userId: string;
     displayName: string;

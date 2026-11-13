@@ -1,11 +1,11 @@
 import { access, body, db, response, snapshot, userView, failed, conflict } from "../../../lib/trip-store";
-import { applyTripChange } from "../../../lib/trips.mjs";
+import { applyTripChange, editorRestriction } from "../../../lib/trips.mjs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) { try {
     const a = await access(request);
     if (a.error)
         return a.error;
-    return response({ user: userView(a.user!), snapshot: snapshot(a.row!), isOwner: a.row!.owner_id === a.user!.userId });
+    return response({ user: userView(a.user!), snapshot: snapshot(a.row!), isOwner: a.isOwner, role: a.role });
 }
 catch (e) {
     return failed(e);
@@ -21,6 +21,10 @@ export async function PATCH(request: Request) { try {
         return conflict();
     if(snapshot(a.row!).trip.people?.length && input.patch && "participants" in input.patch && request.headers.get("X-Waypoint-Participant-Model")!=="people-v1")
         return response({error:"Reload the planner before changing participants. This trip now has individual travelers; your draft is still here."},409);
+    // Editors save through the same revision check as the organizer, minus guest-visibility choices.
+    const restricted = a.isOwner ? null : editorRestriction(snapshot(a.row!).trip, input);
+    if (restricted)
+        return response({ error: restricted }, 400);
     let trip;
     try {
         trip = applyTripChange(snapshot(a.row!).trip, input);
@@ -34,7 +38,7 @@ export async function PATCH(request: Request) { try {
     }>();
     if (!r)
         return conflict();
-    return response({ user: userView(a.user!), isOwner: a.row!.owner_id === a.user!.userId, snapshot: { trip, revision: r.revision, updatedAt: now, updatedBy: a.user!.displayName } });
+    return response({ user: userView(a.user!), isOwner: a.isOwner, role: a.role, snapshot: { trip, revision: r.revision, updatedAt: now, updatedBy: a.user!.displayName } });
 }
 catch (e) {
     return failed(e);

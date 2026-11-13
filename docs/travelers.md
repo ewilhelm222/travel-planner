@@ -24,7 +24,8 @@ references are projected as generic labels such as “Some members of Cedar fami
 preserving group filtering without exposing their names, IDs, or counts. Titles
 and guest descriptions are still shared as authored. Group names retain their
 existing guest visibility. Roster privacy does not alter the private-trip access
-policy or editor membership.
+policy or editor membership. Only the organizer can change whether a name is
+shown to guests; [editors](editors.md) can otherwise update the roster.
 
 ## Data and safeguards
 

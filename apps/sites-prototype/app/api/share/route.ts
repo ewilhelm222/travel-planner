@@ -5,7 +5,7 @@ export async function GET(request: Request) { try {
     const a = await access(request);
     if (a.error)
         return a.error;
-    if (a.row!.owner_id !== a.user!.userId)
+    if (!a.isOwner)
         return response({ error: "Only the organizer manages sharing." }, 403);
     return response({ enabled: !!a.row!.share_token_hash, preview: publicTrip(snapshot(a.row!).trip), revision: a.row!.revision });
 }
@@ -16,7 +16,7 @@ export async function POST(request: Request) { try {
     const a = await access(request);
     if (a.error)
         return a.error;
-    if (a.row!.owner_id !== a.user!.userId)
+    if (!a.isOwner)
         return response({ error: "Only the organizer manages sharing." }, 403);
     const input = await body(request, 2000);
     if (!["rotate", "revoke"].includes(input.action))
