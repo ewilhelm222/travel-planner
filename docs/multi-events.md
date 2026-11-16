@@ -1,16 +1,15 @@
 # Multiple trips, events, and guest schedules
 
-Status: updated November 16, 2026. The multi-event planner is deployed to the
+Status: deployed November 15, 2026 (America/Los_Angeles). The multi-event planner is deployed to the
 existing Site. The organizer explicitly approved the public entry point on
 November 11, 2026. Camp Earnest's guest link works without sign-in; private
 planning and editing remain separately protected.
 
 Merged into `main` since the original release: drag-and-drop (November 12),
 the schedule-first phone layout and editors (November 15), and the Night Market
-design documents (November 15). Six further pull requests opened on November 16
-add the safety net, structure editing, per-record revisions, the stay move,
-maps, and the layout changes; see [Release provenance](#release-provenance) for
-what is and is not recorded as deployed.
+design documents (November 15). The safety net, structure editing, per-record revisions, stay-move preview,
+schematic maps, and layout changes are now deployed from GitHub main; see
+[Release provenance](#release-provenance) for the exact source and verification.
 
 See [traveler management](travelers.md) for the latest roster feature and release
 provenance. The organizer has reported successful phone editing and guest viewing
@@ -91,8 +90,9 @@ Every document update uses an atomic revision comparison and appends a row to
 the `planner_changes` log in the same batch; History, conditional undo, trip
 archive and a manual full backup are described in [safety-net.md](safety-net.md).
 Conflicts are decided per record ([per-record-revisions.md](per-record-revisions.md)):
-two planners saving different cards both succeed. Move-stay warnings and an automatic independent backup
-([proposal](backup-proposal.md), not enabled) remain future work.
+two planners saving different cards both succeed. Stay moves include a preview and warnings ([stay-move.md](stay-move.md)). An
+automatic independent backup ([proposal](backup-proposal.md), not enabled)
+remains future work.
 
 Set `PLANNER_CREATOR_EMAILS` in Sites runtime configuration to the organizer's
 authenticated email(s); there is no permissive production default. Local preview
@@ -134,22 +134,94 @@ no live write was made during the hosted checks.
 
 ## Release provenance
 
-GitHub `main` is the canonical source. The organizer deploys to Sites after
-merging, from their own device. This section records what the repository can
-show, and marks what it cannot.
+### November 15, 2026 release (America/Los_Angeles)
 
-| What | State as of November 16, 2026 |
+Deployed at 19:45 PST on November 15 (2026-11-16T03:45:48Z).
+GitHub is canonical. Sites is a separate repository, so commit IDs differ;
+the app file contents were compared instead.
+
+| Item | Provenance |
 | --- | --- |
-| GitHub `main` | Commit `58ca4bc` (November 15): merges of drag-and-drop ([#3](https://github.com/ewilhelm222/travel-planner/pull/3), [#4](https://github.com/ewilhelm222/travel-planner/pull/4)), schedule-first ([#5](https://github.com/ewilhelm222/travel-planner/pull/5)), editors ([#6](https://github.com/ewilhelm222/travel-planner/pull/6)) and Night Market docs ([#2](https://github.com/ewilhelm222/travel-planner/pull/2)). Offline shell version 15. Migrations `0000`–`0001`. |
-| Last deployment **recorded in this repository** | The traveler release of November 11: Sites source `525c8bee42f7510110fbb9d1e387721ecb79417a`, saved version `appgprj_6af3ef55c4f48191940aa66a59771eb3~appgver_b896184288e08191bb063f1283b86112`, deployment `appgdep_6af4e2cad78481919a21016059766f6f`, offline shell version 12 ([travelers.md](travelers.md)). |
-| Deployments after that | **Not recorded here.** [drag-drop.md](drag-drop.md) mentions a hosted trial of drag-and-drop on November 12, so at least one later deployment happened, but its identifiers were not written down, and nothing in the repository shows whether schedule-first and editors are live. |
-| Open pull requests of November 16 | Not deployed. They add migrations `0002` (change log, archive columns) and `0003` (record revisions), both additive, and move the offline shell to version 21. |
+| GitHub source | `d477cfdc4be7b1698b276d9439ae038a4b4e1404`, app at `apps/sites-prototype` |
+| Sites source | `93925161806d13eb702d1916dc247e954a580288` |
+| Matching content tree | GitHub app subtree and Sites root tree both `97ec15fe75afac36021ddff904d059f0bfee86d0`; all 173 source files matched |
+| Saved version | **12**, `appgprj_6af3ef55c4f48191940aa66a59771eb3~appgver_0317b417c0548191a990228181ecc16c` |
+| Deployment | `appgdep_6afa7c636c408191a9313f0e1077efbd`, succeeded |
+| Runtime / offline shell | Environment revision 1; offline shell version 21 |
+| Rollback version retained | **11**, `appgprj_6af3ef55c4f48191940aa66a59771eb3~appgver_faf1a2767e7c8191b35ef0a62ba20db7`, source `f5476867c57aa00c2a584743fb5a55586d9d6668` |
 
-**To fill in after the next deploy** (the organizer has these; an agent session
-cannot read them): the Sites source commit, the saved version, the deployment
-id, the `main` commit it was built from, and which migrations Sites applied. A
-quick way to see what is live: open the planner, and the offline shell version
-is the number in `waypoint-shell-v…` in the page's `/sw.js`.
+Version 11 versus GitHub contained 127 identical files, 20 changed files, and
+26 GitHub-only files. No Sites-only file or behavior requiring preservation
+was found. The stale local checkout was clean, with no commits ahead of its
+recorded origin/main, and was not used as release source.
+
+Migrations applied in order, before the new Worker was uploaded:
+
+1. `0002_change_log_and_archive.sql`: adds `planner_changes`, its unique
+   trip/revision and trip/id indexes, and nullable `archived_at` /
+   `archived_by` columns. No existing document is rewritten.
+2. `0003_record_revisions.sql`: adds non-null `record_revisions` with
+   constant default `'{}'`. Missing records start at revision 1; no existing
+   document is rewritten.
+
+Both are additive and leave the legacy Japan table intact. The old Worker
+can read the expanded schema, so Sites' migrations-first deployment order
+avoids exposing the new Worker to missing columns/tables. The new Worker
+also retains strict trip-wide revision handling for older open pages.
+After deployment, the new table and all three added columns were present;
+both current trip rows remained active with their original ownership,
+editor lists, guest hashes and sharing timestamps.
+
+**Checks passed before deployment:** Node 24.22.1; 103 Node tests;
+`npm run typecheck`; production build via the Sites build helper;
+`npm run test:api`; and `npm run test:access`. API/access checks used a
+disposable local D1 database and synthetic accounts/data, with migrations
+0000–0003 applied locally.
+
+**Verified live:**
+
+- Signed-in organizer can load Camp Earnest and the China draft.
+- Added a disposable activity, edited it, dragged it from Sunday to Monday,
+  undid the move back to Sunday, and deleted it. History shows add, edit,
+  move, undo and delete. The test activity is absent afterward.
+- Desktop board inspected. At a 390 px viewport, organizer Camp Earnest and
+  China, and the guest schedule, each show one selected day with no horizontal
+  page overflow (375 px content width with scrollbar). Management follows the
+  schedule on phones.
+- Existing Camp Earnest guest link loads with read-only details, day navigation,
+  no edit inputs/controls, and no sign-in requirement. A direct API read with
+  only the existing guest token and no cookies returned HTTP 200. Guest output
+  had empty stay/journey arrays and no editor list.
+- A direct request to `/api/trips` without cookies or identity headers returned
+  HTTP 401 with the sign-in-required error.
+- Ownership, editor lists, guest hashes and sharing timestamps were unchanged
+  before/after. The organizer made additional ordinary Camp Earnest edits
+  during verification; final schedule equality to the earlier baseline is
+  therefore not asserted.
+- The original Japan row remains in `prototype_trips`, with unchanged revision
+  and update timestamp. Neither migration touches that table.
+
+**Waived or not verified:**
+
+- The organizer explicitly waived the live backup/export and live-data
+  migration rehearsal after explaining that the database contains test data
+  held elsewhere. No pre-release trip JSON backups or full database export
+  were created. Local migration/API checks are not a live-data restore trial.
+- Neither current trip has an editor configured; a real editor account was
+  not verified live. Synthetic organizer/editor/non-member access checks passed
+  locally.
+- Japan was not recovered as a new-model trip or opened in the current
+  organizer UI; only its retained database row/metadata were checked.
+- Physical phones, real China connectivity, a full 200% zoom review, and live
+  backup restoration were not verified.
+
+No Sites access mode, guest token/link, editor membership, invitations, emails,
+or schedules were changed. The daily snapshot proposal remains disabled.
+
+Rollback, if required, is to redeploy retained version 11. The added schema is
+compatible with that version and need not be removed. No step-4 backup exists
+because that requirement was waived; any data restoration would require the
+organizer's separate copies. No rollback was performed.
 
 Earlier releases: original multi-event release, Sites source
 `85f4b51090f0cfa7a5fd7ba87b0d5869548a4b48`, saved version
