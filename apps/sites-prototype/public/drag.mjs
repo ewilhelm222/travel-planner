@@ -1,7 +1,7 @@
 // Direct manipulation for activity cards. The board is rendered as HTML strings,
 // so this is a small DOM controller rather than a React drag library.
 // Mouse/pen: press and move. Touch: press and hold (~0.4 s) to pick up, so a
-// quick swipe still scrolls and a tap still opens the activity.
+// quick swipe still scrolls and a tap still opens the activity's read-only view.
 // While dragging, a dock of day chips appears; hovering a chip switches the
 // visible day (the phone shows one day at a time) and dropping on it moves there.
 
@@ -247,7 +247,7 @@ export function enableDrag(options) {
   document.addEventListener('selectstart', e => { if (drag || (pending && !pending.mouse)) e.preventDefault(); });
 
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && drag) { e.preventDefault(); e.stopPropagation(); drag.target = null; finish(false); } }, true);
-  // A finished drag must not also open the activity editor.
+  // A finished drag must not also open the activity (its read-only view, or anything else a tap would do).
   document.addEventListener('click', e => { if (suppressClick && cardFrom(e.target)) { e.preventDefault(); e.stopPropagation(); } }, true);
 
   return { get active() { return !!drag; }, cancel: () => finish(false) };

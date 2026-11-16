@@ -12,6 +12,7 @@
     const { buildOfflineHtml } = await import('/offline-export.mjs');
     const { moveActivity, stepTarget } = await import('/move.mjs');
     const { enableDrag } = await import('/drag.mjs');
+    const { VIEW_ID, viewDialog, showActivityView, focusCard, enableViewDismiss } = await import('/activity-view.mjs');
     const KEY = 'waypoint-library-v2', OLD_KEY = 'waypoint-downloaded-trip-v1';
     const app = document.querySelector('#app');
     const state = { user: null, snapshot: null, library: [], archived: [], copies: {}, canCreate: false, isOwner: false, selected: new URLSearchParams(location.search).get('trip'), filter: 'all', day: null, compact: true, online: navigator.onLine, busy: false, message: '', downloadedAt: null, offlineReady: false, needsSignIn: false };
@@ -106,8 +107,8 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v34');
-            state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
+            const cache = await caches.open('waypoint-shell-v35');
+            state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/activity-view.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
         catch { }
@@ -239,7 +240,7 @@ ${t ? `<div class="toolbar"><span class="view-title">Daily plans</span>${filterS
 <div id="status" role="status" aria-live="polite"></div><div id="message" role="alert"></div>
 ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-closed' : ''}">${ideasSection(t)}<div id="itinerary" tabindex="-1" class="date-board">${board(t, { filter: state.filter, day: state.day, compact: state.compact, hideExamples: state.hideExamples })}</div></div><div class="board-notes"><p id="drag-hint" class="drag-hint"></p><p id="filter-status" role="status" aria-live="polite">${state.filter === 'all' ? 'Everyone · shared plans appear once' : 'Selected group · all shared attendee labels remain visible'}</p>${examplesToggle}${roleNote}</div>${mapsSection(t)}` : welcome()}
 <footer><span>Waypoint <span class="title-dot">×</span> Make plans. Take detours.</span><span>Guest links are optional and read-only.</span></footer></main>
-`}<dialog id="editor" class="form-dialog" aria-labelledby="edit-title"><form id="edit-form"><div class="dialog-heading"><span class="eyebrow"></span><button type="button" class="icon-button" id="close-editor" aria-label="Close activity">×</button></div><h2 id="edit-title">Activity</h2><div id="editor-fields"></div><p id="edit-message" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button" id="copy-draft" hidden>Copy my draft</button><button type="button" class="secondary" id="reload-after-conflict" hidden>Load latest plan</button><button type="button" class="text-button" id="delete">Delete activity</button><button type="submit" class="primary" id="save">Save changes</button></div></form></dialog>
+`}${viewDialog()}<dialog id="editor" class="form-dialog" aria-labelledby="edit-title"><form id="edit-form"><div class="dialog-heading"><span class="eyebrow"></span><button type="button" class="icon-button" id="close-editor" aria-label="Close activity">×</button></div><h2 id="edit-title">Activity</h2><div id="editor-fields"></div><p id="edit-message" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button" id="copy-draft" hidden>Copy my draft</button><button type="button" class="secondary" id="reload-after-conflict" hidden>Load latest plan</button><button type="button" class="text-button" id="delete">Delete activity</button><button type="submit" class="primary" id="save">Save changes</button></div></form></dialog>
 <dialog id="roster-dialog" class="form-dialog" aria-labelledby="roster-title"></dialog><dialog id="history-dialog" aria-labelledby="history-title"></dialog><dialog id="stay-view" aria-labelledby="stay-view-title"></dialog><dialog id="structure-dialog" class="form-dialog" aria-labelledby="structure-title"></dialog><dialog id="archived-dialog" aria-labelledby="archived-title"></dialog><dialog id="editors-dialog" class="form-dialog" aria-labelledby="editors-title"></dialog><dialog id="create-dialog" class="form-dialog" aria-labelledby="create-title"><form id="create-form"><h2 id="create-title">New trip or event</h2><label>Name<input name="title" required maxlength="160"></label><label>Subtitle <small>(optional; shown under the name, and to guests)</small><input name="subtitle" maxlength="500"></label><div class="field-row"><label>First day<input type="date" name="start" required></label><label>Last day<input type="date" name="end" required></label></div><label>Time zone<input name="timezone" value="America/Los_Angeles" required></label><label>Kind<select name="kind"><option value="event">Gathering / event</option><option value="trip">Trip</option></select></label><p id="create-error" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button danger" id="trip-delete" hidden>Delete this trip…</button><button type="button" class="secondary" data-close="create-dialog">Cancel</button><button class="primary" id="create-submit">Create</button></div></form></dialog>
 <dialog id="import-dialog" class="form-dialog" aria-labelledby="import-title"><form id="import-form"><h2 id="import-title">Import a trip or event</h2><label>Trip JSON<textarea id="import-json" rows="14" required maxlength="250000" spellcheck="false"></textarea></label><p>Creates a separate private trip. Guest sharing starts disabled. A full backup file is checked for damage first.</p><p id="import-error" role="alert"></p><div class="dialog-actions"><button type="button" class="secondary" data-close="import-dialog">Cancel</button><button class="primary">Import trip</button></div></form></dialog><dialog id="share-dialog" aria-labelledby="share-title"><h2 id="share-title">A link for your guests</h2><p>Anyone holding this link can browse the dated activities and the unscheduled ideas, with group names, opted-in traveler display names, guest descriptions, and meeting points. They cannot edit.</p><p>Private planning notes, lodging details, journey notes, source links, and editor identities are excluded. So is anything marked “Example · not a real plan”. Downloaded copies cannot be recalled.</p><div id="share-body"></div><p id="share-error" role="alert"></p><div class="dialog-actions"><button class="secondary" data-close="share-dialog">Close</button></div></dialog>`;
         status();
@@ -249,6 +250,33 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
             if (selected)
                 $('#itinerary').scrollLeft = selected.offsetLeft - $('#itinerary').offsetLeft;
             revealDay();
+        }
+        // A redraw replaces the dialogs: put an open activity view back, with the values just loaded or saved.
+        if (viewing)
+            openView(viewing);
+    }
+    // ---- Activity view: a tap shows the activity; the editor opens only from its Edit button ----
+    // `viewing` is the activity whose view is open. `returnTo` is set while the editor was opened from the
+    // view, so that saving or cancelling comes back to it instead of dropping to the schedule.
+    let viewing = null, returnTo = null, viewScope = '';
+    function openView(id, { preview = false } = {}) {
+        // In "Preview exactly what guests will see" the view is the guests' one: their fields, no Edit.
+        const trip = preview ? state.sharePreview : state.snapshot?.trip, a = trip?.activities.find(x => x.id === id);
+        viewing = a && !preview ? id : null;
+        if (!a)
+            return;
+        viewScope = preview ? '.guest-preview' : '';
+        showActivityView(document, a, trip, { guest: preview, canEdit: !preview });
+    }
+    enableViewDismiss({ document, sheet: () => phone() });
+    // Long descriptions are shown whole in the editor too, where the browser cannot size the box itself.
+    function growTextareas() {
+        if (globalThis.CSS?.supports?.('field-sizing', 'content'))
+            return;
+        for (const box of document.querySelectorAll('#edit-form textarea[data-grow]')) {
+            box.style.height = 'auto';
+            if (box.scrollHeight)
+                box.style.height = `${box.scrollHeight + 4}px`;
         }
     }
     // Keep the selected day's medallion in view on long trips.
@@ -371,7 +399,7 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
         if (!a)
             return;
         if (a.fixed && (a.date ?? null) !== date) {
-            state.message = `“${a.title}” has a set time, so it stays on ${dayName(a.date)}. To change its day, open it, choose “That day”, then move it.`;
+            state.message = `“${a.title}” has a set time, so it stays on ${dayName(a.date)}. To change its day, open it, choose Edit and then “That day”, then move it.`;
             refreshBoard(activityId, { refused: true, focus });
             status();
             return;
@@ -868,9 +896,9 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
         return `<label>Activity<input name="title" value="${escape(a.title)}" maxlength="160" required ${off}></label><div class="field-row"><label>Day<select name="date" ${off}><option value="">Unscheduled idea</option>${days(t).map(d => `<option value="${d}" ${a.date === d ? 'selected' : ''}>${dateLabel(d, { weekday: 'short', month: 'short', day: 'numeric' })}</option>`).join('')}</select></label><label>Time or part of day<input name="time" value="${escape(a.time)}" maxlength="80" placeholder="e.g. after lunch, 17:00" ${off}></label></div><label>How firm is the timing?<select name="timing" ${off}>${TIMINGS.map(v => `<option value="${v}" ${timingOf(a) === v ? 'selected' : ''}>${TIMING_LABELS[v]}${v === 'set' ? ' · protected from moves' : v === 'day' ? ' · time can stay loose' : ''}</option>`).join('')}</select><small id="timing-hint"></small></label>
 <fieldset class="kind-choice"><legend>What kind of plan is this?</legend>${choice('open', 'Open to everyone · optional', 'Anyone can join; nobody has to.')}${choice('whole', 'Whole-group activity', 'Everyone together. Shown with a pink band.')}${choice('some', 'For some people, or set it yourself', 'Choose who it is for and whether it is optional.')}</fieldset>
 <div id="some-panel" ${kind === 'some' ? '' : 'hidden'}><label class="check-label"><input type="checkbox" name="optional" ${a.optional ? 'checked' : ''} ${off}> Optional · offered as a choice, not a commitment</label><div id="attendance-slot">${attendanceFields(a, t, disabled, 'Who', true)}</div></div>
-<details class="more-details" id="more-details" ${hasMore || state.moreOpen ? 'open' : ''}><summary>More details <small>place, meeting point, notes, links</small></summary><label>Place<select name="placeId" ${off}><option value="">Location to confirm</option>${t.places.map(p => `<option value="${escape(p.id)}" ${a.placeId === p.id ? 'selected' : ''}>${escape(p.name)} ${escape(p.localName)}</option>`).join('')}${disabled ? '' : '<option value="__new">＋ Add new place…</option>'}</select></label><fieldset class="inline-place" id="place-inline" hidden><legend>New place</legend>${placeFields({}, 'newPlace', '')}<p id="place-inline-message" role="alert"></p><button type="button" class="secondary" id="place-inline-save">Add this place</button><p class="form-hint">Adds the place to the trip straight away. Your activity is saved separately with the Save button below.</p></fieldset><label>Guest meeting point<input name="guestLocation" maxlength="500" value="${escape(a.guestLocation)}" ${off}><small>Shown on the card as “Meet · …”, and on the guest link.</small></label><label>Guest description<textarea name="guestNotes" rows="3" maxlength="4000" ${off}>${escape(a.guestNotes)}</textarea><small>Visible if you enable this event's guest link.</small></label><label>Address <small>(private)</small><input name="address" maxlength="500" value="${escape(a.address || '')}" ${off}><small>For this activity only. Never shown on the guest link; use Guest meeting point for that.</small></label><label>Private planning notes<textarea name="notes" rows="4" maxlength="4000" ${off}>${escape(a.notes)}</textarea><small>Excluded from the guest link.</small></label>${(a.links || []).length ? `<ul class="link-list" aria-label="Saved links">${a.links.map(l => `<li><a href="${escape(l.url)}" target="_blank" rel="noopener noreferrer">${escape(l.label || l.url)} ↗</a></li>`).join('')}</ul>` : ''}<label>Links <small>(private, optional)</small><textarea name="links" rows="2" maxlength="6000" spellcheck="false" placeholder="Tickets https://example.com/…" ${off}>${escape(formatLinks(a.links))}</textarea><small>One per line: an optional label, then the web address. Excluded from the guest link.</small></label></details>`;
+<details class="more-details" id="more-details" ${hasMore || state.moreOpen ? 'open' : ''}><summary>More details <small>place, meeting point, notes, links</small></summary><label>Place<select name="placeId" ${off}><option value="">Location to confirm</option>${t.places.map(p => `<option value="${escape(p.id)}" ${a.placeId === p.id ? 'selected' : ''}>${escape(p.name)} ${escape(p.localName)}</option>`).join('')}${disabled ? '' : '<option value="__new">＋ Add new place…</option>'}</select></label><fieldset class="inline-place" id="place-inline" hidden><legend>New place</legend>${placeFields({}, 'newPlace', '')}<p id="place-inline-message" role="alert"></p><button type="button" class="secondary" id="place-inline-save">Add this place</button><p class="form-hint">Adds the place to the trip straight away. Your activity is saved separately with the Save button below.</p></fieldset><label>Guest meeting point<input name="guestLocation" maxlength="500" value="${escape(a.guestLocation)}" ${off}><small>Shown on the card as “Meet · …”, and on the guest link.</small></label><label>Guest description<textarea name="guestNotes" rows="3" maxlength="4000" data-grow ${off}>${escape(a.guestNotes)}</textarea><small>Visible if you enable this event's guest link.</small></label><label>Address <small>(private)</small><input name="address" maxlength="500" value="${escape(a.address || '')}" ${off}><small>For this activity only. Never shown on the guest link; use Guest meeting point for that.</small></label><label>Private planning notes<textarea name="notes" rows="4" maxlength="4000" data-grow ${off}>${escape(a.notes)}</textarea><small>Excluded from the guest link.</small></label>${(a.links || []).length ? `<ul class="link-list" aria-label="Saved links">${a.links.map(l => `<li><a href="${escape(l.url)}" target="_blank" rel="noopener noreferrer">${escape(l.label || l.url)} ↗</a></li>`).join('')}</ul>` : ''}<label>Links <small>(private, optional)</small><textarea name="links" rows="2" maxlength="6000" spellcheck="false" placeholder="Tickets https://example.com/…" ${off}>${escape(formatLinks(a.links))}</textarea><small>One per line: an optional label, then the web address. Excluded from the guest link.</small></label></details>`;
     }
-    function openEditor(id, preset = {}) { const a = state.snapshot.trip.activities.find(a => a.id === id) || { id: crypto.randomUUID(), date: 'date' in preset ? preset.date : state.day, time: '', title: '', placeId: preset.placeId || state.snapshot.trip.places[0]?.id || null, participants: defaultParticipants(state.snapshot.trip), notes: '', guestNotes: '', guestLocation: '', fixed: false, optional: state.snapshot.trip.kind === 'event', order: state.snapshot.trip.activities.length, sourceKind: 'entered' }; const form = $('#edit-form'); form.dataset.id = a.id; form.dataset.new = String(!id); form.dataset.kind = kindOf(a, state.snapshot.trip); form.dataset.wasSet = String(!!id && a.fixed === true); form.dataset.timingTouched = ''; form.dataset.timingBefore = ''; form.dataset.timingSuggested = ''; form.dataset.highlight = String(a.highlight === true); form.dataset.base = JSON.stringify(id ? base(recordKey('activity', a.id)) : {}); $('#editor-fields').innerHTML = formData(a); $('#delete').hidden = !id || !writable(); $('#save').disabled = !writable(); $('#copy-draft').hidden = true; $('#reload-after-conflict').hidden = true; $('#edit-message').textContent = !writable() ? 'Downloaded reading copy. Connect and refresh before editing.' : a.sourceKind === 'tentative' ? 'Tentative source plan. Times, hosts, and bookings need review.' : a.sourceKind === 'synthetic' ? 'This is an example, not a real plan. Edit it to make it yours, or delete it.' : ''; lockTiming(); updateAttendance(); $('#editor').showModal(); }
+    function openEditor(id, preset = {}) { returnTo = null; const a = state.snapshot.trip.activities.find(a => a.id === id) || { id: crypto.randomUUID(), date: 'date' in preset ? preset.date : state.day, time: '', title: '', placeId: preset.placeId || state.snapshot.trip.places[0]?.id || null, participants: defaultParticipants(state.snapshot.trip), notes: '', guestNotes: '', guestLocation: '', fixed: false, optional: state.snapshot.trip.kind === 'event', order: state.snapshot.trip.activities.length, sourceKind: 'entered' }; const form = $('#edit-form'); form.dataset.id = a.id; form.dataset.new = String(!id); form.dataset.kind = kindOf(a, state.snapshot.trip); form.dataset.wasSet = String(!!id && a.fixed === true); form.dataset.timingTouched = ''; form.dataset.timingBefore = ''; form.dataset.timingSuggested = ''; form.dataset.highlight = String(a.highlight === true); form.dataset.base = JSON.stringify(id ? base(recordKey('activity', a.id)) : {}); $('#editor-fields').innerHTML = formData(a); $('#delete').hidden = !id || !writable(); $('#save').disabled = !writable(); $('#copy-draft').hidden = true; $('#reload-after-conflict').hidden = true; $('#edit-message').textContent = !writable() ? 'Downloaded reading copy. Connect and refresh before editing.' : a.sourceKind === 'tentative' ? 'Tentative source plan. Times, hosts, and bookings need review.' : a.sourceKind === 'synthetic' ? 'This is an example, not a real plan. Edit it to make it yours, or delete it.' : ''; lockTiming(); updateAttendance(); $('#editor').showModal(); growTextareas(); }
     // Timing level and the fields it governs. No day means "any day" (it lives in Ideas). A plan saved with a set
     // time keeps its day and time locked until another level is chosen, which is what the server enforces too.
     const CLOCK = /\b\d{1,2}[:.]\d{2}\b|\b\d{1,2}\s?(am|pm)\b/i;
@@ -920,7 +948,7 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
     // A full backup is checked against its checksum first; then it restores as a separate new trip.
     async function importable(parsed) { return isSnapshot(parsed) ? restoreFromSnapshot(parsed) : parsed.trip || parsed; }
     function download(contents, mime, filename) { const url = URL.createObjectURL(new Blob([contents], { type: mime })); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
-    async function sharing() { const data = await request(endpoint('/api/share')); state.shareRevision = data.shareRevision; $('#share-body').innerHTML = `<p>${data.enabled ? 'A guest link is enabled. Replacing it disables the previous link.' : 'No guest link is enabled.'}</p><button class="primary" id="share-rotate">${data.enabled ? 'Replace guest link' : 'Enable guest link'}</button>${data.enabled ? '<button class="secondary" id="share-revoke">Disable guest link</button>' : ''}<details><summary>Preview exactly what guests will see</summary><div class="guest-preview">${board(data.preview, { day: state.day, guest: true })}<h3>Ideas · not scheduled yet</h3>${ideaCards(data.preview.activities.filter(a => !a.date), data.preview, true) || '<p>No ideas to show.</p>'}</div></details>`; $('#share-error').textContent = ''; $('#share-dialog').showModal(); }
+    async function sharing() { const data = await request(endpoint('/api/share')); state.shareRevision = data.shareRevision; state.sharePreview = data.preview; $('#share-body').innerHTML = `<p>${data.enabled ? 'A guest link is enabled. Replacing it disables the previous link.' : 'No guest link is enabled.'}</p><button class="primary" id="share-rotate">${data.enabled ? 'Replace guest link' : 'Enable guest link'}</button>${data.enabled ? '<button class="secondary" id="share-revoke">Disable guest link</button>' : ''}<details><summary>Preview exactly what guests will see</summary><div class="guest-preview">${board(data.preview, { day: state.day, guest: true })}<h3>Ideas · not scheduled yet</h3>${ideaCards(data.preview.activities.filter(a => !a.date), data.preview, true) || '<p>No ideas to show.</p>'}</div></details>`; $('#share-error').textContent = ''; $('#share-dialog').showModal(); }
     // The Manage menu closes after a choice, on a click elsewhere, and on Escape.
     document.addEventListener('click', event => {
         const menu = $('#manage-menu');
@@ -942,7 +970,15 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
             if (b.dataset.close)
                 $(`#${b.dataset.close}`).close();
             if (b.dataset.detail)
-                openEditor(b.dataset.detail);
+                openView(b.dataset.detail, { preview: !!b.closest('.guest-preview') });
+            // The one way from the view into the editor. Delete and the other destructive actions stay in the editor.
+            if (b.dataset.editActivity) {
+                const id = b.dataset.editActivity;
+                viewing = null;
+                $(`#${VIEW_ID}`).close();
+                openEditor(id);
+                returnTo = id;
+            }
             if (b.id === 'close-editor')
                 $('#editor').close();
             if (b.id === 'add')
@@ -1156,8 +1192,14 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
             }
             if (b.id === 'reload-after-conflict') {
                 if (confirm('Your unsaved draft will close. Copy it first if you want to keep it. Load latest?')) {
+                    // Opened from the activity view: come back to it, now showing the latest saved values.
+                    const back = returnTo;
+                    returnTo = null;
                     $('#editor').close();
+                    viewing = back;
                     await load();
+                    if (viewing && !$(`#${VIEW_ID}`)?.open)
+                        viewing = null;
                 }
             }
             if (b.id === 'copy-draft') {
@@ -1182,6 +1224,9 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
             const result = await request(endpoint('/api/trip'), 'PATCH', change);
             state.snapshot = result.snapshot;
             remember();
+            // Opened from the activity view: the redraw below reopens it with the saved values. A delete has nothing to show.
+            viewing = change.action !== 'delete' && returnTo && returnTo === change.activityId ? returnTo : null;
+            returnTo = null;
             $('#editor').close();
             state.message = 'Saved for everyone viewing this trip.';
             state.busy = false;
@@ -1353,19 +1398,36 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
     document.addEventListener('input', event => {
         if (event.target.name === 'time' && event.target.form?.id === 'edit-form')
             suggestTiming();
+        if (event.target.matches?.('#edit-form textarea[data-grow]'))
+            growTextareas();
     });
     // Remember whether this person likes the full form open.
     document.addEventListener('toggle', event => {
         if (event.target.id === 'more-details') {
             state.moreOpen = event.target.open;
             persist();
+            growTextareas();
         }
     }, true);
     if ('serviceWorker' in navigator)
         navigator.serviceWorker.addEventListener('controllerchange', readiness);
     window.matchMedia?.(PHONE_QUERY).addEventListener?.('change', relayout);
     window.addEventListener('resize', () => fitColumns($('#itinerary')));
-    document.addEventListener('close', () => { if (state.layoutStale) relayout(); }, true);
+    document.addEventListener('close', event => {
+        // Closing the view (button, Escape, backdrop, swipe) hands focus back to the card it came from.
+        if (event.target.id === VIEW_ID && !$('#editor')?.open) {
+            viewing = null;
+            focusCard(document, event.target.dataset.activity, viewScope);
+        }
+        // Cancelling an editor that was opened from the view returns to the view, not to the schedule.
+        if (event.target.id === 'editor' && returnTo) {
+            const id = returnTo;
+            returnTo = null;
+            openView(id);
+        }
+        if (state.layoutStale)
+            relayout();
+    }, true);
     restore();
     state.online = navigator.onLine;
     render();

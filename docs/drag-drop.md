@@ -5,8 +5,8 @@ Status: November 12, 2026. Phone pickup and drop panel reworked after the first 
 Activities can be moved between days, reordered within a day, and moved to or
 from **Not on the itinerary. Yet.** (unscheduled ideas) by direct manipulation.
 Every move is one `PATCH /api/trip` with `action: "move"` and goes through the
-same atomic revision check as every other edit. The editor's **Day** field remains
-the non-drag alternative.
+same atomic revision check as every other edit. The editor's **Day** field (tap the
+card, then **Edit**) remains the non-drag alternative.
 
 ## Desktop
 
@@ -26,7 +26,8 @@ The phone shows one day, so a **Drop on a day** panel slides up from the bottom
 while dragging, with every day (and **Ideas**) as a large chip.
 
 1. **Press and hold** a card for about a third of a second until it lifts. A
-   quick swipe still scrolls and a tap still opens the activity.
+   quick swipe still scrolls and a tap still opens the activity's read-only
+   view ([activity-view.md](activity-view.md)); ending a drag never opens it.
 2. A small copy of the card rides just above your fingertip, so neither the
    finger nor the card hides the target.
 3. Slide onto a day chip and let go to move the card to the end of that day.

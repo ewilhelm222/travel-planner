@@ -37,7 +37,7 @@ test('guests see ideas with guest fields only, and never examples', () => {
     assert.ok(!text.includes('PRIVATE') && !text.includes('Invented idea'));
     assert.ok(card(shown.activities[0], shown, true).includes('No day yet'));
     assert.match(guest, /Ideas <span>· not scheduled yet<\/span>/);
-    assert.match(guest, /An idea · no day yet/);
+    assert.match(read('../public/activity-view.mjs'), /An idea · no day yet/, 'said in the activity view the guest page opens');
     assert.match(planner, /browse the dated activities and the unscheduled ideas/);
     assert.ok(!/lodging details, unscheduled ideas/.test(planner), 'the share dialog no longer says ideas are excluded');
 });

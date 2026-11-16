@@ -5,7 +5,9 @@
 The multi-event planner is deployed with the Night Market design. See
 [multiple trips, guest links, and current access status](multi-events.md) for the
 current implementation and [the schedule-first phone layout](schedule-first.md)
-for the phone arrangement. The sections below preserve the initial feasibility
+for the phone arrangement. Tapping an activity opens a read-only view, with
+Edit for people who sign in: see [tap to read, Edit to change](activity-view.md).
+The sections below preserve the initial feasibility
 proof and its verification history.
 
 ## Original feasibility result
