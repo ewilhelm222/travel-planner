@@ -1,6 +1,6 @@
 # Plan from the November 15 feedback sessions
 
-Status: November 16, 2026. **A plan only.** No app code, schema, deployment or
+Status: November 16, 2026; organizer decisions added the same day. **A plan only.** No app code, schema, deployment or
 live data was changed to produce it. Nothing here is an approved feature or
 schema change until the organizer says so ([plan.md](plan.md) still governs).
 
@@ -11,6 +11,32 @@ sessions on November 15, 2026, covering three perspectives. They are called the
 were not reliably separated, so everything attributed below is a paraphrase and
 "who said it" is a best reading. No names, family details or transcript text are
 in this file.
+
+## Decisions recorded November 16, 2026
+
+The organizer answered the questions this plan first ended with. The item
+details below were written before these answers; where they differ, this
+section wins.
+
+| Topic | Decision | Effect on the plan |
+| --- | --- | --- |
+| Sign-in link on the guest page (A2) | **Yes.** | In PR 1 as proposed. |
+| Wording list and quieter whole-group card (W1) | **Approved.** | In PR 2; the Night Market guide is amended in the same PR. |
+| Dark theme (D1) | **Forms only.** | Dialogs that are mainly a form go dark: activity, traveler and group, place, stay, journey, stay move, trip details, new trip, import, and add editor. Dialogs that are mainly for reading stay cream: History, guest link and its preview, archived trips, the guest activity detail and the new stay reading view. |
+| Invented items on the guest link (X3) | **Leave them off.** | In PR 2. |
+| Door codes and Wi-Fi | **In the private stay note.** | No new field needed for this trip. They are therefore also in the private offline file, the JSON export, History and backups; see section 6. |
+| Stay information on the guest link after the trip (S3) | **Not needed; leave stay information as it is.** | S3 is dropped and the guest link keeps carrying no stay information. S2 (a separate "for the group" field) is no longer required and moves to "only if asked for again". *This is how the answer was read; if it meant something else, say so.* |
+| Ideas on the guest link (C1) | **Yes, guests should see ideas.** | A change to the documented guest boundary. Added to PR 4; see "Ideas on the guest link" in section 6. |
+| Place nesting (P2) | **One level is enough.** | P2 as proposed. |
+| Ideas from people without accounts (A4) | **Not wanted.** | Removed from P2. The guest link stays read-only. |
+
+Also learned: all three testers signed in with **one shared address**. That
+explains the "which account" confusion, and it means History shows one name for
+everyone's edits and "Editing as …" will too. Whether that address was on the
+editor list at the moment of the first sign-in is still not known, so A1 remains
+the likely cause of the "no itinerary" report rather than a confirmed one. If
+family members will keep sharing one sign-in, say so: the "signed in as"
+wording in A1 and A2 should then name the address, not a person.
 
 ## The short version
 
@@ -251,8 +277,9 @@ amendment.
 - The same wording, dark detail dialog, whole-group card, All-days switch and
   landscape layout as the signed-in planner.
 - Invented items are left out (X3).
-- No Ideas, no stay details, no add controls unless and until the organizer
-  decides otherwise ([section 6](#6-privacy-notes)).
+- Ideas are shown (decided November 16), below the days on a phone and as a
+  column on wider screens, with the same limited details as dated activities.
+- No stay details and no add controls.
 
 ## 3. Data-model changes and migration
 
@@ -563,16 +590,17 @@ changes, last deployment by about November 19, nothing new during the stay.**
   back, and send the three-line sign-in note (A4).
 - Decide where door codes and Wi-Fi will live for this trip
   ([section 6](#6-privacy-notes)); the recommendation is the private stay note.
-- Answer the open questions marked for P0 below.
+- Read through the existing unscheduled ideas, because guests will see their
+  titles once PR 4 ships.
 
 ### P0: can ship before Camp Earnest (no data change)
 
 | Step | Contents | Size | Needs from the organizer |
 | --- | --- | --- | --- |
-| PR 1 | **Getting in:** A1, A2, A3, and the A4 text | S | OK to show a sign-in link on the guest page |
-| PR 2 | **Plain words:** W1, T1, X1, X3, P1, W3 | S | Approve the wording list and the quieter whole-group card; examples off the guest link |
-| PR 3 | **Dark forms:** D1 and the design guide amendment | S to M | All dialogs, or forms only |
-| PR 4 | **Add and Ideas within reach:** C2, M1 (map below Ideas, collapsed when empty), the phone "Ideas" stop from C1, S1, S4 | M | None |
+| PR 1 | **Getting in:** A1, A2, A3, and the A4 text | S | Decided: yes |
+| PR 2 | **Plain words:** W1, T1, X1, X3, P1, W3 | S | Decided: approved; examples off the guest link |
+| PR 3 | **Dark forms:** D1 (forms only) and the design guide amendment | S to M | Decided: forms only |
+| PR 4 | **Add and Ideas within reach:** C2, M1 (map below Ideas, collapsed when empty), the phone "Ideas" stop from C1, ideas on the guest link, S1, S4 | M | Read through existing ideas before it is deployed |
 
 PR 4 is the one to drop if time is short; PRs 1 and 2 are the ones not to
 drop. Each is independent and can be deployed alone. All four should be checked
@@ -589,13 +617,13 @@ release.
 | PR 8 | Confirm or remove examples (X2) | S to M | PR 2 |
 | PR 9 | Three timing levels (T2), first stored-data change | M | PR 5, PR 7 |
 | PR 10 | All-days scroll on phones (L3) | S to M | PR 6 |
-| PR 11 | Stay information for the group, and the guest-link choice (S2, S3) | M | A decision on section 6 |
 
 ### P2: later, before or alongside China
 
 Repeats (T3); two-level places (P2); insert between cards (C3); swipe (L2), if
 still wanted after L3; people in several groups (W5); richer maps (M2);
-pictures on cards; a decision on ideas from people without accounts (A4).
+pictures on cards. Stay information for the group (S2) only if asked for
+again; stay information on the guest link (S3) is dropped.
 
 ### Where this differs from the source document's priorities
 
@@ -657,9 +685,24 @@ decision.
 | **Room allocation** | Signed-in only. | It lists who sleeps where, including children, by name. It also overrides the per-person choice about showing names to guests. |
 | **Check-out time, laundry, what to bring, house rules** | Reasonable to share when the organizer opts in. | Useful, and harmless if forwarded. |
 | **Lodging name** | Organizer opt-in per stay. | Often identifies the address. |
-| **Unscheduled ideas** | Keep excluded unless the organizer decides otherwise. | They are documented as excluded, and people now add personal items there. |
+| **Unscheduled ideas** | **Decided November 16: shown to guests.** See below. | Guests should see the menu of possibilities, not only the commitments. |
 | **Names of people added from the activity form (W4)** | Private by default, as now. | Keeps the existing opt-in rule. |
 | **Invented items** | Leave out. | Guests should not read examples as plans. |
+
+**Ideas on the guest link (decided November 16).** Guests will receive each
+idea's title, time text, optional mark, group labels, guest description and
+meeting point, exactly the fields they already receive for dated activities.
+Private notes, private address and links stay excluded, and invented items stay
+out. Three things follow:
+
+- Ideas already in a trip were written while ideas were private. Their
+  **titles** become visible to every link holder on the day this ships, so the
+  organizer should read through the existing ideas first.
+- Editors can add ideas, so from then on anything an editor adds as an idea is
+  visible to guests at once, as a dated activity already is.
+- The share dialog, its preview and [multi-events.md](multi-events.md) currently
+  state that unscheduled ideas are excluded; all three change in the same
+  release.
 
 Further points:
 
@@ -688,21 +731,15 @@ Further points:
 - **Ideas from people without accounts** would make the guest link writable.
   Not proposed for now.
 
-## Questions for the organizer
+## Questions still open
 
-1. Were the testers on the editor list, with the address they signed in with,
-   before they signed in? (A1)
-2. May the guest page show a "Sign in to add or change plans" link? (A2)
-3. Approve the wording list and the quieter whole-group card, which amends the
-   Night Market guide? (W1)
-4. Dark for all dialogs, or only for forms? (D1)
-5. Leave invented items off the guest link? (X3)
-6. Where do door codes and Wi-Fi go for this trip: the private stay note, or
-   outside the planner? (section 6)
-7. After the trip: may any stay information appear on the guest link, and
-   which? (S3)
-8. Should guests see Ideas? (C1)
-9. Is one level of place nesting enough? (P2)
-10. Should younger family members need accounts at all, or is a different way
-    of collecting their ideas wanted? (A4)
-11. Is the balance in "Structure versus freedom" above the intended one?
+The first set of questions was answered on November 16; see
+[Decisions](#decisions-recorded-november-16-2026). What remains:
+
+1. Was the shared sign-in address on the editor list before the first sign-in?
+   (A1)
+2. Will family members keep sharing one sign-in address? (A1, A2, History)
+3. Was "leave the information" correctly read as "no stay information on the
+   guest link"? (S3)
+4. Should a "That day" item be carried along by a stay move? (T2)
+5. Is the balance in "Structure versus freedom" the intended one?
