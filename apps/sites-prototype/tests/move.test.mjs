@@ -72,7 +72,9 @@ test("ideas can be scheduled by drop and unscheduled back to ideas", () => {
   const walk = trip.activities.find(a => a.title === "Neighborhood walk");
   const unscheduled = applyTripChange(trip, { action: "move", activityId: walk.id, date: null });
   assert.equal(unscheduled.activities.find(a => a.id === walk.id).date, null);
-  assert.ok(!publicTrip(unscheduled).activities.some(a => a.id === walk.id), "Unscheduled ideas leave the guest view.");
+  assert.ok(!publicTrip(unscheduled).activities.some(a => a.id === walk.id), "An example idea is not sent to guests.");
+  const entered = { ...unscheduled, activities: unscheduled.activities.map(a => a.id === walk.id ? { ...a, sourceKind: "entered" } : a) };
+  assert.equal(publicTrip(entered).activities.find(a => a.id === walk.id).date, null, "An entered idea stays in the guest view, without a day.");
   const first = dayIds(unscheduled, "2026-11-28")[0];
   const scheduled = applyTripChange(unscheduled, { action: "move", activityId: walk.id, date: "2026-11-28", beforeId: first });
   assert.equal(dayIds(scheduled, "2026-11-28")[0], walk.id);

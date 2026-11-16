@@ -106,11 +106,11 @@ test('a trip saved before links existed is not reported as changed', () => {
     assert.ok(upgradeLegacy(createSampleTrip()).activities.every(a => Array.isArray(a.links)));
 });
 
-test('the board opens stays and journeys for editing; the guest view has neither', () => {
+test('the board opens stay details and journeys; the guest view has neither', () => {
     let trip = base();
     trip = applyTripChange(trip, { action: 'leg-add', leg: { id: 'drive', title: 'Drive <b>north</b>', date: '2026-11-27', mode: 'Car', from: 'home', to: 'trailhead', participants: ['cedar'] } });
     const html = board(trip, {});
-    assert.match(html, /<button type="button" class="lodging" data-stay="shared-base"/);
+    assert.match(html, /<button type="button" class="lodging" data-stay-view="shared-base"/);
     assert.match(html, /<button type="button" class="journeys" data-leg="drive"/);
     assert.ok(html.includes('Our shared base · location to confirm → Synthetic trailhead'), 'a journey shows where it goes');
     assert.ok(!html.includes('<b>north</b>'), 'titles are escaped');

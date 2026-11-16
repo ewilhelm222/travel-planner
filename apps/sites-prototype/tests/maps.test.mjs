@@ -153,7 +153,7 @@ test('a trip saved before places had locations is unchanged by the new fields', 
 test('the planner draws both maps from the current filter and day', async () => {
     const script = await source('public/planner.js');
     assert.match(script, /tripMap\(t, \{ filter: state\.filter, compact: phone\(\) \}\) : dayMap\(t, \{ filter: state\.filter, day: state\.day, compact: phone\(\) \}\)/);
-    assert.equal(script.match(/\$\{mapsSection\(t\)\}<section class="ideas"/g).length, 2, 'below the schedule on desktop and phone');
+    assert.equal(script.match(/\$\{ideasSection\(t\)\}\$\{mapsSection\(t\)\}/g).length, 2, 'below the schedule and the ideas, on desktop and phone');
     assert.match(script, /No reviewed map link yet/);
     assert.match(script, /el\.form\.elements\.navReviewed\.checked = false/);
     assert.ok((await source('public/sw.js')).includes('"/maps.mjs"'), 'maps work from the offline shell');

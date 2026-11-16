@@ -1,5 +1,6 @@
 import { usefulFilterChoices, participantRecord } from "./participants.mjs";
-import { escape, preferredDay, board, dayChooser } from './board.mjs';
+import { escape, preferredDay, board, card, dayChooser, dateLabel } from './board.mjs';
+import { matchesSelection } from './participants.mjs';
 import { buildOfflineHtml } from './offline-export.mjs';
 const app = document.querySelector('#guest-app'), token = location.hash.slice(1);
 let trip, revision, updatedAt, day, filter = 'all';
@@ -15,7 +16,9 @@ function render() {
     const banner = '<p class="guest-banner" role="note"><strong>You are viewing a read-only copy.</strong> To add or change plans, ask the organizer to add you, then <a href="/" target="_top" rel="noreferrer">sign in to the planner</a>.</p>';
     const guide = 'Browse the options. Optional activities are choices, not sign-ups. No changes can be made from this view.';
     const meta = `Revision ${revision} · Last updated ${escape(new Date(updatedAt).toLocaleString())}. Refresh to check for changes.`;
-    const schedule = `${dayChooser(trip, day)}<div class="date-board" id="itinerary" tabindex="-1">${board(trip, { filter, day, guest: true })}</div>`;
+    const ideaCards = trip.activities.filter(a => !a.date && matchesSelection(a, filter, trip));
+    const ideas = ideaCards.length ? `<section class="ideas" id="ideas"><h2>Ideas · not scheduled yet</h2><div class="idea-cards">${ideaCards.map(a => card(a, trip, true)).join('')}</div></section>` : '';
+    const schedule = `${dayChooser(trip, day, ideaCards.length ? { ideas: ideaCards.length } : {})}<div class="date-board" id="itinerary" tabindex="-1">${board(trip, { filter, day, guest: true })}</div>${ideas}`;
     const dialog = `<dialog id="detail" aria-labelledby="detail-title"><button class="icon-button" id="close" aria-label="Close details">×</button><h2 id="detail-title"></h2><div id="detail-body"></div></dialog>`;
     // Phone: the schedule comes first, matching the signed-in planner; reading-copy and refresh controls follow it.
     app.innerHTML = layout
@@ -68,7 +71,7 @@ document.addEventListener('click', async (e) => { if (e.target.closest('.skip-li
     document.querySelector('#detail').close(); if (b.dataset.detail) {
     const a = trip.activities.find(a => a.id === b.dataset.detail);
     document.querySelector('#detail-title').textContent = a.title;
-    document.querySelector('#detail-body').innerHTML = `<p>${escape(a.date)} · ${escape(a.time || 'Time to confirm')}</p>${[a.highlight && 'Whole-group activity', a.optional && 'Optional', a.fixed && 'Fixed booking'].some(Boolean) ? `<p>${[a.highlight && 'Whole-group activity', a.optional && 'Optional', a.fixed && 'Fixed booking'].filter(Boolean).join(' · ')}</p>` : ''}<p class="guest-notes">${escape(a.notes)}</p><p>${escape(a.address || 'Meeting point to confirm')}</p><p>${a.participants.map(id => escape(participantRecord(trip,id)?.name||'Some travelers')).join(' · ')}</p>`;
+    document.querySelector('#detail-body').innerHTML = `<p>${a.date ? `${escape(dateLabel(a.date, { weekday: 'long', month: 'short', day: 'numeric' }))} · ${escape(a.time || 'Time to confirm')}` : `An idea · no day yet${a.time ? ` · ${escape(a.time)}` : ''}`}</p>${[a.highlight && 'Whole-group activity', a.optional && 'Optional', a.fixed && 'Fixed booking'].some(Boolean) ? `<p>${[a.highlight && 'Whole-group activity', a.optional && 'Optional', a.fixed && 'Fixed booking'].filter(Boolean).join(' · ')}</p>` : ''}<p class="guest-notes">${escape(a.notes)}</p><p>${escape(a.address || 'Meeting point to confirm')}</p><p>${a.participants.map(id => escape(participantRecord(trip,id)?.name||'Some travelers')).join(' · ')}</p>`;
     document.querySelector('#detail').showModal();
 } if (b.id === 'download') {
     const html = buildOfflineHtml({ trip, revision }, { downloadedAt: new Date().toISOString() });

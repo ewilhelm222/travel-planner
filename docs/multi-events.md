@@ -72,11 +72,14 @@ Responses use no-store, noindex, and no-referrer policies. The static guest page
 does not request identity or send cookies for its data read.
 
 The server projection explicitly permits the title, subtitle, range/time zone,
-group display names, place display names, and dated activity details. Activity
+group display names, place display names, and activity details (dated, and
+from November 16 also unscheduled ideas). Activity
 notes come only from **guest descriptions** and locations only from **guest
 meeting points**. Private notes/addresses, lodging records, journey notes,
-unscheduled ideas, examples (items marked "not a real plan"), source fields,
-owner identity, editor lists, and token hashes are excluded. A guest token never authorizes a write or a private API read.
+examples (items marked "not a real plan"), source fields, owner identity,
+editor lists, and token hashes are excluded. Unscheduled ideas are included
+from the "within reach" change of November 16 ([within-reach.md](within-reach.md),
+not yet deployed), with the same limited fields as dated activities. A guest token never authorizes a write or a private API read.
 
 Anyone receiving a guest link can forward it. Revocation cannot recall a file or
 copy someone already downloaded. This is explained beside the sharing controls.
