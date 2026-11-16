@@ -49,6 +49,12 @@ map-app search link was added beside addresses on the map (a rule in
 [maps.md](maps.md) allows only reviewed links there), and the phone "Ideas"
 stop jumps to the ideas list rather than replacing the day.
 
+Steps PR 7 to PR 10 were built the same day, after PR 1 to PR 6 were deployed:
+[quick-add.md](quick-add.md), [examples.md](examples.md),
+[timing.md](timing.md) and [all-days.md](all-days.md). The timing step differs
+from the plan in one detail: `fixed` remains the field that protects a plan and
+the new `timing` field only tells "that day" from "any day".
+
 ## The short version
 
 1. **Most of the feedback applies to the app as it is today.** The repository

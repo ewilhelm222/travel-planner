@@ -1,6 +1,6 @@
 (async () => {
     'use strict';
-    const { escape, dateLabel, days, preferredDay, board, dayChooser, isExample, ideaCards, timingOf, TIMINGS, TIMING_LABELS, PHONE_QUERY } = await import('/board.mjs');
+    const { escape, dateLabel, days, preferredDay, board, dayChooser, isExample, ideaCards, timingOf, TIMINGS, TIMING_LABELS, PHONE_QUERY, dayInView, pressDay } = await import('/board.mjs');
     const { usefulFilterChoices, matchesSelection, defaultParticipants, includesPerson, peopleOf, isWholeTripGroup, participantRecord, participantReferences, referenceSummary } = await import('/participants.mjs');
     const { fieldChanges } = await import('/history.mjs');
     const { baseFor, recordKey } = await import('/revisions.mjs');
@@ -56,7 +56,7 @@
     }
     function persist() {
         try {
-            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, hideExamples: state.hideExamples, ideasClosed: state.ideasClosed, moreOpen: state.moreOpen }));
+            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, hideExamples: state.hideExamples, ideasClosed: state.ideasClosed, moreOpen: state.moreOpen, allDays: state.allDays }));
         }
         catch { }
     }
@@ -64,7 +64,7 @@
         state.downloadedAt = new Date().toISOString();
         state.copies[state.selected] = { snapshot: state.snapshot, downloadedAt: state.downloadedAt, isOwner: state.isOwner };
         try {
-            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, hideExamples: state.hideExamples, ideasClosed: state.ideasClosed, moreOpen: state.moreOpen }));
+            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, hideExamples: state.hideExamples, ideasClosed: state.ideasClosed, moreOpen: state.moreOpen, allDays: state.allDays }));
         }
         catch {
             state.message = 'This browser could not keep a reading copy. Save an offline HTML file.';
@@ -106,7 +106,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v31');
+            const cache = await caches.open('waypoint-shell-v32');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -219,7 +219,7 @@
         const off = !writable() ? 'disabled' : '';
         const roleNote = t && !state.isOwner ? '<p class="role-note">You are an editor of this trip. You can add, change, move and delete activities (including what guests see about them), and update travelers, places, stays and journeys. The organizer manages the trip’s name and dates, the guest link, and who can edit.</p>' : '';
         // Phone: the schedule comes first; everything for editing and managing follows it.
-        const phonePage = () => `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar slim" id="top"><a class="brand" href="/">Waypoint<span class="brand-dot">↗</span></a>${state.needsSignIn ? '<a class="sign-in-link" href="/signin-with-chatgpt?return_to=%2F" target="_top">Sign in to update</a>' : !state.user ? '<a class="sign-in-link" href="/signin-with-chatgpt?return_to=%2F" target="_top">Sign in</a>' : ''}<a class="jump-link" href="#manage">Plan &amp; manage ↓</a></header><main class="compact schedule-first">
+        const phonePage = () => `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar slim" id="top"><a class="brand" href="/">Waypoint<span class="brand-dot">↗</span></a>${state.needsSignIn ? '<a class="sign-in-link" href="/signin-with-chatgpt?return_to=%2F" target="_top">Sign in to update</a>' : !state.user ? '<a class="sign-in-link" href="/signin-with-chatgpt?return_to=%2F" target="_top">Sign in</a>' : ''}<a class="jump-link" href="#manage">Plan &amp; manage ↓</a></header><main class="compact schedule-first${state.allDays ? ' all-days' : ''}">
 <h1 class="sr-only">${escape(t?.title || 'Waypoint trips and events')}</h1><div id="state-flag" role="status"></div><p class="edit-state" id="edit-state" role="status"></p>
 <section class="trip-bar" aria-label="Trip and traveler selection"><label>Trip<select id="trip-select" ${!state.library.length ? 'disabled' : ''}>${state.library.map(x => `<option value="${escape(x.id)}" ${x.id === state.selected ? 'selected' : ''}>${escape(x.title)}</option>`).join('')}</select></label>${filterSelect ? `<label>Show plans for${filterSelect}</label>` : ''}</section>
 <div id="message" role="alert"></div>
@@ -291,7 +291,8 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
     }
     const ideaList = t => t.activities.filter(a => !a.date && matchesSelection(a, state.filter, t) && !(state.hideExamples && isExample(a)));
     function ideas(t) { return ideaCards(ideaList(t), t) || '<p>No unscheduled ideas yet.</p>'; }
-    const rail = (t, day) => dayChooser(t, day, { ideas: ideaList(t).length });
+    const rail = (t, day) => dayChooser(t, day, { ideas: ideaList(t).length, allDays: !!state.allDays });
+    const allDaysView = () => phone() && !!state.allDays;
     // Beside the days on wide screens (and it can be folded to a narrow tab there); below the selected day on a phone.
     const ideasToggleLabel = t => state.ideasClosed ? `Ideas · ${ideaList(t).length}` : 'Hide';
     const ideasSection = t => `<section class="ideas" id="ideas"><button type="button" class="ideas-toggle" id="ideas-toggle" aria-expanded="${!state.ideasClosed}" aria-controls="idea-cards">${ideasToggleLabel(t)}</button><h2>Ideas <span>· not scheduled yet</span></h2><div class="idea-cards" id="idea-cards">${ideas(t)}</div><button type="button" class="add-here" data-add-date="">+ Add an idea</button></section>`;
@@ -310,9 +311,34 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
         if ($('.day-rail')) { $('.day-rail').outerHTML = rail(state.snapshot.trip, date); revealDay(); }
         refreshMaps();
         const column = it?.querySelector(`[data-date="${date}"]`);
+        if (column && allDaysView())
+            column.scrollIntoView({ block: 'start' });
         if (column && !phone())
             it.scrollTo({ left: column.offsetLeft - it.offsetLeft, behavior: 'smooth' });
     }
+    // All-days phone view: every day is on the page, so choosing a day scrolls to it, and scrolling keeps the
+    // rail, the map and "Add activity" pointed at the day on screen.
+    function jumpToDay(date) {
+        state.day = date;
+        persist();
+        pressDay(document, date);
+        refreshMaps();
+        document.querySelector(`#itinerary .agenda-day[data-date="${date}"]`)?.scrollIntoView({ block: 'start' });
+    }
+    let spying = 0;
+    window.addEventListener('scroll', () => {
+        if (spying || !allDaysView() || !state.snapshot || document.body.classList.contains('is-dragging'))
+            return;
+        spying = requestAnimationFrame(() => {
+            spying = 0;
+            const date = dayInView(document);
+            if (date && date !== state.day) {
+                state.day = date;
+                pressDay(document, date);
+                refreshMaps();
+            }
+        });
+    }, { passive: true });
     function refreshBoard(movedId, { focus = false, refused = false } = {}) {
         const t = state.snapshot.trip, it = $('#itinerary');
         if (!it)
@@ -959,11 +985,21 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
                 render();
                 $('#story-toggle')?.focus();
             }
-            if (b.dataset.day) {
+            if (b.dataset.day && allDaysView())
+                jumpToDay(b.dataset.day);
+            else if (b.dataset.day) {
                 state.day = b.dataset.day;
                 persist();
                 render();
                 document.querySelector(`.medallion[data-day="${state.day}"]`)?.focus();
+            }
+            if (b.dataset.dayMode) {
+                state.allDays = !state.allDays;
+                persist();
+                render();
+                if (state.allDays)
+                    jumpToDay(state.day);
+                document.querySelector('.all-stop')?.focus();
             }
             if (b.id === 'new-trip') {
                 $('#create-form').reset();
@@ -1275,7 +1311,9 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
                 render();
                 $('#hide-examples')?.focus();
             }
-            if (el.id === 'day') {
+            if (el.id === 'day' && allDaysView())
+                jumpToDay(el.value);
+            else if (el.id === 'day') {
                 state.day = el.value;
                 persist();
                 render();

@@ -50,7 +50,7 @@ export function board(trip, { filter = 'all', day, guest = false, hideExamples =
         const places = [...new Set([...stays.map(s => s.placeId || s.id), ...leaving.map(s => s.placeId || s.id), ...activities.map(a => a.placeId || a.stayId || null)])]; return `<section class="agenda-day" data-date="${date}" data-selected="${date === day}"><header class="agenda-date"><span>${dateLabel(date, { weekday: 'long' })}</span><h2>${`<span class="date-number">${dateLabel(date, { day: "numeric" })}</span><span class="date-month">${dateLabel(date, { month: "short" })}</span>`}</h2></header>${places.map(place => `<section class="agenda-city"><h3>${escape(placeName(place))}</h3>${guest ? '' : stays.filter(s => (s.placeId || s.id) === place).map(s => stayLine(s, false)).join('') + leaving.filter(s => (s.placeId || s.id) === place).map(s => stayLine(s, true)).join('')}<div class="cards">${activities.filter(a => (a.placeId || a.stayId || null) === place).map(a => card(a, trip, guest)).join('') || (activities.length ? '<p class="empty-lane">Open time here.</p>' : '')}</div></section>`).join('')}${activities.length ? '' : '<p class="empty-day">Room to wander.<br><span>No dated activities for this selection.</span></p>'}${guest ? '' : `<button type="button" class="add-here" data-add-date="${date}" data-add-place="${escape((stays[0] || leaving[0])?.placeId || '')}">+ Add<span class="add-here-day"> to ${dateLabel(date, { weekday: 'long' })} ${dateLabel(date, { day: 'numeric' })}</span></button>`}${guest ? '' : trip.legs.filter(l => l.date === date && selected(l)).map(l => `<button type="button" class="journeys" data-leg="${escape(l.id)}" aria-label="Journey details: ${escape(l.title)}"><strong>${escape(l.mode || 'Journey')} · ${escape(l.title)}</strong>${l.from || l.to ? `<span class="journey-line">${escape(l.from ? placeName(l.from) : 'Start to confirm')} → ${escape(l.to ? placeName(l.to) : 'End to confirm')}</span>` : ''}<span class="journey-line">${escape(l.time || 'Departure time to confirm')}${l.arrivalDate && l.arrivalDate !== l.date ? ` → ${escape(l.arrivalDate)} ${escape(l.arrivalTime)}` : l.arrivalTime ? ` → ${escape(l.arrivalTime)}` : ''}</span>${l.notes ? `<span class="journey-line">${escape(l.notes)}</span>` : ''}<span class="journey-line">${escape(l.participants.map(id => participantRecord(trip, id)?.name || id).join(" · "))}</span><span class="edit-hint" aria-hidden="true">Edit</span></button>`).join('')}</section>`; }).join('');
 }
 // `ideas` (a count) adds a first stop that jumps to the unscheduled ideas; phones show it, wider screens have the ideas beside the days.
-export function dayChooser(trip, day, { ideas } = {}) { const marked = new Set(trip.activities.filter(a => a.highlight).map(a => a.date)); return `<nav class="day-rail" aria-label="Choose a day"><label class="day-chooser">Choose a day<select id="day">${days(trip).map(d => `<option value="${d}" ${d === day ? 'selected' : ''}>${dateLabel(d, { weekday: 'short', month: 'short', day: 'numeric' })}</option>`).join('')}</select></label><div class="medallions">${ideas === undefined ? '' : `<a class="medallion ideas-stop" href="#ideas" aria-label="Ideas, not scheduled yet: ${ideas}"><span class="medallion-day">Ideas</span><span class="medallion-num">${ideas}</span></a>`}${days(trip).map(d => `<button type="button" class="medallion" data-day="${d}" aria-pressed="${d === day}" aria-label="${dateLabel(d, { weekday: 'long', month: 'long', day: 'numeric' })}"><span class="medallion-day">${dateLabel(d, { weekday: 'short' })}</span><span class="medallion-num">${dateLabel(d, { day: 'numeric' })}</span>${marked.has(d) ? '<span class="medallion-mark" aria-hidden="true">●</span>' : ''}</button>`).join('')}</div></nav>`; }
+export function dayChooser(trip, day, { ideas, allDays } = {}) { const marked = new Set(trip.activities.filter(a => a.highlight).map(a => a.date)); return `<nav class="day-rail" aria-label="Choose a day"><label class="day-chooser">Choose a day<select id="day">${days(trip).map(d => `<option value="${d}" ${d === day ? 'selected' : ''}>${dateLabel(d, { weekday: 'short', month: 'short', day: 'numeric' })}</option>`).join('')}</select></label><div class="medallions">${ideas === undefined ? '' : `<a class="medallion ideas-stop" href="#ideas" aria-label="Ideas, not scheduled yet: ${ideas}"><span class="medallion-day">Ideas</span><span class="medallion-num">${ideas}</span></a>`}${allDays === undefined ? '' : `<button type="button" class="medallion all-stop" data-day-mode="all" aria-pressed="${allDays === true}" aria-label="Show all days in one scroll"><span class="medallion-day">All</span><span class="medallion-num">days</span></button>`}${days(trip).map(d => `<button type="button" class="medallion" data-day="${d}" aria-pressed="${d === day}" aria-label="${dateLabel(d, { weekday: 'long', month: 'long', day: 'numeric' })}"><span class="medallion-day">${dateLabel(d, { weekday: 'short' })}</span><span class="medallion-num">${dateLabel(d, { day: 'numeric' })}</span>${marked.has(d) ? '<span class="medallion-mark" aria-hidden="true">●</span>' : ''}</button>`).join('')}</div></nav>`; }
 // Ideas as cards, under a heading per place when they belong to more than one place.
 export function ideaCards(list, trip, guest = false) {
     const keys = [...new Set(list.map(a => a.placeId || ''))];
@@ -58,4 +58,26 @@ export function ideaCards(list, trip, guest = false) {
         return list.map(a => card(a, trip, guest)).join('');
     const order = [...(trip.places || []).map(p => p.id), ''].filter(k => keys.includes(k));
     return order.map(k => `<h3 class="idea-place">${escape(k ? trip.places.find(p => p.id === k)?.name || 'Location to confirm' : 'Anywhere')}</h3>${list.filter(a => (a.placeId || '') === k).map(a => card(a, trip, guest)).join('')}`).join('');
+}
+// All-days phone view: the day whose section has reached the top of the screen, just under the pinned day rail.
+export function dayInView(document) {
+    const line = (document.querySelector('.day-rail')?.getBoundingClientRect().bottom || 0) + 24;
+    let found = null;
+    for (const section of document.querySelectorAll('#itinerary .agenda-day[data-date]')) {
+        if (section.getBoundingClientRect().top > line)
+            break;
+        found = section.dataset.date;
+    }
+    return found;
+}
+// Mark a day as current on the rail and in the labelled select without redrawing the page.
+export function pressDay(document, date) {
+    for (const m of document.querySelectorAll('.medallion[data-day]'))
+        m.setAttribute('aria-pressed', String(m.dataset.day === date));
+    const select = document.querySelector('#day');
+    if (select)
+        select.value = date;
+    const rail = document.querySelector('.medallions'), chosen = rail?.querySelector('.medallion[data-day][aria-pressed=true]');
+    if (chosen)
+        rail.scrollLeft = chosen.offsetLeft - rail.offsetLeft - (rail.clientWidth - chosen.offsetWidth) / 2;
 }

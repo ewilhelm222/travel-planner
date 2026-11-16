@@ -724,3 +724,16 @@ button.lodging { padding-left: 8px; }
 /* Timing levels (feedback plan PR 9). */
 .anyday { font: 12px var(--font-mono); color: var(--muted); border: 1px dashed var(--muted); border-radius: var(--radius-pill); padding: 1px 8px; }
 #timing-hint:empty { display: none; }
+
+/* All days in one scroll on a phone (feedback plan PR 10). The rail stays pinned; a day stop scrolls to that day. */
+.all-stop { display: none; border-style: dashed; border-color: var(--orchid); }
+.all-stop .medallion-num { font: 700 11px/1 var(--font-mono); letter-spacing: 0; text-transform: uppercase; }
+.all-stop[aria-pressed=true] { border-style: solid; }
+@media (max-width: 559px), (max-width: 760px) and (orientation: portrait) {
+  .schedule-first .all-stop { display: grid; }
+  .schedule-first .all-stop .medallion-num { font-size: 10px; letter-spacing: 0; }
+  .schedule-first.all-days .agenda-day[data-selected=false] { display: block; }
+  .schedule-first.all-days .agenda-day { scroll-margin-top: 84px; padding-bottom: 20px; margin-bottom: 12px; border-bottom: 1px solid var(--dusk); }
+  .schedule-first.all-days .agenda-day:last-child { border-bottom: 0; }
+}
+@media print { .all-stop { display: none !important; } }
