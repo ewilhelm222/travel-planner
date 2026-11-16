@@ -90,7 +90,16 @@ document.addEventListener('click', async (e) => { if (e.target.closest('.skip-li
         jumpToDay();
     document.querySelector('.all-stop')?.focus();
 } if (b.id === 'refresh')
-    await load(); if (b.id === 'close')
+    await load(); if (b.dataset.stayView) {
+    // A stay the organizer chose to share: place, dates, who, lodging line, check-out time and the text for the group.
+    const s = trip.stays.find(x => x.id === b.dataset.stayView), place = trip.places.find(p => p.id === s?.placeId);
+    if (s) {
+        const when = d => dateLabel(d, { weekday: 'long', month: 'short', day: 'numeric' });
+        document.querySelector('#detail-title').textContent = place?.name || 'Stay';
+        document.querySelector('#detail-body').innerHTML = `<p>${escape(when(s.start))} → ${escape(when(s.end))}${s.checkOutTime ? ` · check-out ${escape(s.checkOutTime)}` : ''}</p><p>${escape(s.lodging || s.name || '')}</p><p class="guest-notes">${escape(s.groupInfo || '')}</p><p>${s.participants.map(id => escape(participantRecord(trip, id)?.name || 'Some travelers')).join(' · ')}</p>`;
+        document.querySelector('#detail').showModal();
+    }
+} if (b.id === 'close')
     document.querySelector('#detail').close(); if (b.dataset.detail) {
     const a = trip.activities.find(a => a.id === b.dataset.detail);
     document.querySelector('#detail-title').textContent = a.title;

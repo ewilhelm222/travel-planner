@@ -50,7 +50,7 @@ test('stays can be added, edited and deleted with place, dates, lodging and part
     const trip = base();
     const stay = { id: 'cabin', name: 'Cabin night', placeId: 'trailhead', start: '2026-11-27', end: '2026-11-28', lodging: 'Synthetic cabin', note: '', participants: ['cedar', 'maple'] };
     const added = applyTripChange(trip, { action: 'stay-add', stay });
-    assert.deepEqual(added.stays.find(s => s.id === 'cabin'), stay);
+    assert.deepEqual(added.stays.find(s => s.id === 'cabin'), { ...stay, groupInfo: '', checkOutTime: '', showOnGuest: false });
     const edited = applyTripChange(added, { action: 'stay-edit', stayId: 'cabin', patch: { end: '2026-11-29', participants: ['cedar'], lodging: 'Bigger cabin' } });
     assert.deepEqual([edited.stays[1].end, edited.stays[1].participants, edited.stays[1].lodging], ['2026-11-29', ['cedar'], 'Bigger cabin']);
     assert.deepEqual(edited.activities, trip.activities, 'editing a stay never moves activities');

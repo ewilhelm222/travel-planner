@@ -62,7 +62,7 @@ export function normalizeTrip(input, tripId) {
     const stays = unique(list(input.stays || [], 100).map(s => {
         if (!validDate(s.start) || !validDate(s.end) || s.end <= s.start)
             throw new Error("A stay needs valid check-in and check-out dates.");
-        return { id: s.id, name: text(s.name, 160), placeId: place(s.placeId), start: s.start, end: s.end, lodging: text(s.lodging, 500), note: text(s.note), participants: participants(s.participants) };
+        return { id: s.id, name: text(s.name, 160), placeId: place(s.placeId), start: s.start, end: s.end, lodging: text(s.lodging, 500), note: text(s.note), groupInfo: text(s.groupInfo), checkOutTime: text(s.checkOutTime, 80), showOnGuest: s.showOnGuest === true, participants: participants(s.participants) };
     }));
     const activities = unique(list(input.activities || [], 500).map(a => {
         if (!text(a.title, 160))
@@ -224,7 +224,7 @@ export function applyTripChange(trip, change) {
     return normalizeTrip(next, trip.id);
 }
 const PLACE_FIELDS = ["name", "localName", "address", "localAddress", "lat", "lng", "coordSystem", "coordSource", "amapUrl", "appleMapsUrl", "navReviewed"];
-const STAY_FIELDS = ["name", "placeId", "start", "end", "lodging", "note", "participants"];
+const STAY_FIELDS = ["name", "placeId", "start", "end", "lodging", "note", "groupInfo", "checkOutTime", "showOnGuest", "participants"];
 const LEG_FIELDS = ["title", "date", "arrivalDate", "time", "arrivalTime", "mode", "participants", "notes", "from", "to"];
 const structure = (key, noun, fields) => Object.fromEntries(["add", "edit", "delete"].map(op => [`${noun}-${op}`, { key, noun, idField: `${noun}Id`, fields, op }]));
 const STRUCTURE = { ...structure("places", "place", PLACE_FIELDS), ...structure("stays", "stay", STAY_FIELDS), ...structure("legs", "leg", LEG_FIELDS) };
@@ -279,14 +279,26 @@ export function editorRestriction(trip, change) {
         if ((change.person?.showOnGuest === true) !== (existing?.showOnGuest === true))
             return "Only the organizer chooses whether a traveler's name shows on the guest link.";
     }
+    // A stay reaches the guest link only by the organizer's choice; editors may still write its text.
+    if (change?.action === "stay-add" && change.stay?.showOnGuest === true)
+        return STAY_GUEST_RULE;
+    if (change?.action === "stay-edit" && change.patch && "showOnGuest" in change.patch) {
+        const existing = (trip.stays || []).find(s => s.id === change.stayId);
+        if ((change.patch.showOnGuest === true) !== (existing?.showOnGuest === true))
+            return STAY_GUEST_RULE;
+    }
     return null;
 }
+export const STAY_GUEST_RULE = "Only the organizer chooses whether a stay is shown on the guest link.";
 // The same rule for a whole before/after pair, used where there is no single request to inspect (undo).
 export function editorDiffRestriction(before, after) {
     const shown = trip => JSON.stringify((trip.people || []).filter(p => p.showOnGuest === true).map(p => p.id).sort());
     const details = trip => JSON.stringify(["title", "subtitle", "start", "end", "timezone", "kind"].map(k => trip[k] ?? null));
     if (details(before) !== details(after))
         return EDITOR_TRIP_DETAILS;
+    const stays = trip => JSON.stringify((trip.stays || []).filter(s => s.showOnGuest === true).map(s => s.id).sort());
+    if (stays(before) !== stays(after))
+        return STAY_GUEST_RULE;
     return shown(before) === shown(after) ? null : "Only the organizer chooses whether a traveler's name shows on the guest link.";
 }
 export function publicTrip(trip) {
@@ -316,7 +328,10 @@ export function publicTrip(trip) {
     // Unscheduled ideas are shared too (decided November 16, 2026), with the same limited fields.
     const activities = trip.activities.filter(a => a.sourceKind !== "synthetic").map(a => ({ id: a.id, title: a.title, date: a.date, placeId: a.placeId, time: a.time, order: a.order, fixed: timingOf(a) === "set", timing: timingOf(a), optional: a.optional, highlight: a.highlight, participants: [...new Set(a.participants.map(guestId))], notes: a.guestNotes, address: a.guestLocation, sourceKind: a.sourceKind }));
     return { schemaVersion: 2, id: 'guest-view', title: trip.title, subtitle: trip.subtitle, kind: trip.kind, start: trip.start, end: trip.end, timezone: trip.timezone,
-        families, people, places: trip.places.map(p => ({ id: p.id, name: p.name, localName: p.localName })), stays: [], legs: [], activities };
+        families, people, places: trip.places.map(p => ({ id: p.id, name: p.name, localName: p.localName })),
+        // A stay is shared only when the organizer ticked it, and then without its private note.
+        stays: (trip.stays || []).filter(s => s.showOnGuest === true).map(s => ({ id: s.id, name: s.name, placeId: s.placeId, start: s.start, end: s.end, lodging: s.lodging, groupInfo: s.groupInfo, checkOutTime: s.checkOutTime, showOnGuest: true, participants: [...new Set((s.participants || []).map(guestId))] })),
+        legs: [], activities };
 }
 export async function tokenHash(token) { return [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)))].map(b => b.toString(16).padStart(2, "0")).join(""); }
 export function newShareToken() { const bytes = crypto.getRandomValues(new Uint8Array(32)); return btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", ""); }
