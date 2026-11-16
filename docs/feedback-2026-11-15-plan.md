@@ -25,18 +25,17 @@ section wins.
 | Dark theme (D1) | **Forms only.** | Dialogs that are mainly a form go dark: activity, traveler and group, place, stay, journey, stay move, trip details, new trip, import, and add editor. Dialogs that are mainly for reading stay cream: History, guest link and its preview, archived trips, the guest activity detail and the new stay reading view. |
 | Invented items on the guest link (X3) | **Leave them off.** | In PR 2. |
 | Door codes and Wi-Fi | **In the private stay note.** | No new field needed for this trip. They are therefore also in the private offline file, the JSON export, History and backups; see section 6. |
-| Stay information on the guest link after the trip (S3) | **Not needed; leave stay information as it is.** | S3 is dropped and the guest link keeps carrying no stay information. S2 (a separate "for the group" field) is no longer required and moves to "only if asked for again". *This is how the answer was read; if it meant something else, say so.* |
+| Stay information on the guest link (S3) | **Allowed.** (An earlier reading of the first answer as "not needed" was corrected the same day.) | S2 and S3 stay in the plan as PR 11, after the trip. Because door codes live in the private stay note, the shared text is still a separate field with its own per-stay switch, so ticking it can never publish the note. |
 | Ideas on the guest link (C1) | **Yes, guests should see ideas.** | A change to the documented guest boundary. Added to PR 4; see "Ideas on the guest link" in section 6. |
 | Place nesting (P2) | **One level is enough.** | P2 as proposed. |
 | Ideas from people without accounts (A4) | **Not wanted.** | Removed from P2. The guest link stays read-only. |
+| "That day" items and a stay move (T2) | **Carried along with the stay.** | As proposed: they move like flexible items and are listed in the preview; only "Set time" items are protected. |
+| Structure versus freedom | **The proposed balance is right.** | No change. |
+| Shared sign-in | **Three family members share one sign-in address; the organizer uses another. This is intended.** | "Signed in as" and "Editing as" show the address rather than a person's name. History will show one name for those three people's edits; accepted. |
 
-Also learned: all three testers signed in with **one shared address**. That
-explains the "which account" confusion, and it means History shows one name for
-everyone's edits and "Editing as …" will too. Whether that address was on the
-editor list at the moment of the first sign-in is still not known, so A1 remains
-the likely cause of the "no itinerary" report rather than a confirmed one. If
-family members will keep sharing one sign-in, say so: the "signed in as"
-wording in A1 and A2 should then name the address, not a person.
+The shared address was **not** on the editor list at the first sign-in. That
+confirms A1 as the cause of the "no itinerary" report: the account was signed
+in but not yet on any trip, and the page gave no hint of that.
 
 ## The short version
 
@@ -617,13 +616,13 @@ release.
 | PR 8 | Confirm or remove examples (X2) | S to M | PR 2 |
 | PR 9 | Three timing levels (T2), first stored-data change | M | PR 5, PR 7 |
 | PR 10 | All-days scroll on phones (L3) | S to M | PR 6 |
+| PR 11 | Stay information for the group, with a per-stay guest-link switch (S2, S3) | M | PR 4 (the stay reading view) |
 
 ### P2: later, before or alongside China
 
 Repeats (T3); two-level places (P2); insert between cards (C3); swipe (L2), if
 still wanted after L3; people in several groups (W5); richer maps (M2);
-pictures on cards. Stay information for the group (S2) only if asked for
-again; stay information on the guest link (S3) is dropped.
+pictures on cards.
 
 ### Where this differs from the source document's priorities
 
@@ -733,13 +732,5 @@ Further points:
 
 ## Questions still open
 
-The first set of questions was answered on November 16; see
-[Decisions](#decisions-recorded-november-16-2026). What remains:
-
-1. Was the shared sign-in address on the editor list before the first sign-in?
-   (A1)
-2. Will family members keep sharing one sign-in address? (A1, A2, History)
-3. Was "leave the information" correctly read as "no stay information on the
-   guest link"? (S3)
-4. Should a "That day" item be carried along by a stay move? (T2)
-5. Is the balance in "Structure versus freedom" the intended one?
+None. Both sets of questions were answered on November 16; see
+[Decisions](#decisions-recorded-november-16-2026).
