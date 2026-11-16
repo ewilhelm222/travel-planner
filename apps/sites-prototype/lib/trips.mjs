@@ -1,5 +1,8 @@
-import { isWholeTripGroup } from "../public/participants.mjs";
+import { isWholeTripGroup, participantReferences, referenceSummary } from "../public/participants.mjs";
 import { moveActivity } from "../public/move.mjs";
+import { normalizeLinks, placeReferences, placeReferenceSummary } from "../public/structure.mjs";
+import { applyStayMove } from "../public/stay-move.mjs";
+import { normalizePlaceGeo } from "../public/maps.mjs";
 const text = (v, max = 4000) => typeof v === "string" ? v.trim().slice(0, max) : "";
 export const validDate = v => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
 const id = v => typeof v === "string" && /^[a-zA-Z0-9_-]{1,80}$/.test(v);
@@ -48,7 +51,7 @@ export function normalizeTrip(input, tripId) {
             throw new Error("Choose participants from this trip.");
         return p;
     };
-    const places = unique(list(input.places || [], 100).map(p => ({ id: p.id, name: text(p.name, 160), localName: text(p.localName, 160), address: text(p.address, 500), localAddress: text(p.localAddress, 500) })));
+    const places = unique(list(input.places || [], 100).map(p => ({ id: p.id, name: text(p.name, 160), localName: text(p.localName, 160), address: text(p.address, 500), localAddress: text(p.localAddress, 500), ...normalizePlaceGeo(p) })));
     const placeIds = new Set(places.map(p => p.id));
     const place = value => {
         if (value && !placeIds.has(value))
@@ -65,7 +68,7 @@ export function normalizeTrip(input, tripId) {
             throw new Error("Every activity needs a title.");
         if (a.date !== null && (!validDate(a.date) || a.date < input.start || a.date > input.end))
             throw new Error("Choose an activity day within this trip, or leave it unscheduled.");
-        return { id: a.id, title: text(a.title, 160), date: a.date, placeId: place(a.placeId), time: text(a.time, 80), order: Number.isSafeInteger(a.order) ? Math.max(0, Math.min(1000, a.order)) : 0, fixed: a.fixed === true, optional: a.optional === true, highlight: a.highlight === true, participants: participants(a.participants), notes: text(a.notes), address: text(a.address, 500), guestNotes: text(a.guestNotes), guestLocation: text(a.guestLocation, 500), sourceKind: ["tentative", "synthetic", "entered"].includes(a.sourceKind) ? a.sourceKind : "entered" };
+        return { id: a.id, title: text(a.title, 160), date: a.date, placeId: place(a.placeId), time: text(a.time, 80), order: Number.isSafeInteger(a.order) ? Math.max(0, Math.min(1000, a.order)) : 0, fixed: a.fixed === true, optional: a.optional === true, highlight: a.highlight === true, participants: participants(a.participants), notes: text(a.notes), address: text(a.address, 500), guestNotes: text(a.guestNotes), guestLocation: text(a.guestLocation, 500), links: normalizeLinks(a.links), sourceKind: ["tentative", "synthetic", "entered"].includes(a.sourceKind) ? a.sourceKind : "entered" };
     }));
     const legs = unique(list(input.legs || [], 200).map(l => {
         if (!validDate(l.date) || l.date < input.start || l.date > input.end)
@@ -97,10 +100,93 @@ export function applyTripChange(trip, change) {
         else
             next.families[index] = { ...family, allTravelers: isWholeTripGroup(next.families[index]) };
     }
+    else if (change.action === "traveler-remove" || change.action === "family-remove") {
+        // Removing someone never silently rewrites plans: the caller must see what refers
+        // to them and then repeat the request with `unassign: true`.
+        const group = change.action === "family-remove", target = group ? change.familyId : change.personId;
+        const record = (group ? next.families : next.people || []).find(r => r.id === target);
+        if (!record)
+            throw new Error(group ? "Group not found. It may already have been removed." : "Traveler not found. They may already have been removed.");
+        if (group && isWholeTripGroup(record))
+            throw new Error("The whole-trip group always includes everyone and cannot be removed.");
+        const references = participantReferences(next, target);
+        if (references.total && change.unassign !== true)
+            throw Object.assign(new Error(`“${record.name}” is still used by ${referenceSummary(references)}. Confirm removing them from those plans, or reassign the plans first.`), { references });
+        for (const key of ["activities", "stays", "legs"])
+            for (const row of next[key])
+                row.participants = row.participants.filter(x => x !== target);
+        if (group) {
+            next.families = next.families.filter(g => g.id !== target);
+            for (const person of next.people || [])
+                if (person.familyId === target)
+                    person.familyId = null;
+        }
+        else
+            next.people = next.people.filter(p => p.id !== target);
+    }
+    else if (STRUCTURE[change.action]) {
+        // Places, stays and journeys: add, edit or delete one record. The whole trip is
+        // re-validated by normalizeTrip below, so references and dates are always checked.
+        const { key, noun, idField, fields, op } = STRUCTURE[change.action], rows = next[key];
+        if (op === "add") {
+            const record = change[noun];
+            if (!record || typeof record !== "object" || !id(record.id) || rows.some(r => r.id === record.id))
+                throw new Error(`Choose a new ${noun === "leg" ? "journey" : noun} identifier.`);
+            if (Object.keys(record).some(k => k !== "id" && !fields.includes(k)))
+                throw new Error("Unsupported edit.");
+            rows.push(record);
+            checkStructure(noun, record);
+        }
+        else {
+            const index = rows.findIndex(r => r.id === change[idField]);
+            if (index < 0)
+                throw new Error(`${noun === "leg" ? "Journey" : noun === "stay" ? "Stay" : "Place"} not found. It may have been deleted; load the latest plan.`);
+            if (op === "edit") {
+                const p = change.patch;
+                if (!p || typeof p !== "object" || Array.isArray(p) || !Object.keys(p).length || Object.keys(p).some(k => !fields.includes(k)))
+                    throw new Error("Unsupported edit.");
+                // A map link that changes is unreviewed again unless the same save says it was checked.
+                if (noun === "place" && p.navReviewed !== true && ["amapUrl", "appleMapsUrl"].some(k => k in p && (p[k] || "").trim() !== (rows[index][k] || "")))
+                    rows[index].navReviewed = false;
+                Object.assign(rows[index], p);
+                checkStructure(noun, rows[index]);
+            }
+            else {
+                if (noun === "place") {
+                    // A place in use is never dropped silently: refuse, or move its references where the caller says.
+                    const target = rows[index].id, references = placeReferences(next, target);
+                    if (references.total) {
+                        if (!("reassignTo" in change))
+                            throw Object.assign(new Error(`“${rows[index].name}” is still used by ${placeReferenceSummary(references)}. Choose where to move them before deleting this place.`), { references });
+                        const to = change.reassignTo;
+                        if (to !== null && (to === target || !rows.some(r => r.id === to)))
+                            throw new Error("Choose a different place from this trip to move them to.");
+                        for (const a of next.activities)
+                            if (a.placeId === target)
+                                a.placeId = to;
+                        for (const stay of next.stays)
+                            if (stay.placeId === target)
+                                stay.placeId = to;
+                        for (const leg of next.legs) {
+                            if (leg.from === target)
+                                leg.from = to;
+                            if (leg.to === target)
+                                leg.to = to;
+                        }
+                    }
+                }
+                rows.splice(index, 1);
+            }
+        }
+    }
     else if (change.action === "metadata") {
         for (const key of ["title", "subtitle", "start", "end", "timezone", "kind"])
             if (key in (change.patch || {}))
                 next[key] = change.patch[key];
+    }
+    else if (change.action === "stay-move") {
+        // A confirmed stay move: shifts only the listed flexible activities, re-checked against the trip as it is now.
+        return normalizeTrip(applyStayMove(trip, { stayId: change.stayId, days: change.days, shiftActivityIds: change.shiftActivityIds }), trip.id);
     }
     else if (change.action === "move") {
         // Drag-and-drop: one record changes day/order for every participant.
@@ -120,7 +206,7 @@ export function applyTripChange(trip, change) {
         }
         else {
             const p = change.patch;
-            const allowed = ["title", "notes", "guestNotes", "guestLocation", "time", "date", "order", "placeId", "fixed", "optional", "highlight", "participants"];
+            const allowed = ["title", "notes", "address", "links", "guestNotes", "guestLocation", "time", "date", "order", "placeId", "fixed", "optional", "highlight", "participants"];
             if (!p || typeof p !== "object" || Array.isArray(p) || !Object.keys(p).length || Object.keys(p).some(k => !allowed.includes(k)))
                 throw new Error("Unsupported edit.");
             if (a.fixed && p.fixed !== false && (("date" in p && p.date !== a.date) || ("time" in p && p.time !== a.time)))
@@ -129,6 +215,24 @@ export function applyTripChange(trip, change) {
         }
     }
     return normalizeTrip(next, trip.id);
+}
+const PLACE_FIELDS = ["name", "localName", "address", "localAddress", "lat", "lng", "coordSystem", "coordSource", "amapUrl", "appleMapsUrl", "navReviewed"];
+const STAY_FIELDS = ["name", "placeId", "start", "end", "lodging", "note", "participants"];
+const LEG_FIELDS = ["title", "date", "arrivalDate", "time", "arrivalTime", "mode", "participants", "notes", "from", "to"];
+const structure = (key, noun, fields) => Object.fromEntries(["add", "edit", "delete"].map(op => [`${noun}-${op}`, { key, noun, idField: `${noun}Id`, fields, op }]));
+const STRUCTURE = { ...structure("places", "place", PLACE_FIELDS), ...structure("stays", "stay", STAY_FIELDS), ...structure("legs", "leg", LEG_FIELDS) };
+// Rules for the one record being added or edited that normalizeTrip does not enforce for stored trips.
+function checkStructure(noun, record) {
+    if (noun === "place" && !text(record.name, 160))
+        throw new Error("Give the place a name.");
+    if (noun === "stay" && !record.placeId)
+        throw new Error("Choose the place for this stay, or add a new place first.");
+    if (noun === "leg") {
+        if (!text(record.title, 160))
+            throw new Error("Give the journey a short title.");
+        if (record.arrivalDate && (!validDate(record.arrivalDate) || record.arrivalDate < record.date))
+            throw new Error("A journey cannot arrive before it leaves.");
+    }
 }
 // Trip membership. The organizer is the account that created the trip; editors are
 // listed by sign-in email. Everyone else, signed in or not, has no access.
@@ -157,13 +261,26 @@ export function editorEmail(value) {
     return email;
 }
 // Changes an editor may not make through the shared save path. Returns a message, or null when allowed.
+export const EDITOR_TRIP_DETAILS = "Only the organizer changes the trip's name, subtitle, dates, time zone or kind.";
 export function editorRestriction(trip, change) {
+    // Decided November 16, 2026 (docs/editors.md): the trip's own details are the organizer's.
+    // Editors may still write an activity's guest description and meeting point.
+    if (change?.action === "metadata")
+        return EDITOR_TRIP_DETAILS;
     if (change?.action === "traveler") {
         const existing = (trip.people || []).find(p => p.id === change.person?.id);
         if ((change.person?.showOnGuest === true) !== (existing?.showOnGuest === true))
             return "Only the organizer chooses whether a traveler's name shows on the guest link.";
     }
     return null;
+}
+// The same rule for a whole before/after pair, used where there is no single request to inspect (undo).
+export function editorDiffRestriction(before, after) {
+    const shown = trip => JSON.stringify((trip.people || []).filter(p => p.showOnGuest === true).map(p => p.id).sort());
+    const details = trip => JSON.stringify(["title", "subtitle", "start", "end", "timezone", "kind"].map(k => trip[k] ?? null));
+    if (details(before) !== details(after))
+        return EDITOR_TRIP_DETAILS;
+    return shown(before) === shown(after) ? null : "Only the organizer chooses whether a traveler's name shows on the guest link.";
 }
 export function publicTrip(trip) {
     // Roster display names are opt-in. Private-person references become generic labels,
