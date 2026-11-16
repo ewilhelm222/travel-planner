@@ -2,9 +2,10 @@
 
 ## Current result
 
-The multi-event planner with the Departure Board design is deployed. See
+The multi-event planner is deployed with the Night Market design. See
 [multiple trips, guest links, and current access status](multi-events.md) for the
-current implementation. The sections below preserve the initial feasibility
+current implementation and [the schedule-first phone layout](schedule-first.md)
+for the phone arrangement. The sections below preserve the initial feasibility
 proof and its verification history.
 
 ## Original feasibility result
@@ -21,10 +22,12 @@ The initial Site is owner-private. Its observed access mode is `custom`, with on
 
 The organizer adopted [Night Market](design-night-market.md) and it is applied to
 `planner.css`, the guest view, the parallel-stay study, the offline shell, and
-the reading copy; the offline shell cache is version 11. A round day-medallion
+the reading copy; the offline shell cache was version 11 at the time and has
+since moved on. A round day-medallion
 rail mirrors the existing day select. Record data, APIs, authentication, and
 concurrency handling are unchanged. Verification is listed in the design guide.
-Hosted deployment of this pass has not yet been performed.
+The published Site already carries this styling; see
+[travelers.md](travelers.md) for how it was reconciled into this repository.
 
 ## Field Atlas design adoption — November 11, 2026
 

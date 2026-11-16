@@ -8,6 +8,14 @@ import type { Plugin } from "vite";
 const localUserId = "local_seedy";
 const localEmail = "seedy@sites.test";
 const localFullName = "Seedy";
+// Waypoint addition: extra loopback-only identities for checking trip
+// membership. `/signin-with-chatgpt?local_user=edie` (or `otto`) signs in as
+// that account instead of Seedy. Like Seedy, they exist only in the dev server.
+const localIdentities: Record<string, { id: string; email: string; name: string }> = {
+  "1": { id: localUserId, email: localEmail, name: localFullName },
+  edie: { id: "local_edie", email: "edie@sites.test", name: "Edie" },
+  otto: { id: "local_otto", email: "otto@sites.test", name: "Otto" },
+};
 const localCookieName = "__sites_local_auth";
 const localHosts = new Set(["localhost", "127.0.0.1", "::1"]);
 const localAddresses = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
@@ -105,13 +113,18 @@ export function sites({ mockAuth = true } = {}): Plugin {
         const signIn = url.pathname === "/signin-with-chatgpt";
         const signOut = url.pathname === "/signout-with-chatgpt";
         if (!signIn && !signOut) {
-          if (signInCookies.length === 1 && signInCookies[0] === "1") {
-            setHeader(request, "oai-authenticated-user-id", localUserId);
-            setHeader(request, "oai-authenticated-user-email", localEmail);
+          const identity =
+            signInCookies.length === 1 &&
+            Object.hasOwn(localIdentities, signInCookies[0])
+              ? localIdentities[signInCookies[0]]
+              : null;
+          if (identity) {
+            setHeader(request, "oai-authenticated-user-id", identity.id);
+            setHeader(request, "oai-authenticated-user-email", identity.email);
             setHeader(
               request,
               "oai-authenticated-user-full-name",
-              localFullName,
+              identity.name,
             );
             setHeader(
               request,
@@ -163,7 +176,16 @@ export function sites({ mockAuth = true } = {}): Plugin {
         );
         response.setHeader(
           "Set-Cookie",
-          `${localCookieName}=${signIn ? "1" : ""}; Path=/; ${
+          `${localCookieName}=${
+            signIn
+              ? Object.hasOwn(
+                  localIdentities,
+                  url.searchParams.get("local_user") ?? "",
+                )
+                ? url.searchParams.get("local_user")
+                : "1"
+              : ""
+          }; Path=/; ${
             signOut ? "Max-Age=0; " : ""
           }HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`,
         );

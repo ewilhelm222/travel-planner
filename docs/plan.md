@@ -245,7 +245,19 @@ not committed. The organizer also adopted the new Departure Board visual system.
 The private planning app and guest projection are implemented. Sites' private gate
 covers every route. Enabling anonymous viewing requires a public Site entry point
 with server-enforced trip membership and write authorization. Automatic approval
-review rejected the audience change as broader than the guest-link authorization;
-explicit approval has been requested. No alternate path is used to bypass that
-rejection. [Current implementation status](multi-events.md) records the boundary,
-checks, and outstanding release work.
+review initially rejected that audience change; the organizer then explicitly
+approved the public entry point with protected editing. Sites access mode is now
+public, and Camp Earnest's guest view has been verified without sign-in. China
+sharing remains disabled. [Current implementation status](multi-events.md)
+records the boundary, checks, and remaining device/operational work.
+
+## Traveler management update — November 11
+
+Individual traveler display names, optional family/group membership, and activity
+assignments are implemented. Adding a person does not grant editing access or
+send an invitation. Display names remain private unless explicitly enabled for
+the guest link. Existing group assignments include current members; Everyone
+includes the whole trip. [Traveler implementation and checks](travelers.md)
+records compatibility, privacy, and revision behavior. Before adding more editors,
+the recommended next work is safe change-history/undo and a tested independent
+backup; those safeguards are not represented as complete.

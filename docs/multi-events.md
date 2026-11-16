@@ -1,8 +1,13 @@
 # Multiple trips, events, and guest schedules
 
-Status: November 11, 2026. The Departure Board design and multi-event planner are
-deployed to the existing Site. Anonymous hosted access awaits explicit approval
-of the Site's public entry point. Private planning and guest preview work now.
+Status: November 11, 2026. The multi-event planner and current published styling are
+deployed to the existing Site. The organizer explicitly approved the public entry
+point on November 11, 2026. Camp Earnest's guest link now works without sign-in;
+private planning and editing remain separately protected.
+
+See [traveler management](travelers.md) for the latest roster feature and release
+provenance. The organizer has reported successful phone editing and guest viewing
+on desktop and phone.
 
 ## Working behavior
 
@@ -10,8 +15,12 @@ of the Site's public entry point. Private planning and guest preview work now.
   saved documents, ownership, revisions, and guest-sharing state.
 - A horizontal date board for longer trips, with city sections, lodging context,
   participant-specific journeys, and a single shared activity record. Phones show
-  one selected day. Compact mode defaults on and its preference is remembered.
-- Add, edit, move to another day, and delete activities. Independent activities
+  one selected day, schedule first, with adding and managing below it; see
+  [schedule-first.md](schedule-first.md) (branch, not yet deployed). Compact mode
+  defaults on and its preference is remembered.
+- Add, edit, move to another day, and delete activities. Drag-and-drop and keyboard
+  moves between days, within a day, and to/from ideas are described in
+  [drag-drop.md](drag-drop.md) (branch, not yet deployed). Independent activities
   can be unscheduled ideas; no stay foreign key is required. Explicit fixed
   bookings protect date/time until deliberately made flexible.
 - Optional activities communicate availability rather than attendance or RSVPs.
@@ -39,11 +48,11 @@ requires trusted ChatGPT identity plus trip ownership/editor membership for
 private reads/writes, and only configured organizers may create/import trips.
 Unrecognized signed-in accounts cannot retrieve another organizer's trip.
 
-The audience change was rejected by automatic approval review as a broader,
-persistent change to the private Site. The host remains private pending explicit
-approval. The code, records, and Camp Earnest guest link are concrete and ready;
-anonymous production access must still be checked after approval. Do not work
-around the rejected audience change or describe anonymous hosting as verified.
+The initial audience change was rejected by automatic approval review. The
+organizer subsequently explicitly approved a public entry point with protected
+editing. Sites confirmed access mode `public`, access-policy revision 2. No editor
+or invitation permissions were added. The Camp Earnest guest link was verified
+in a browser without an organizer session. China sharing remains disabled.
 
 Guest links use 256 random bits. Only a SHA-256 hash is stored in D1. The token is
 in the URL fragment and is sent to the read endpoint in an Authorization header,
@@ -60,7 +69,8 @@ are excluded. A guest token never authorizes a write or a private API read.
 
 Anyone receiving a guest link can forward it. Revocation cannot recall a file or
 copy someone already downloaded. This is explained beside the sharing controls.
-Only the organizer manages links; there is no editor-invitation UI yet.
+Only the organizer manages links. The organizer can add and remove editors by
+email; see [editors.md](editors.md) (branch, not yet deployed). No invitation is sent.
 
 ## Storage and configuration
 
@@ -83,7 +93,8 @@ Paste JSON provides a working alternative.
 
 ## Verification and remaining work
 
-Eighteen Node tests pass. The API checks cover anonymous private-read rejection,
+The original multi-event release passed eighteen Node tests; the traveler release
+now passes 23. The API checks cover anonymous private-read rejection,
 forged local identity-header rejection, independent trips, atomic competing saves,
 cross-origin write rejection, limited guest projection, guest write rejection,
 unknown tokens, token replacement/revocation, and stale sharing revisions.
@@ -93,11 +104,19 @@ Browser checks cover the 15-day China layout, city lanes for a synthetic split,
 compact/expanded design, successful JSON/text imports, and a 390 px viewport
 override (375 px content with scrollbar) with one selected day and no horizontal
 overflow. Local guest browsing, day selection, and absence of write controls
-were checked. Physical phones, actual China connectivity, a second authorized
-editing account, complete 200% zoom review, and backup restore remain unverified.
+were checked. A second authorized editing account is now
+verified locally with test accounts ([editors.md](editors.md)), not yet with a
+real second account on the hosted Site. Physical phones, actual China
+connectivity, complete 200% zoom review, and backup restore remain unverified.
 
-The live anonymous smoke check is blocked by the pending Site audience approval.
-This distinction is deliberate: local API success does not prove hosted access.
+Hosted anonymous verification succeeded after approval: Camp Earnest loads its
+schedule without sign-in, day selection works at a 390 px viewport override, the
+page has no input/edit controls, and activity details are read-only. There was no
+horizontal page overflow and exactly one day was visible on the phone layout.
+The same browser's direct visit to `/api/trips` returned the sign-in-required
+error. Command-line probes were denied at the hosting edge (403), so application
+write-authorization evidence remains the local API tests and deployed guard code;
+no live write was made during the hosted checks.
 
 ## Release provenance
 
