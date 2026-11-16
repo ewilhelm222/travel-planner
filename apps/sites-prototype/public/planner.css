@@ -456,3 +456,31 @@ button.lodging:hover, button.journeys:hover, button.lodging:focus-visible, butto
 .move-list { list-style: none; padding: 0; margin: 4px 0 12px; display: grid; gap: 8px; }
 .move-list small { display: block; color: var(--muted); font-size: 14px; }
 .move-flag { display: inline-block; font: 600 12px/1.4 var(--font-mono); color: var(--ember-ink); border: 1px solid currentColor; border-radius: var(--radius-pill); padding: 2px 8px; margin-top: 4px; }
+/* Maps: tile-free schematics. Numbers and text carry the meaning; colour is secondary. */
+.maps { border: 2px solid var(--dusk); border-radius: var(--radius); padding: 20px 24px 24px; margin: 24px 0; }
+.maps-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.maps h2 { font: 900 var(--t1)/1 var(--font-display); letter-spacing: -.02em; margin: 0; }
+.map-tabs { display: flex; gap: 8px; }
+.map-tabs [aria-pressed=true] { background: var(--lagoon); color: var(--ink); border-color: var(--lagoon); }
+.map-title { font: 12px/1.5 var(--font-mono); color: var(--orchid); margin: 12px 0 8px; }
+.schematic-map { display: block; width: 100%; max-width: 760px; height: auto; background: var(--dusk); border-radius: 16px; }
+.map-edge { fill: none; stroke: var(--orchid); stroke-width: 2.5; }
+.map-edge.order { stroke-dasharray: 6 6; }
+#map-arrow path { fill: var(--orchid); }
+.map-edge-label { font-family: var(--font-mono); fill: var(--cream); paint-order: stroke; stroke: var(--dusk); stroke-width: 4px; }
+.map-node circle { fill: var(--magenta); stroke: var(--cream); stroke-width: 3; }
+.map-node.ordered circle { fill: var(--night); stroke: var(--lagoon); stroke-dasharray: 4 3; }
+.map-number { font-family: var(--font-ui); font-weight: 800; fill: var(--ink); }
+.map-node.ordered .map-number { fill: var(--cream); }
+.map-label { font-family: var(--font-ui); font-weight: 700; fill: var(--cream); paint-order: stroke; stroke: var(--dusk); stroke-width: 4px; }
+.map-caption, .map-unplaced { font-size: 14px; line-height: 1.5; color: var(--orchid); max-width: 760px; }
+.map-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 14px; max-width: 760px; }
+.map-list li { display: flex; gap: 12px; align-items: flex-start; }
+.map-list div { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.map-list small { color: var(--orchid); font-size: 14px; line-height: 1.5; }
+.map-local { font-family: var(--font-local); }
+.map-stop { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: var(--magenta); color: var(--ink); font: 800 14px/32px var(--font-ui); text-align: center; }
+.map-links { display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; }
+.map-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 2px solid var(--lagoon); border-radius: var(--radius-pill); color: var(--cream); font-weight: 700; text-decoration: none; }
+@media (max-width: 760px) { .maps { padding: 16px 14px; margin: 20px 0; } }
+@media print { .maps { border-color: black; } .schematic-map { background: white; } .map-edge { stroke: black; } .map-label, .map-edge-label { fill: black; stroke: white; } .map-caption, .map-list small { color: black; } }

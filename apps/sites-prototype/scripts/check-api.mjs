@@ -253,3 +253,18 @@ console.log('PASS: organizer full backup download and a verified restore into a 
     assert.equal(undone2.snapshot.trip.activities.find(x => x.id === 'cedar-arrival').date, '2027-04-12');
     console.log('PASS: stay move shifts only confirmed flexible activities, refuses fixed/mixed/stale ones, and undoes as one step.');
 }
+// Maps: place locations are validated and stored as entered; guests never receive them.
+{
+    const made = await (await req('/api/trips', 'POST', { template: 'thanksgiving' })).json(), tid = made.snapshot.trip.id, tp = `/api/trip?id=${tid}`;
+    const edit = (patch, base = { 'place:home': 1 }) => req(tp, 'PATCH', { action: 'place-edit', placeId: 'home', patch, base });
+    assert.equal((await edit({ lat: '45.5', lng: '-122.6' })).status, 400, 'coordinates need an explicit system');
+    assert.equal((await edit({ lat: '45.5', lng: '-122.6', coordSystem: 'GCJ02', amapUrl: 'https://example.com/not-amap' })).status, 400);
+    const ok = await edit({ lat: '45.5', lng: '-122.6', coordSystem: 'GCJ02', coordSource: 'PRIVATE SOURCE', amapUrl: 'https://surl.amap.com/PRIVATE', navReviewed: true });
+    assert.equal(ok.status, 200, await ok.clone().text());
+    const home = (await ok.json()).snapshot.trip.places[0];
+    assert.deepEqual([home.lat, home.lng, home.coordSystem, home.navReviewed], [45.5, -122.6, 'GCJ02', true], 'stored exactly as entered, never converted');
+    const shareOn = await (await req(`/api/share?id=${tid}`, 'POST', { action: 'rotate', base: { share: 1 } })).json();
+    const guestMap = JSON.stringify(await (await anon('/api/shared', { headers: { Authorization: `Share ${new URL(shareOn.url).hash.slice(1)}` } })).json());
+    assert.ok(!/45\.5|GCJ02|PRIVATE|amap/.test(guestMap), 'coordinates, their source and map links are not in the guest view');
+    console.log('PASS: place coordinates need an explicit system, map links must be on the provider\'s site, and none of it reaches guests.');
+}

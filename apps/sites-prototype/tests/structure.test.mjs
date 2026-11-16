@@ -12,7 +12,8 @@ const base = () => applyTripChange(thanksgivingExample(), { action: 'place-add',
 
 test('places can be added and edited, and are validated', () => {
     const trip = base();
-    assert.deepEqual(trip.places.find(p => p.id === 'trailhead'), { id: 'trailhead', name: 'Synthetic trailhead', localName: '示例步道', address: '1 Example Road', localAddress: '示例路1号' });
+    const { id, name, localName, address, localAddress } = trip.places.find(p => p.id === 'trailhead');
+    assert.deepEqual({ id, name, localName, address, localAddress }, { id: 'trailhead', name: 'Synthetic trailhead', localName: '示例步道', address: '1 Example Road', localAddress: '示例路1号' });
     const edited = applyTripChange(trip, { action: 'place-edit', placeId: 'trailhead', patch: { name: 'Renamed trailhead' } });
     assert.equal(edited.places.find(p => p.id === 'trailhead').name, 'Renamed trailhead');
     assert.equal(edited.places.find(p => p.id === 'trailhead').localName, '示例步道', 'fields not in the patch are kept');
