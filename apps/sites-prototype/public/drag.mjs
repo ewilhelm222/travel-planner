@@ -91,7 +91,7 @@ export function enableDrag(options) {
     el.setAttribute('role', 'status');
     Object.assign(el.style, { position: 'fixed', left: '0', right: '0', bottom: '0', zIndex: '999' });
     // On a phone a wrapping grid shows every day at once; long trips fall back to one scrolling row.
-    el.innerHTML = `<h2>${info.fixed ? 'Fixed booking: reorder within its day' : 'Drop on a day'}</h2><p>Moving “${esc(info.title)}” · ${esc(info.note)}</p><ol class="${touch && chips.length <= 12 ? 'grid' : ''}">${dock().map(d => `<li data-drop-date="${esc(d.date ?? '')}" class="${d.current ? 'current' : ''} ${info.fixed && (d.date ?? null) !== info.date ? 'drop-blocked' : ''}"><span>${esc(d.top)}</span><b>${esc(d.big)}</b></li>`).join('')}</ol><div class="drop-cancel" data-drop-cancel>Slide here and let go to cancel</div>`;
+    el.innerHTML = `<h2>${info.fixed ? 'Set time: reorder within its day' : 'Drop on a day'}</h2><p>Moving “${esc(info.title)}” · ${esc(info.note)}</p><ol class="${touch && chips.length <= 12 ? 'grid' : ''}">${dock().map(d => `<li data-drop-date="${esc(d.date ?? '')}" class="${d.current ? 'current' : ''} ${info.fixed && (d.date ?? null) !== info.date ? 'drop-blocked' : ''}"><span>${esc(d.top)}</span><b>${esc(d.big)}</b></li>`).join('')}</ol><div class="drop-cancel" data-drop-cancel>Slide here and let go to cancel</div>`;
     document.body.append(el);
     el.querySelector('.current')?.scrollIntoView({ inline: 'center', block: 'nearest' });
     return el;

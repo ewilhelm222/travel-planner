@@ -49,6 +49,17 @@ map-app search link was added beside addresses on the map (a rule in
 [maps.md](maps.md) allows only reviewed links there), and the phone "Ideas"
 stop jumps to the ideas list rather than replacing the day.
 
+Steps PR 7, PR 9 and PR 10 were built the same day, after PR 1 to PR 6 were
+deployed: [quick-add.md](quick-add.md), [timing.md](timing.md) and
+[all-days.md](all-days.md). **PR 8 (keep or remove examples, item X2) was
+built and then withdrawn at the organizer's request on November 16**: the
+examples were deleted from the Camp Earnest trip by hand, the China draft will
+be handled directly, and no further work is wanted around whether an item is
+an example. The label, the Hide examples tick and the guest-link exclusion from
+PR 2 remain as deployed. The timing step differs
+from the plan in one detail: `fixed` remains the field that protects a plan and
+the new `timing` field only tells "that day" from "any day".
+
 ## The short version
 
 1. **Most of the feedback applies to the app as it is today.** The repository
