@@ -1,4 +1,4 @@
-import { access, body, commit, response, failed, conflict } from "../../../lib/trip-store";
+import { access, body, response, failed, staleCheck, transact } from "../../../lib/trip-store";
 export const dynamic = "force-dynamic";
 // Organizer-only soft delete. Nothing is erased: the trip, its history and its editor list stay in
 // the database, hidden from everyone until the organizer restores it. The guest link is switched off.
@@ -14,15 +14,11 @@ export async function POST(request: Request) { try {
     const archived = !!a.row!.archived_at;
     if (archived === (input.action === "archive"))
         return response({ archived, revision: a.row!.revision });
-    if (input.action === "archive" && input.revision !== a.row!.revision)
-        return conflict();
     const now = new Date().toISOString();
-    const saved = input.action === "archive"
-        ? await commit({ id: a.row!.id, expected: a.row!.revision, user: a.user!, action: "archive", summary: "Deleted (archived) this trip", set: { archived_at: now, archived_by: a.user!.displayName, share_token_hash: null, shared_at: null } })
-        : await commit({ id: a.row!.id, expected: a.row!.revision, user: a.user!, action: "restore", summary: "Restored this trip from the archive", archived: true, set: { archived_at: null, archived_by: null } });
-    if (!saved)
-        return conflict();
-    return response({ archived: input.action === "archive", revision: saved.revision });
+    if (input.action === "restore")
+        return await transact(a.row!, () => ({ user: a.user!, action: "restore", summary: "Restored this trip from the archive", archived: true, set: { archived_at: null, archived_by: null }, respond: saved => response({ archived: false, revision: saved.revision }) }), { archived: true });
+    // Deleting relies on the trip's own details record (or, from an older page, the trip-wide revision).
+    return await transact(a.row!, current => staleCheck(input, current) || { user: a.user!, action: "archive", summary: "Deleted (archived) this trip", set: { archived_at: now, archived_by: a.user!.displayName, share_token_hash: null, shared_at: null }, respond: saved => response({ archived: true, revision: saved.revision }) });
 }
 catch (e) {
     return failed(e);
