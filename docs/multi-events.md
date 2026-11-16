@@ -69,7 +69,8 @@ are excluded. A guest token never authorizes a write or a private API read.
 
 Anyone receiving a guest link can forward it. Revocation cannot recall a file or
 copy someone already downloaded. This is explained beside the sharing controls.
-Only the organizer manages links; there is no editor-invitation UI yet.
+Only the organizer manages links. The organizer can add and remove editors by
+email; see [editors.md](editors.md) (branch, not yet deployed). No invitation is sent.
 
 ## Storage and configuration
 
@@ -103,8 +104,10 @@ Browser checks cover the 15-day China layout, city lanes for a synthetic split,
 compact/expanded design, successful JSON/text imports, and a 390 px viewport
 override (375 px content with scrollbar) with one selected day and no horizontal
 overflow. Local guest browsing, day selection, and absence of write controls
-were checked. Physical phones, actual China connectivity, a second authorized
-editing account, complete 200% zoom review, and backup restore remain unverified.
+were checked. A second authorized editing account is now
+verified locally with test accounts ([editors.md](editors.md)), not yet with a
+real second account on the hosted Site. Physical phones, actual China
+connectivity, complete 200% zoom review, and backup restore remain unverified.
 
 Hosted anonymous verification succeeded after approval: Camp Earnest loads its
 schedule without sign-in, day selection works at a 390 px viewport override, the

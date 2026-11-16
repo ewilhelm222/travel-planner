@@ -130,7 +130,41 @@ export function applyTripChange(trip, change) {
     }
     return normalizeTrip(next, trip.id);
 }
-export function canEdit(row, user) { return !!user && (row.owner_id === user.userId || JSON.parse(row.editor_emails || "[]").includes(user.email.toLowerCase())); }
+// Trip membership. The organizer is the account that created the trip; editors are
+// listed by sign-in email. Everyone else, signed in or not, has no access.
+export const MAX_EDITORS = 20;
+export function editorList(row) {
+    try {
+        const value = JSON.parse(row?.editor_emails || "[]");
+        return Array.isArray(value) ? value.filter(e => typeof e === "string").map(e => e.toLowerCase()) : [];
+    }
+    catch {
+        return [];
+    }
+}
+export function tripRole(row, user) {
+    if (!row || !user)
+        return null;
+    if (row.owner_id === user.userId)
+        return "organizer";
+    return typeof user.email === "string" && editorList(row).includes(user.email.toLowerCase()) ? "editor" : null;
+}
+export function canEdit(row, user) { return tripRole(row, user) !== null; }
+export function editorEmail(value) {
+    const email = typeof value === "string" ? value.trim().toLowerCase() : "";
+    if (email.length > 254 || !/^[^\s@,;"<>]+@[^\s@,;"<>]+\.[^\s@,;"<>]+$/.test(email))
+        throw new Error("Enter one complete email address.");
+    return email;
+}
+// Changes an editor may not make through the shared save path. Returns a message, or null when allowed.
+export function editorRestriction(trip, change) {
+    if (change?.action === "traveler") {
+        const existing = (trip.people || []).find(p => p.id === change.person?.id);
+        if ((change.person?.showOnGuest === true) !== (existing?.showOnGuest === true))
+            return "Only the organizer chooses whether a traveler's name shows on the guest link.";
+    }
+    return null;
+}
 export function publicTrip(trip) {
     // Roster display names are opt-in. Private-person references become generic labels,
     // retaining group filtering without revealing their names, IDs, or member counts.
