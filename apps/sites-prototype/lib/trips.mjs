@@ -192,6 +192,22 @@ export function applyTripChange(trip, change) {
         // Drag-and-drop: one record changes day/order for every participant.
         return normalizeTrip(moveActivity(trip, { activityId: change.activityId, date: change.date ?? null, beforeId: change.beforeId ?? null }).trip, trip.id);
     }
+    else if (change.action === "confirm") {
+        // An example or tentative item becomes an ordinary plan. Nothing else about it changes.
+        const a = next.activities.find(a => a.id === change.activityId);
+        if (!a)
+            throw new Error("Activity not found. It may have been deleted; load the latest plan.");
+        if (a.sourceKind === "entered")
+            throw new Error("This is already a real plan.");
+        a.sourceKind = "entered";
+    }
+    else if (change.action === "examples-remove") {
+        // Every example goes in one logged change, so History can put them all back at once.
+        const count = next.activities.length;
+        next.activities = next.activities.filter(a => a.sourceKind !== "synthetic");
+        if (next.activities.length === count)
+            throw new Error("There are no examples to remove.");
+    }
     else if (change.action === "add") {
         if (!id(change.activity?.id) || next.activities.some(a => a.id === change.activity.id))
             throw new Error("Choose a new activity identifier.");

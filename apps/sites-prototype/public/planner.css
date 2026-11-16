@@ -717,3 +717,6 @@ button.lodging { padding-left: 8px; }
 .more-details > summary small { display: inline; margin: 0; font-weight: 500; }
 .more-details[open] > summary { margin-bottom: 12px; }
 #person-inline-open { display: block; margin: 12px 0 4px; }
+
+/* Keep or remove examples (feedback plan PR 8). */
+#remove-examples { display: inline-block; margin: 4px 0 8px; color: var(--ember); text-decoration-color: var(--ember); }
