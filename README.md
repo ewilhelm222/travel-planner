@@ -20,8 +20,9 @@ and restore a trip, full backup), [editing places, stays and
 journeys](docs/structure.md), [per-record
 revisions](docs/per-record-revisions.md), [moving a stay with a
 preview](docs/stay-move.md), [schematic maps](docs/maps.md), and [layout
-changes](docs/layout.md). Built on November 16 from the
-[family feedback plan](docs/feedback-2026-11-15-plan.md) and not yet deployed:
+changes](docs/layout.md). Deployed on November 16, 2026 as Sites version 13 (see
+[release provenance](docs/multi-events.md#release-provenance)), from the
+[family feedback plan](docs/feedback-2026-11-15-plan.md):
 [sign-in and read-only messages](docs/getting-in.md),
 [plain wording](docs/plain-words.md), [dark forms](docs/dark-forms.md),
 [Add and Ideas within reach](docs/within-reach.md), [Ideas beside the
