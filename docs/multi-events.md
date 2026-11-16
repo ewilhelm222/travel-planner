@@ -140,6 +140,74 @@ no live write was made during the hosted checks.
 
 ## Release provenance
 
+### November 16, 2026 landscape correction (version 14)
+
+Deployed at 12:12 PST on November 16 (2026-11-16T20:12:54Z).
+This is the [Correction, November 16](landscape-and-menu.md#correction-november-16-sideways-phones-are-narrower-than-they-look):
+sideways phones from 560 px wide use the side-by-side board, including browsers
+that report less than 761 px. The one-day layout remains for widths below
+560 px, or widths below 761 px in portrait orientation.
+
+| Item | Provenance |
+| --- | --- |
+| GitHub source | `ee9e1d74ce312b62df1b11e29ec28d65920fc75f`, app at `apps/sites-prototype` |
+| Sites source | `c9cab81c53072c7a58e9a0a0979c60ff4d641c1e` |
+| Matching content tree | GitHub app subtree and Sites root tree both `72329b1de4838eef098c9df7fe9e124fdc48ac5f`; 179 tracked files |
+| Saved version | **14**, `appgprj_6af3ef55c4f48191940aa66a59771eb3~appgver_b74fb149223081918e2dacfaa0a59cc8` |
+| Deployment | `appgdep_6afb63bea4f08191811dbc1f58770f9e`, succeeded |
+| Runtime / offline shell | Environment revision 1; `waypoint-shell-v28` |
+| Rollback version retained | **13**, `appgprj_6af3ef55c4f48191940aa66a59771eb3~appgver_11f00386f47881919c87cb68817e03e8` |
+
+A fresh sparse clone was populated from the pinned revision through the connected
+GitHub service. The signed commit object, all 179 app blobs and their tree were
+verified against GitHub; no older local checkout supplied app source. Before
+synchronization there were no Sites-only files. Compared with version 13,
+the app changes are `public/board.mjs`, `public/guest.mjs`,
+`public/planner.css`, `public/planner.js`, `public/sw.js`, and the Ideas-column
+and landscape-menu tests.
+
+**No database migration:** `drizzle/` is byte-for-byte unchanged from version
+13 and still ends at `0003`. No stored trip was rewritten. No backup,
+migration rehearsal or database rollback was prepared, as instructed. No trips,
+guest links, editor membership, Sites access policy, runtime configuration,
+invitations, emails or schedules were changed. The daily snapshot proposal
+remains disabled.
+
+**Checks run before deployment:** Node 24.22.1, locked dependency installation
+through the Sites installer, `npm test` **120 passed, 0 failed**,
+`npm run typecheck` passed, and the production build through the Sites build
+helper passed. The pushed Sites root tree matched the requested app tree.
+No local preview server or substitute browser automation was used.
+
+**Verification on this live release:**
+
+| Requested check | Result |
+| --- | --- |
+| Organizer at 750 × 340: Ideas and at least two day columns side by side, cards on first screen | **Not checked** |
+| Organizer at 667 × 375: side-by-side columns and cards on first screen | **Not checked** |
+| Organizer at 390 × 664: one day, day rail, + Add to the day | **Not checked** |
+| Organizer at 390 × 300: still one day with keyboard-height viewport | **Not checked** |
+| Desktop unchanged: Ideas column, Manage menu, all days | **Not checked** |
+| Loaded-page rotation upright → sideways → upright switches layout each way | **Not checked** |
+| Camp Earnest guest at 750 × 340 without organizer session: side-by-side days, read-only sentence, no inputs or Add buttons | **Not checked** |
+| No sideways page overflow at each requested size | **Not checked** |
+| Physical phone | **Not checked** |
+
+Browser/computer controls were unavailable in this session, so the viewport,
+signed-in, guest-browser and rotation checks could not be performed. The
+version 13 browser results below are historical evidence only and are not
+claimed for version 14. The correction note's local Chromium results are also
+not live verification.
+
+**Additional live check passed:** cookie-free HTTP downloads of `sw.js`,
+`board.mjs`, `planner.css`, `planner.js` and `guest.mjs` exactly matched
+the pinned source bytes. This confirms the deployed v28 assets, not their
+rendered layout. Sites reported successful deployment; no check failed.
+
+If anything goes wrong with this release, redeploy retained saved version
+**13** and stop. No database rollback is part of this release.
+
+
 ### November 16, 2026 release (America/Los_Angeles)
 
 Deployed at 07:09 PST on November 16 (2026-11-16T15:09:11Z). This release
