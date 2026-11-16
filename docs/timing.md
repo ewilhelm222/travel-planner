@@ -49,11 +49,11 @@ The "Fixed booking" tick is replaced by one choice, **How firm is the timing?**
 - Rolling back to the previous version is safe: it ignores the extra field,
   and `fixed` still carries the protection.
 
-The offline shell cache is `waypoint-shell-v31`.
+The offline shell cache is `waypoint-shell-v33` in the combined release.
 
 ## Checks
 
-- `npm test`: 132 pass (6 new in `tests/timing.test.mjs`: reading an old trip,
+- `npm test`: 6 new tests in `tests/timing.test.mjs`: reading an old trip,
   protection, an old page's saves, ideas and moves, stay moves, wording).
 - `npm run test:api`, `npm run test:access` and
   `scripts/check-drag-browser.cjs` pass locally; those scripts still set

@@ -21,11 +21,11 @@ On an upright phone the day rail now has an **All days** stop, next to Ideas.
 It is offered only in the upright phone layout. Sideways and on a laptop the
 days are already side by side.
 
-The offline shell cache is `waypoint-shell-v32`.
+The offline shell cache is `waypoint-shell-v33`.
 
 ## Checks
 
-- `npm test`: 135 pass (3 new in `tests/all-days.test.mjs`).
+- `npm test`: 132 pass in the combined release (3 new in `tests/all-days.test.mjs`).
 - Headless Chromium at 390 × 844, signed in and as a guest: one day by
   default; all six days after the toggle; tapping a day puts its heading just
   under the rail; scrolling changes the highlighted day; the choice survives a
