@@ -565,3 +565,25 @@ p.edit-state:empty { display: none; }
   .dense .activity.example { outline-offset: -5px; outline-width: 1px; }
 }
 @media print { .activity.example { outline: 1px dashed black; } .example-label { background: none; border: 1px solid black; } }
+
+/* Forms go dark (feedback plan PR 3): dialogs you type into use the dusk surface so a phone at night does not
+   flash cream. Dialogs you read (History, guest link, archived trips, guest activity detail) stay cream. */
+dialog.form-dialog { background: var(--dusk); color: var(--cream); color-scheme: dark; }
+dialog.form-dialog label, dialog.form-dialog p, dialog.form-dialog legend, dialog.form-dialog li { color: var(--cream); }
+dialog.form-dialog .eyebrow, dialog.form-dialog small, dialog.form-dialog .form-hint, dialog.form-dialog .move-summary .was, dialog.form-dialog .move-list small { color: var(--orchid); }
+dialog.form-dialog input, dialog.form-dialog textarea, dialog.form-dialog select { background-color: var(--night); color: var(--cream); border-color: var(--orchid); }
+dialog.form-dialog select { background-image: linear-gradient(45deg, transparent 50%, var(--cream) 50%), linear-gradient(135deg, var(--cream) 50%, transparent 50%); }
+dialog.form-dialog input::placeholder, dialog.form-dialog textarea::placeholder { color: #9d8fc4; opacity: 1; }
+dialog.form-dialog input:disabled, dialog.form-dialog textarea:disabled, dialog.form-dialog select:disabled { background-color: #1b0e3c; color: var(--orchid); border-style: dashed; }
+dialog.form-dialog select:disabled { background-image: none; }
+dialog.form-dialog .check-label input { accent-color: var(--lagoon); }
+dialog.form-dialog fieldset, dialog.form-dialog .inline-place { border-color: #4a3a80; }
+dialog.form-dialog .secondary { color: var(--cream); border-color: var(--orchid); }
+dialog.form-dialog .secondary:hover { color: var(--lagoon); border-color: var(--lagoon); }
+dialog.form-dialog .text-button { color: var(--cream); }
+dialog.form-dialog .text-button.danger, dialog.form-dialog .danger, dialog.form-dialog .move-group.fixed h3, dialog.form-dialog .move-flag { color: var(--ember); text-decoration-color: var(--ember); }
+dialog.form-dialog a { color: var(--lagoon); }
+dialog.form-dialog .icon-button { background: var(--night); color: var(--cream); border: 2px solid var(--orchid); }
+dialog.form-dialog .roster-list li, dialog.form-dialog .move-group { border-color: #4a3a80; }
+dialog.form-dialog #edit-message, dialog.form-dialog #edit-message:not(:empty), dialog.form-dialog #structure-message:not(:empty), dialog.form-dialog #place-inline-message:not(:empty), dialog.form-dialog .reassign, dialog.form-dialog .move-notice { background: var(--night); color: var(--cream); }
+@media print { dialog.form-dialog { background: white; color: black; } }

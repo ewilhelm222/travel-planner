@@ -139,7 +139,14 @@ differ, this section is current.
   activity carries no label.
 - **Examples.** An invented item carries "Example · not a real plan" and a
   dashed inner outline in every density, and is never sent to the guest link.
-- **Forms go dark; reading dialogs stay cream** (approved, not yet built).
+- **Forms go dark; reading dialogs stay cream.** A dialog you type into
+  (activity, travelers and groups, places/stays/journeys and the stay-move
+  preview, trip details, new trip, import, editors) uses `--dusk` with cream
+  text, `--night` inputs with an orchid border, orchid supporting text, lagoon
+  links and ticks, and `--ember` for warnings. A dialog you read (History,
+  guest link and its preview, archived trips, the guest's activity detail)
+  stays cream. Pairs in use: cream on dusk 15.6:1, orchid on dusk 9.5:1,
+  lagoon on dusk 10.6:1, ember on dusk 7.2:1, cream on night 17.6:1.
 
 Still true: state is never colour alone, long reading stays on cream cards, and
 the contrast pairs listed above are the ones in use (ink on cream for all new
