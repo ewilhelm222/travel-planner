@@ -139,3 +139,19 @@ console.log('PASS: editors add/edit/move/delete through revisioned saves; non-me
     assert.equal((await edit(otto, 'option-4', 'outsider')).status, 403, 'per-record saves still require membership');
     console.log('PASS: organizer and editor save different cards concurrently; one winner on the same card; non-members refused.');
 }
+// Decided November 16: trip details are the organizer's; guest text on an activity is open to editors.
+{
+    const made = await json(await seedy('/api/trips', 'POST', { template: 'thanksgiving' })), tid = made.snapshot.trip.id, t = `/api/trip?id=${tid}`, h = `/api/history?id=${tid}`;
+    await seedy(`/api/editors?id=${tid}`, 'POST', { action: 'add', email: 'edie@sites.test' });
+    for (const patch of [{ title: 'Editor rename' }, { end: '2026-11-30' }, { subtitle: 'x' }, { timezone: 'Asia/Tokyo' }]) {
+        const refused = await edie(t, 'PATCH', { action: 'metadata', patch, base: { trip: 1 } });
+        assert.equal(refused.status, 400);
+        assert.match((await json(refused)).error, /Only the organizer changes the trip's name/);
+    }
+    assert.equal((await edie(t, 'PATCH', { action: 'edit', activityId: 'option-2', patch: { guestNotes: 'Bring boots', guestLocation: 'Front gate' }, base: { 'activity:option-2': 1 } })).status, 200, 'an editor may write guest text on an activity');
+    assert.equal((await seedy(t, 'PATCH', { action: 'metadata', patch: { title: 'Organizer rename' }, base: { trip: 1 } })).status, 200);
+    const rename = (await json(await edie(h))).changes[0];
+    assert.equal((await edie(h, 'POST', { action: 'undo', changeId: rename.id })).status, 403, 'an editor cannot undo the organizer\'s rename');
+    assert.equal((await json(await seedy(t))).snapshot.trip.title, 'Organizer rename');
+    console.log('PASS: editors are refused trip name/date/time-zone changes (directly and through undo) and may write guest descriptions.');
+}

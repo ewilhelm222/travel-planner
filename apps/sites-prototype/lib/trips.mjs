@@ -261,7 +261,12 @@ export function editorEmail(value) {
     return email;
 }
 // Changes an editor may not make through the shared save path. Returns a message, or null when allowed.
+export const EDITOR_TRIP_DETAILS = "Only the organizer changes the trip's name, subtitle, dates, time zone or kind.";
 export function editorRestriction(trip, change) {
+    // Decided November 16, 2026 (docs/editors.md): the trip's own details are the organizer's.
+    // Editors may still write an activity's guest description and meeting point.
+    if (change?.action === "metadata")
+        return EDITOR_TRIP_DETAILS;
     if (change?.action === "traveler") {
         const existing = (trip.people || []).find(p => p.id === change.person?.id);
         if ((change.person?.showOnGuest === true) !== (existing?.showOnGuest === true))
@@ -272,6 +277,9 @@ export function editorRestriction(trip, change) {
 // The same rule for a whole before/after pair, used where there is no single request to inspect (undo).
 export function editorDiffRestriction(before, after) {
     const shown = trip => JSON.stringify((trip.people || []).filter(p => p.showOnGuest === true).map(p => p.id).sort());
+    const details = trip => JSON.stringify(["title", "subtitle", "start", "end", "timezone", "kind"].map(k => trip[k] ?? null));
+    if (details(before) !== details(after))
+        return EDITOR_TRIP_DETAILS;
     return shown(before) === shown(after) ? null : "Only the organizer chooses whether a traveler's name shows on the guest link.";
 }
 export function publicTrip(trip) {

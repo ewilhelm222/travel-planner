@@ -100,8 +100,11 @@ const log = (...a) => console.log(...a);
   await page.waitForTimeout(150);
   log('fixed msg:', await page.textContent('#message'));
   cur = await api(); log('fixed date on server:', cur.json.snapshot.trip.activities.find(a => a.id === 'option-5').date);
-  // Conflict: someone else saves meanwhile; the page's revision is stale.
+  // Per-record revisions: someone else editing a different card does not block this drag...
   await api({ action: 'edit', revision: cur.json.snapshot.revision, activityId: 'option-1', patch: { notes: 'Edited elsewhere (synthetic)' } });
+  cur = await api();
+  // ...but someone else changing the very card being dragged does: the page's copy of it is stale.
+  await api({ action: 'edit', revision: cur.json.snapshot.revision, activityId: 'option-10', patch: { notes: 'This card was edited elsewhere (synthetic)' } });
   let patchSeen = null; await toBoard();
   page.on('response', r => { if (r.request().method() === 'PATCH') patchSeen = r.status(); });
   await drag('.activity[data-detail="option-10"]', '.agenda-day[data-date="2026-11-26"] .activity[data-detail]', 10);
