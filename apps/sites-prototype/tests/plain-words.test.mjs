@@ -47,7 +47,7 @@ test('wording in the planner, guest page and share dialog', () => {
     const planner = read('../public/planner.js'), guest = read('../public/guest.mjs'), css = read('../public/planner.css');
     for (const gone of ['Highlight a shared moment', 'THE PLAN, UP CLOSE', 'Not on the itinerary. Yet.', 'Synthetic detail for testing'])
         assert.ok(!planner.includes(gone), gone);
-    assert.match(planner, /Whole-group activity · everyone together/);
+    assert.match(planner, /Whole-group activity., .Everyone together\. Shown with a pink band\./);
     assert.match(planner, /<h2>Ideas <span>· not scheduled yet<\/span><\/h2>/);
     assert.match(planner, /So is anything marked “Example · not a real plan”/);
     assert.match(planner, /Show plans for/);

@@ -587,7 +587,8 @@ dialog.form-dialog .text-button.danger, dialog.form-dialog .danger, dialog.form-
 dialog.form-dialog a { color: var(--lagoon); }
 dialog.form-dialog .icon-button { background: var(--night); color: var(--cream); border: 2px solid var(--orchid); }
 dialog.form-dialog .roster-list li, dialog.form-dialog .move-group { border-color: #4a3a80; }
-dialog.form-dialog #edit-message, dialog.form-dialog #edit-message:not(:empty), dialog.form-dialog #structure-message:not(:empty), dialog.form-dialog #place-inline-message:not(:empty), dialog.form-dialog .reassign, dialog.form-dialog .move-notice { background: var(--night); color: var(--cream); }
+dialog.form-dialog #edit-message { color: var(--cream); min-height: 0; margin-top: 12px; }
+dialog.form-dialog #edit-message:not(:empty), dialog.form-dialog #structure-message:not(:empty), dialog.form-dialog #place-inline-message:not(:empty), dialog.form-dialog .reassign, dialog.form-dialog .move-notice { background: var(--night); color: var(--cream); }
 @media print { dialog.form-dialog { background: white; color: black; } }
 
 /* Add and ideas within reach (feedback plan PR 4). */
@@ -704,3 +705,15 @@ button.lodging { padding-left: 8px; }
   main.compact .trip-header h1 { font-size: 18px; margin: 0; }
   main.compact .trip-header .eyebrow, main.compact .trip-header .trip-facts { display: none; }
 }
+
+/* Quick add (feedback plan PR 7): one plain choice for the kind of plan, and the rest under More details. */
+.kind-choice { padding: 6px 16px 10px; }
+.kind-option { align-items: flex-start; margin: 10px 0; }
+.kind-option input { margin-top: 2px; border-radius: 50%; }
+.kind-option small { margin-top: 2px; }
+#some-panel { margin: 0 0 8px; }
+.more-details { margin-top: 16px; border-top: 1px solid #4a3a80; padding-top: 4px; }
+.more-details > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.more-details > summary small { display: inline; margin: 0; font-weight: 500; }
+.more-details[open] > summary { margin-bottom: 12px; }
+#person-inline-open { display: block; margin: 12px 0 4px; }

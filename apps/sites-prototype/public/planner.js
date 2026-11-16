@@ -56,7 +56,7 @@
     }
     function persist() {
         try {
-            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, hideExamples: state.hideExamples, ideasClosed: state.ideasClosed }));
+            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, hideExamples: state.hideExamples, ideasClosed: state.ideasClosed, moreOpen: state.moreOpen }));
         }
         catch { }
     }
@@ -64,7 +64,7 @@
         state.downloadedAt = new Date().toISOString();
         state.copies[state.selected] = { snapshot: state.snapshot, downloadedAt: state.downloadedAt, isOwner: state.isOwner };
         try {
-            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, hideExamples: state.hideExamples, ideasClosed: state.ideasClosed }));
+            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, hideExamples: state.hideExamples, ideasClosed: state.ideasClosed, moreOpen: state.moreOpen }));
         }
         catch {
             state.message = 'This browser could not keep a reading copy. Save an offline HTML file.';
@@ -106,7 +106,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v28');
+            const cache = await caches.open('waypoint-shell-v29');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -430,8 +430,8 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
         if (target)
             moveCard({ activityId: a.id, date: a.date, beforeId: target.beforeId, focus: true });
     });
-    function attendanceFields(a, t, disabled, legend) {
-        return `<fieldset><legend>${legend || (a.optional ? 'Available to' : 'Participants')}</legend><p class="form-hint">Select a group to include its current members, or select individual travelers.</p>${t.families.map(g => `<label class="check-label"><input type="checkbox" name="participants" data-group="1" value="${escape(g.id)}" ${a.participants.includes(g.id) ? 'checked' : ''} ${disabled ? 'disabled' : ''}>${escape(g.name)}${isWholeTripGroup(g) ? ' · whole trip' : ''}</label>`).join('')}${peopleOf(t).length ? '<h3>Individual travelers</h3>' : ''}${peopleOf(t).map(p => `<label class="check-label"><input type="checkbox" name="participants" data-person="${escape(p.id)}" data-explicit="${a.participants.includes(p.id)}" value="${escape(p.id)}" ${a.participants.includes(p.id) ? 'checked' : ''} ${disabled ? 'disabled' : ''}><span>${escape(p.name)}<small data-included="${escape(p.id)}"></small></span></label>`).join('')}</fieldset>`;
+    function attendanceFields(a, t, disabled, legend, allowAdd = false) {
+        return `<fieldset><legend>${legend || 'Who'}</legend><p class="form-hint">Select a group to include its current members, or select individual travelers.</p>${t.families.map(g => `<label class="check-label"><input type="checkbox" name="participants" data-group="1" value="${escape(g.id)}" ${a.participants.includes(g.id) ? 'checked' : ''} ${disabled ? 'disabled' : ''}>${escape(g.name)}${isWholeTripGroup(g) ? ' · whole trip' : ''}</label>`).join('')}${peopleOf(t).length ? '<h3>Individual travelers</h3>' : ''}${peopleOf(t).map(p => `<label class="check-label"><input type="checkbox" name="participants" data-person="${escape(p.id)}" data-explicit="${a.participants.includes(p.id)}" value="${escape(p.id)}" ${a.participants.includes(p.id) ? 'checked' : ''} ${disabled ? 'disabled' : ''}><span>${escape(p.name)}<small data-included="${escape(p.id)}"></small></span></label>`).join('')}${allowAdd && !disabled ? `<button type="button" class="text-button" id="person-inline-open">＋ Add a person who is not listed…</button><fieldset class="inline-place" id="person-inline" hidden><legend>New person</legend><label>Display name<input name="newPersonName" maxlength="80" autocomplete="off"></label><label>Family / group<select name="newPersonGroup"><option value="">No family group</option>${t.families.filter(g => !isWholeTripGroup(g)).map(g => `<option value="${escape(g.id)}">${escape(g.name)}</option>`).join('')}</select></label><p id="person-inline-message" role="alert"></p><button type="button" class="secondary" id="person-inline-save">Add this person</button><p class="form-hint">Adds them to this trip’s travelers straight away. Their name stays off the guest link unless the organizer chooses to show it. Your activity is saved separately with the Save button.</p></fieldset>` : ''}</fieldset>`;
     }
     function updateAttendance(form = $('#edit-form')) {
         if (!form?.querySelectorAll)
@@ -717,6 +717,30 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
         const form = $(`#${kind}-form`);
         await saveStructure({ action: `${kind}-delete`, base: formBase(form), [`${kind}Id`]: form.dataset.id, ...extra }, `${kind === 'leg' ? 'Journey' : kind === 'stay' ? 'Stay' : 'Place'} deleted. Undo is available in History.`);
     }
+    // Activity form: add a traveler without leaving the form. What is already ticked stays ticked.
+    async function saveInlinePerson() {
+        const form = $('#edit-form'), name = form.elements.newPersonName.value.trim();
+        if (!name) {
+            $('#person-inline-message').textContent = 'Give the person a display name.';
+            form.elements.newPersonName.focus();
+            return;
+        }
+        const person = { id: crypto.randomUUID(), name, familyId: form.elements.newPersonGroup.value || null, showOnGuest: false };
+        const ticked = [...form.querySelectorAll('[name=participants]:checked')].filter(x => !x.disabled).map(x => x.value);
+        try {
+            const result = await request(endpoint('/api/trip'), 'PATCH', { action: 'traveler', base: {}, person });
+            state.snapshot = result.snapshot;
+            remember();
+            $('#attendance-slot').innerHTML = attendanceFields({ participants: [...ticked, person.id] }, state.snapshot.trip, false, 'Who', true);
+            updateAttendance();
+            $('#edit-message').textContent = `“${name}” was added to this trip and ticked. Your activity is not saved yet.`;
+            status();
+            form.querySelector(`[name=participants][value="${CSS.escape(person.id)}"]`)?.focus();
+        }
+        catch (e) {
+            $('#person-inline-message').textContent = e.message;
+        }
+    }
     // Activity form: add a place without leaving the form or losing the draft.
     async function saveInlinePlace() {
         const form = $('#edit-form'), name = form.elements.newPlacename.value.trim();
@@ -801,8 +825,23 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
             status();
         }
     }
-    function formData(a) { const t = state.snapshot.trip; const disabled = !writable(); return `<label>Activity<input name="title" value="${escape(a.title)}" maxlength="160" required ${disabled ? 'disabled' : ''}></label><div class="field-row"><label>Day<select name="date" ${disabled ? 'disabled' : ''}><option value="">Unscheduled idea</option>${days(t).map(d => `<option value="${d}" ${a.date === d ? 'selected' : ''}>${dateLabel(d, { weekday: 'short', month: 'short', day: 'numeric' })}</option>`).join('')}</select></label><label>Time or part of day<input name="time" value="${escape(a.time)}" maxlength="80" ${disabled ? 'disabled' : ''}></label></div><label>Place<select name="placeId" ${disabled ? 'disabled' : ''}><option value="">Location to confirm</option>${t.places.map(p => `<option value="${escape(p.id)}" ${a.placeId === p.id ? 'selected' : ''}>${escape(p.name)} ${escape(p.localName)}</option>`).join('')}${disabled ? '' : '<option value="__new">＋ Add new place…</option>'}</select></label><fieldset class="inline-place" id="place-inline" hidden><legend>New place</legend>${placeFields({}, 'newPlace', '')}<p id="place-inline-message" role="alert"></p><button type="button" class="secondary" id="place-inline-save">Add this place</button><p class="form-hint">Adds the place to the trip straight away. Your activity is saved separately with the Save button below.</p></fieldset><label>Address <small>(private)</small><input name="address" maxlength="500" value="${escape(a.address || '')}" ${disabled ? 'disabled' : ''}><small>For this activity only. Never shown on the guest link; use Guest meeting point for that.</small></label><label class="check-label"><input type="checkbox" name="fixed" ${a.fixed ? 'checked' : ''} ${disabled ? 'disabled' : ''}> Fixed booking · protect date and time</label><label class="check-label"><input type="checkbox" name="optional" ${a.optional ? 'checked' : ''} ${disabled ? 'disabled' : ''}> Optional · offered as a choice, not a commitment</label><label class="check-label"><input type="checkbox" name="highlight" ${a.highlight ? "checked" : ""} ${disabled ? "disabled" : ""}> Whole-group activity · everyone together</label>${attendanceFields(a, t, disabled)}<label>Guest description<textarea name="guestNotes" rows="3" maxlength="4000" ${disabled ? 'disabled' : ''}>${escape(a.guestNotes)}</textarea><small>Visible if you enable this event's guest link.</small></label><label>Guest meeting point<input name="guestLocation" maxlength="500" value="${escape(a.guestLocation)}" ${disabled ? 'disabled' : ''}></label><label>Private planning notes<textarea name="notes" rows="4" maxlength="4000" ${disabled ? 'disabled' : ''}>${escape(a.notes)}</textarea><small>Excluded from the guest link.</small></label>${(a.links || []).length ? `<ul class="link-list" aria-label="Saved links">${a.links.map(l => `<li><a href="${escape(l.url)}" target="_blank" rel="noopener noreferrer">${escape(l.label || l.url)} ↗</a></li>`).join('')}</ul>` : ''}<label>Links <small>(private, optional)</small><textarea name="links" rows="2" maxlength="6000" spellcheck="false" placeholder="Tickets https://example.com/…" ${disabled ? 'disabled' : ''}>${escape(formatLinks(a.links))}</textarea><small>One per line: an optional label, then the web address. Excluded from the guest link.</small></label>`; }
-    function openEditor(id, preset = {}) { const a = state.snapshot.trip.activities.find(a => a.id === id) || { id: crypto.randomUUID(), date: 'date' in preset ? preset.date : state.day, time: '', title: '', placeId: preset.placeId || state.snapshot.trip.places[0]?.id || null, participants: defaultParticipants(state.snapshot.trip), notes: '', guestNotes: '', guestLocation: '', fixed: false, optional: state.snapshot.trip.kind === 'event', order: state.snapshot.trip.activities.length, sourceKind: 'entered' }; const form = $('#edit-form'); form.dataset.id = a.id; form.dataset.new = String(!id); form.dataset.base = JSON.stringify(id ? base(recordKey('activity', a.id)) : {}); $('#editor-fields').innerHTML = formData(a); $('#delete').hidden = !id || !writable(); $('#save').disabled = !writable(); $('#copy-draft').hidden = true; $('#reload-after-conflict').hidden = true; $('#edit-message').textContent = !writable() ? 'Downloaded reading copy. Connect and refresh before editing.' : a.sourceKind === 'tentative' ? 'Tentative source plan. Times, hosts, and bookings need review.' : a.sourceKind === 'synthetic' ? 'This is an example, not a real plan. Edit it to make it yours, or delete it.' : ''; lockTiming(); updateAttendance(); $('#editor').showModal(); }
+    // Which of the three plain choices an activity is. Anything else (a subset of people, or everyone but neither
+    // optional nor whole-group) is "some", where the people and the Optional tick are set by hand.
+    function kindOf(a, t) {
+        const all = defaultParticipants(t), everyone = a.participants.length === all.length && all.every(id => a.participants.includes(id));
+        return everyone && a.highlight && !a.optional ? 'whole' : everyone && a.optional && !a.highlight ? 'open' : 'some';
+    }
+    // Quick add first: what, when, and who. Place, guest text, notes and links are under "More details".
+    function formData(a) {
+        const t = state.snapshot.trip, disabled = !writable(), off = disabled ? 'disabled' : '', kind = kindOf(a, t);
+        const choice = (value, label, hint) => `<label class="check-label kind-option"><input type="radio" name="kind" value="${value}" ${kind === value ? 'checked' : ''} ${off}><span>${label}<small>${hint}</small></span></label>`;
+        const hasMore = !!(a.address || a.guestNotes || a.guestLocation || a.notes || (a.links || []).length);
+        return `<label>Activity<input name="title" value="${escape(a.title)}" maxlength="160" required ${off}></label><div class="field-row"><label>Day<select name="date" ${off}><option value="">Unscheduled idea</option>${days(t).map(d => `<option value="${d}" ${a.date === d ? 'selected' : ''}>${dateLabel(d, { weekday: 'short', month: 'short', day: 'numeric' })}</option>`).join('')}</select></label><label>Time or part of day<input name="time" value="${escape(a.time)}" maxlength="80" placeholder="e.g. after lunch, 17:00" ${off}></label></div><label class="check-label"><input type="checkbox" name="fixed" ${a.fixed ? 'checked' : ''} ${off}> Fixed booking · protect date and time</label>
+<fieldset class="kind-choice"><legend>What kind of plan is this?</legend>${choice('open', 'Open to everyone · optional', 'Anyone can join; nobody has to.')}${choice('whole', 'Whole-group activity', 'Everyone together. Shown with a pink band.')}${choice('some', 'For some people, or set it yourself', 'Choose who it is for and whether it is optional.')}</fieldset>
+<div id="some-panel" ${kind === 'some' ? '' : 'hidden'}><label class="check-label"><input type="checkbox" name="optional" ${a.optional ? 'checked' : ''} ${off}> Optional · offered as a choice, not a commitment</label><div id="attendance-slot">${attendanceFields(a, t, disabled, 'Who', true)}</div></div>
+<details class="more-details" id="more-details" ${hasMore || state.moreOpen ? 'open' : ''}><summary>More details <small>place, meeting point, notes, links</small></summary><label>Place<select name="placeId" ${off}><option value="">Location to confirm</option>${t.places.map(p => `<option value="${escape(p.id)}" ${a.placeId === p.id ? 'selected' : ''}>${escape(p.name)} ${escape(p.localName)}</option>`).join('')}${disabled ? '' : '<option value="__new">＋ Add new place…</option>'}</select></label><fieldset class="inline-place" id="place-inline" hidden><legend>New place</legend>${placeFields({}, 'newPlace', '')}<p id="place-inline-message" role="alert"></p><button type="button" class="secondary" id="place-inline-save">Add this place</button><p class="form-hint">Adds the place to the trip straight away. Your activity is saved separately with the Save button below.</p></fieldset><label>Guest meeting point<input name="guestLocation" maxlength="500" value="${escape(a.guestLocation)}" ${off}><small>Shown on the card as “Meet · …”, and on the guest link.</small></label><label>Guest description<textarea name="guestNotes" rows="3" maxlength="4000" ${off}>${escape(a.guestNotes)}</textarea><small>Visible if you enable this event's guest link.</small></label><label>Address <small>(private)</small><input name="address" maxlength="500" value="${escape(a.address || '')}" ${off}><small>For this activity only. Never shown on the guest link; use Guest meeting point for that.</small></label><label>Private planning notes<textarea name="notes" rows="4" maxlength="4000" ${off}>${escape(a.notes)}</textarea><small>Excluded from the guest link.</small></label>${(a.links || []).length ? `<ul class="link-list" aria-label="Saved links">${a.links.map(l => `<li><a href="${escape(l.url)}" target="_blank" rel="noopener noreferrer">${escape(l.label || l.url)} ↗</a></li>`).join('')}</ul>` : ''}<label>Links <small>(private, optional)</small><textarea name="links" rows="2" maxlength="6000" spellcheck="false" placeholder="Tickets https://example.com/…" ${off}>${escape(formatLinks(a.links))}</textarea><small>One per line: an optional label, then the web address. Excluded from the guest link.</small></label></details>`;
+    }
+    function openEditor(id, preset = {}) { const a = state.snapshot.trip.activities.find(a => a.id === id) || { id: crypto.randomUUID(), date: 'date' in preset ? preset.date : state.day, time: '', title: '', placeId: preset.placeId || state.snapshot.trip.places[0]?.id || null, participants: defaultParticipants(state.snapshot.trip), notes: '', guestNotes: '', guestLocation: '', fixed: false, optional: state.snapshot.trip.kind === 'event', order: state.snapshot.trip.activities.length, sourceKind: 'entered' }; const form = $('#edit-form'); form.dataset.id = a.id; form.dataset.new = String(!id); form.dataset.kind = kindOf(a, state.snapshot.trip); form.dataset.highlight = String(a.highlight === true); form.dataset.base = JSON.stringify(id ? base(recordKey('activity', a.id)) : {}); $('#editor-fields').innerHTML = formData(a); $('#delete').hidden = !id || !writable(); $('#save').disabled = !writable(); $('#copy-draft').hidden = true; $('#reload-after-conflict').hidden = true; $('#edit-message').textContent = !writable() ? 'Downloaded reading copy. Connect and refresh before editing.' : a.sourceKind === 'tentative' ? 'Tentative source plan. Times, hosts, and bookings need review.' : a.sourceKind === 'synthetic' ? 'This is an example, not a real plan. Edit it to make it yours, or delete it.' : ''; lockTiming(); updateAttendance(); $('#editor').showModal(); }
     function lockTiming() {
         const f = $('#edit-form');
         if (!f?.elements.fixed)
@@ -810,7 +849,11 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
         f.elements.date.disabled = !writable() || f.elements.fixed.checked;
         f.elements.time.disabled = !writable() || f.elements.fixed.checked;
     }
-    function draft() { const f = $('#edit-form'); return { title: f.elements.title.value, date: f.elements.date.value || null, time: f.elements.time.value, placeId: f.elements.placeId.value || null, address: f.elements.address.value, links: parseLinks(f.elements.links.value), notes: f.elements.notes.value, guestNotes: f.elements.guestNotes.value, guestLocation: f.elements.guestLocation.value, fixed: f.elements.fixed.checked, optional: f.elements.optional.checked, highlight: f.elements.highlight.checked, participants: [...f.querySelectorAll('[name=participants]:checked')].filter(x => !x.disabled).map(x => x.value) }; }
+    function draft() {
+        const f = $('#edit-form'), kind = f.elements.kind.value, some = kind === 'some';
+        // "Open" and "whole-group" always mean everyone; "some" keeps what is ticked, and keeps an existing highlight only if it was already a hand-set plan.
+        return { title: f.elements.title.value, date: f.elements.date.value || null, time: f.elements.time.value, placeId: f.elements.placeId.value || null, address: f.elements.address.value, links: parseLinks(f.elements.links.value), notes: f.elements.notes.value, guestNotes: f.elements.guestNotes.value, guestLocation: f.elements.guestLocation.value, fixed: f.elements.fixed.checked, optional: some ? f.elements.optional.checked : kind === 'open', highlight: some ? f.dataset.kind === 'some' && f.dataset.highlight === 'true' : kind === 'whole', participants: some ? [...f.querySelectorAll('[name=participants]:checked')].filter(x => !x.disabled).map(x => x.value) : defaultParticipants(state.snapshot.trip) };
+    }
     async function createTrip(data) { const r = await request('/api/trips', 'POST', data); state.selected = r.snapshot.trip.id; state.filter = 'all'; state.day = null; history.replaceState(null, '', `/?trip=${state.selected}`); await load(); }
     // A full backup is checked against its checksum first; then it restores as a separate new trip.
     async function importable(parsed) { return isSnapshot(parsed) ? restoreFromSnapshot(parsed) : parsed.trip || parsed; }
@@ -959,6 +1002,12 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
             }
             if (b.id === 'place-inline-save')
                 await saveInlinePlace();
+            if (b.id === 'person-inline-open') {
+                $('#person-inline').hidden = false;
+                $('#edit-form').elements.newPersonName.focus();
+            }
+            if (b.id === 'person-inline-save')
+                await saveInlinePerson();
             if ((b.id === 'stay-delete' || b.id === 'leg-delete') && confirm(`Delete this ${b.id === 'leg-delete' ? 'journey' : 'stay'}? Activities are not affected. You can undo this from History.`))
                 await deleteStructure(b.id.replace('-delete', ''));
             if (b.id === 'place-delete') {
@@ -1195,6 +1244,8 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
             }
             if (el.name === 'fixed')
                 lockTiming();
+            if (el.name === 'kind' && el.form?.id === 'edit-form')
+                $('#some-panel').hidden = el.value !== 'some';
             if (['amapUrl', 'appleMapsUrl'].includes(el.name) && el.form?.id === 'place-form')
                 el.form.elements.navReviewed.checked = false;
             if (el.id === 'import' && el.files[0]) {
@@ -1220,6 +1271,13 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
         if (!$('#editor')?.open && !$('#roster-dialog')?.open)
             load();
     });
+    // Remember whether this person likes the full form open.
+    document.addEventListener('toggle', event => {
+        if (event.target.id === 'more-details') {
+            state.moreOpen = event.target.open;
+            persist();
+        }
+    }, true);
     if ('serviceWorker' in navigator)
         navigator.serviceWorker.addEventListener('controllerchange', readiness);
     window.matchMedia?.(PHONE_QUERY).addEventListener?.('change', relayout);
