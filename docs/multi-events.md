@@ -140,6 +140,90 @@ no live write was made during the hosted checks.
 
 ## Release provenance
 
+### November 16, 2026 quick-add, timing, All days and even columns (version 15)
+
+Deployed at 13:27 PST on November 16 (2026-11-16T21:27:22Z). This deploys
+merged PRs 16 and 17 together: [quick add](quick-add.md),
+[timing levels](timing.md), [All days](all-days.md), and
+[even day columns](even-columns.md).
+
+| Item | Provenance |
+| --- | --- |
+| GitHub source | `79a6867333d5da7a9dc16dba9263748c504d63f4`, app at `apps/sites-prototype` |
+| Sites source | `fb172ffa6b76c13d8efc440091c3a370ac8918da` |
+| Matching content tree | GitHub app subtree and Sites root tree both `bf416a0e6081114de9def004b0e318d2675e6654`; 183 tracked files |
+| Saved version | **15**, `appgprj_6af3ef55c4f48191940aa66a59771eb3~appgver_3344090464888191a651b402da161d7b` |
+| Deployment | `appgdep_6afb7532ac448191af6baa9eb3ae11c7`, succeeded |
+| Runtime / offline shell | Environment revision 1; `waypoint-shell-v34` |
+| Rollback version retained | **14**, `appgprj_6af3ef55c4f48191940aa66a59771eb3~appgver_b74fb149223081918e2dacfaa0a59cc8` |
+
+Before starting, Sites confirmed version 14's saved source and successful
+deployment. A fresh sparse clone was populated from the pinned GitHub revision
+through the connected service, with the signed commit, all 183 app blobs and
+the tree verified. No older checkout supplied source files. There were no
+Sites-only files before synchronization. The four additional files are the
+quick-add, timing, All-days and even-columns tests.
+
+**Data and compatibility:** `timing` is an optional activity field with
+`set`, `day` and `anytime` levels. `fixed` remains the protection flag.
+Missing levels are supplied when the trip is read; deployment itself does not
+rewrite a stored trip. The previous app ignores the added field. `drizzle/`
+is byte-for-byte unchanged from version 14 and still ends at `0003`.
+No database migration, backup or database rollback was prepared. No trip was
+created, imported, deleted or edited during this release. No guest links,
+tokens, editor membership, invitations or emails were changed.
+
+**Checks before deployment:** Node 24.22.1; locked dependencies installed
+through the Sites installer; `npm test` **135 passed, 0 failed**;
+`npm run typecheck` passed; production build through the Sites build helper
+passed. The pushed Sites root tree matched the requested tree exactly.
+No local preview server, substitute browser automation, or disposable live
+edits were used. API/access integration scripts were not rerun.
+
+**Live verification:** browser controls were unavailable. Every browser check
+below is **not checked**, rather than inferred from source files or earlier
+release results.
+
+| Requested check | Result |
+| --- | --- |
+| A: Existing cards unchanged apart from Fixed booking → Set time; no Flexible label | **Not checked** |
+| A: Save an existing activity unchanged; History names only that activity | **Not checked** |
+| A: Quick form fields, folded More details, typed 17:30 suggests Set time, clearing reverses it, cancel | **Not checked** |
+| A: Disposable optional activity, Any day edit, delete, and all three History entries | **Not checked**; no live edits performed |
+| A: Existing set-time plan locks day/time, explains That day, and refuses cross-day drag | **Not checked** |
+| A: Some-people choice reveals people list and Add a person control without adding anyone | **Not checked** |
+| B: 390 × 664 shows one day with full weekday | **Not checked** |
+| B: All days toggle, day scroll/jump, highlighted day while scrolling, one-day return and reload persistence | **Not checked** |
+| C: 750 × 340 shows Ideas plus two day columns and first-screen cards; All days absent | **Not checked** |
+| C: Visible headers have one line/equal heights, including Wednesday; short weekday in narrow columns | **Not checked** |
+| C: Place, stay line and first card align across visible columns | **Not checked** |
+| C: No partly visible rightmost column; uneven sideways scroll settles to whole columns | **Not checked** |
+| C: Hide Ideas gives three whole columns; reopen gives two | **Not checked** |
+| C: Repeat header/alignment/whole-column checks at 667 × 375 and 930 × 430 | **Not checked** |
+| C: Loaded-page rotation switches upright and sideways layouts both ways | **Not checked** |
+| D: 761 × 900 has one whole day beside Ideas, two folded, and full weekdays on one line | **Not checked** |
+| D: Desktop week view has short weekdays, aligned cards and whole columns; drag out and back both save/log | **Not checked** |
+| E: Camp Earnest guest at 390 × 664 without organizer session: All days works, read-only sentence, no inputs/Add | **Not checked** |
+| E: Guest at 750 × 340: side-by-side days, single-line headers and whole columns | **Not checked** |
+| E: Cookie-free /api/trips returns 401 | **Passed** by direct HTTP request with no cookies or identity headers |
+| No sideways page overflow at every requested size | **Not checked** |
+| Physical phone | **Not checked** |
+
+**Additional live checks passed:** `sw.js`, `board.mjs`,
+`planner.css`, `planner.js` and `guest.mjs` downloaded without cookies
+match the pinned source bytes. Sites reported successful deployment; access
+mode and access-policy revision remained unchanged, runtime environment revision
+remained 1, and there are no scheduled jobs. These checks do not verify visual
+layout, interaction, signed-in behavior or guest rendering. No check failed.
+
+The existing release-record branch was merged cleanly with GitHub main,
+retaining the version 13 and 14 entries below. README now lists every change
+through even-columns as deployed.
+
+If anything goes wrong, redeploy retained saved version **14** and stop.
+No database rollback is required or authorized for this release.
+
+
 ### November 16, 2026 landscape correction (version 14)
 
 Deployed at 12:12 PST on November 16 (2026-11-16T20:12:54Z).

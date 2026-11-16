@@ -20,7 +20,7 @@ test('the day a stay ends shows a check-out line that opens the same stay detail
     const t = thanksgivingExample();
     t.stays[0].end = '2026-11-29';
     const html = board(t, { day: t.start }), last = html.slice(html.indexOf('data-date="2026-11-29"'));
-    assert.match(last, /class="lodging checkout" data-stay-view="shared-base"[^>]*>⌂ Check-out day · /);
+    assert.match(last, /class="lodging checkout" data-stay-view="shared-base"[^>]*><span class="lodging-text">⌂ Check-out day · /);
     assert.equal(html.match(/class="lodging" data-stay-view="shared-base"/g).length, 4, 'the nights keep their ordinary stay line');
     assert.ok(!board(publicTrip(t), { guest: true }).includes('Check-out'));
     assert.match(planner, /function openStayView\(id\)/);

@@ -22,7 +22,7 @@ test('on wide screens the ideas sit beside the days and can be folded; the choic
     assert.match(planner, /id="ideas-toggle" aria-expanded="\$\{!state\.ideasClosed\}" aria-controls="idea-cards"/);
     assert.equal(planner.match(/ideasClosed: state\.ideasClosed/g).length, 2, 'both saved-state writers keep the choice');
     assert.match(css, /\.board-wrap\.ideas-closed > \.ideas > :not\(\.ideas-toggle\) \{ display: none; \}/);
-    assert.match(css, /@media \(min-width: 761px\) \{\n  \.board-wrap \{ display: flex;/);
+    assert.match(css, /@media \(min-width: 761px\), \(min-width: 560px\) and \(orientation: landscape\) \{\n  \.board-wrap \{ display: flex;/);
     assert.match(guest, /<div class="board-wrap">\$\{ideas\}<div class="date-board" id="itinerary"/, 'guests get the same column');
     assert.match(css, /\.board-wrap > \.ideas \{ order: 2; \}/, 'on a phone the ideas still follow the day');
 });

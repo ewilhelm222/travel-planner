@@ -27,7 +27,13 @@ changes](docs/layout.md). Deployed on November 16, 2026 as Sites version 13 (see
 [plain wording](docs/plain-words.md), [dark forms](docs/dark-forms.md),
 [Add and Ideas within reach](docs/within-reach.md), [Ideas beside the
 days](docs/ideas-column.md), and [one Manage menu and a sideways-phone
-layout](docs/landscape-and-menu.md). A daily automatic backup is
+layout](docs/landscape-and-menu.md). Deployed together on November 16, 2026 as Sites version 15:
+[a shorter activity form](docs/quick-add.md), [timing levels](docs/timing.md),
+[all days in one scroll on phones](docs/all-days.md), and
+[even day columns](docs/even-columns.md). The narrower-phone landscape
+correction was deployed earlier as version 14. See
+[release provenance](docs/multi-events.md#release-provenance) for verification
+and rollback versions. A daily automatic backup is
 [proposed](docs/backup-proposal.md) and not enabled.
 
 [Open the planner](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site) · [Current implementation and access status](docs/multi-events.md) · [What is deployed](docs/multi-events.md#release-provenance) · [Managing travelers](docs/travelers.md) · [Drag-and-drop](docs/drag-drop.md) · [Schedule-first phone layout](docs/schedule-first.md) · [Editors and what they may change](docs/editors.md) · [Source](apps/sites-prototype)

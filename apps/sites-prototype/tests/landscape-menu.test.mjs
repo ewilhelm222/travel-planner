@@ -18,13 +18,17 @@ test('on wide screens only Add, the filter and the view switch sit above the boa
     assert.match(planner, /event\.key === 'Escape' && menu\?\.open && !document\.querySelector\('dialog\[open\]'\)/, 'Escape closes the menu');
 });
 
-test('a short, wide screen keeps the wide layout but gives the height to the days', () => {
-    const start = css.indexOf('@media (min-width: 761px) and (max-height: 520px) {');
+test('a short, wide screen keeps the wide layout but gives the height to the days', async () => {
+    const start = css.indexOf('@media (min-width: 761px) and (max-height: 520px), (min-width: 560px) and (max-height: 520px) and (orientation: landscape) {');
     assert.ok(start > 0);
     const block = css.slice(start);
     assert.match(block, /main \.library-bar ~ \.trip-header, \.view-title, #status:not\(\.reading-copy\)[^{]*\{ display: none; \}/, 'the poster bar and the status line fold away; an offline or expired notice does not');
-    assert.match(block, /\.board-wrap:not\(\.ideas-closed\) > \.date-board \{ grid-auto-columns: minmax\(220px, calc\(\(100% - 12px\) \/ 2\)\); \}/, 'ideas plus two days');
-    assert.match(block, /\.date-board \{ grid-auto-columns: minmax\(220px, calc\(\(100% - 24px\) \/ 3\)\)/, 'or three days with the ideas folded');
+    assert.match(block, /\.board-wrap > \.date-board, \.dense \.board-wrap > \.date-board \{ --col-min: 190; --gap: 12px; --cols-default: 3; \}/, 'day columns may be as narrow as 190 px');
     assert.match(drag, /@media\(max-height:520px\)\{\.drop-dock h2\{display:none\}/, 'the drop panel is slimmer on a short screen');
-    assert.match(planner, /const phone = \(\) => window\.matchMedia\?\.\('\(max-width:760px\)'\)\.matches;/, 'the phone/desktop switch itself is unchanged');
+    // A phone on its side is usually narrower than 761 px in the browser, so width alone must not decide.
+    const { PHONE_QUERY } = await import('../public/board.mjs');
+    assert.equal(PHONE_QUERY, '(max-width: 559px), (max-width: 760px) and (orientation: portrait)');
+    assert.match(planner, /const phone = \(\) => window\.matchMedia\?\.\(PHONE_QUERY\)\.matches;/);
+    assert.ok(!/max-width: ?760px\)(?! and \(orientation: portrait\))/.test(css), 'no style treats every screen under 761 px as an upright phone');
+    assert.ok(!/@media \(min-width: 761px\) \{/.test(css), 'and no wide-screen style ignores a sideways phone');
 });

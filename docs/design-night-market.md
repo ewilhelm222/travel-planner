@@ -133,8 +133,9 @@ differ, this section is current.
 - **Functional labels.** "Whole-group activity" replaces "The rendezvous" and
   "Highlight a shared moment". "Ideas · not scheduled yet" replaces "Not on the
   itinerary. Yet." The activity form has no eyebrow line.
-- **Booking state.** `■ Fixed booking` stays, in words. `○ Flexible` is no
-  longer shown: a card with no booking mark is simply not fixed.
+- **Timing.** `■ Set time` (formerly `■ Fixed booking`) stays, in words, with
+  the ember edge. "Any day" is a small dashed label. A "that day" plan has no
+  label; `○ Flexible` is no longer shown. See [timing.md](timing.md).
 - **Optional** is a dashed chip beside the people labels. An ordinary planned
   activity carries no label.
 - **Examples.** An invented item carries "Example · not a real plan" and a

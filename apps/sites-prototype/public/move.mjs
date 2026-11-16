@@ -1,7 +1,7 @@
 // Pure move/reorder rules shared by the planner (optimistic preview) and the
 // server (authoritative save). No DOM access, so both sides and the tests agree.
 
-export const FIXED_MOVE_ERROR = "Keep this fixed booking's date and time, or explicitly make it flexible first.";
+export const FIXED_MOVE_ERROR = "This plan has a set time, like a fixed booking. Choose “That day” in its form first, then change its day or time.";
 
 const byOrder = (a, b) => (a.order ?? 0) - (b.order ?? 0) || String(a.id).localeCompare(String(b.id));
 
