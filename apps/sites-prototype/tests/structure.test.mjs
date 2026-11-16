@@ -120,8 +120,7 @@ test('the board opens stays and journeys for editing; the guest view has neither
 test('the planner offers inline place creation, structure editing and a Save label for trip details', async () => {
     const script = await source('public/planner.js');
     assert.match(script, /<option value="__new">＋ Add new place…<\/option>/);
-    assert.match(script, /action: 'place-add', revision: Number\(form\.dataset\.revision\), place/);
-    assert.match(script, /form\.dataset\.revision = result\.snapshot\.revision/, 'the open activity draft continues from the new revision');
+    assert.match(script, /action: 'place-add', base: \{\}, place/, 'adding a place relies on no existing record, so it cannot conflict with the open draft');
     assert.equal(script.match(/id="structure"/g).length, 2, 'desktop toolbar and phone manage section');
     for (const id of ['place-form', 'stay-form', 'leg-form'])
         assert.ok(script.includes(`<form id="${id}"`));

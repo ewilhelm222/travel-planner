@@ -68,32 +68,47 @@ function current(trip, record) {
   if (record.kind === "trip") return tripFields(trip);
   return (trip[collectionOf(record.kind)] || []).find(r => r.id === record.id) ?? null;
 }
+const keyOf = record => record.kind === "trip" ? "trip" : `${record.kind}:${record.id}`;
+const revisionNow = (revisions, record) => Number.isSafeInteger(revisions?.[keyOf(record)]) ? revisions[keyOf(record)] : 1;
 
 /**
- * Which logged records no longer match what the change left behind.
+ * Which logged records have been changed again since the change being undone.
+ * A record logged with its revision (`rev`) is unchanged while it is still at that
+ * revision. Older log rows have no `rev` and are compared by content instead.
+ * Cards a drag merely renumbered (`incidental`) never block an undo.
  * An empty list means the change can be undone without touching anyone's later work.
  */
-export function undoConflicts(trip, records) {
-  return records.filter(record => !collectionOf(record.kind) && record.kind !== "trip" ? true : !same(current(trip, record), record.after)).map(record => ({ kind: record.kind, id: record.id, label: label(current(trip, record) || record.after || record.before) }));
+export function undoConflicts(trip, records, revisions) {
+  return records.filter(record => {
+    if (record.incidental) return false;
+    if (!collectionOf(record.kind) && record.kind !== "trip") return true;
+    if (Number.isSafeInteger(record.rev) && revisions) return revisionNow(revisions, record) !== record.rev;
+    return !same(current(trip, record), record.after);
+  }).map(record => ({ kind: record.kind, id: record.id, label: label(current(trip, record) || record.after || record.before) }));
 }
 
 /**
- * Put every record of one logged change back to its `before` state.
- * Throws when any of those records has changed since, so later edits are never rewound.
- * The caller validates the result (normalizeTrip) before saving it.
+ * Put back what one logged change altered: only the fields it changed, on only the
+ * records it touched. Throws when any of those records has changed since, so later
+ * edits are never rewound. The caller validates the result (normalizeTrip) before saving it.
  */
-export function undoChange(trip, records) {
+export function undoChange(trip, records, revisions) {
   if (!records?.length) throw new Error("This entry has nothing to undo.");
-  const conflicts = undoConflicts(trip, records);
+  const conflicts = undoConflicts(trip, records, revisions);
   if (conflicts.length)
     throw Object.assign(new Error(`Not undone: ${conflicts.map(c => c.label ? `“${c.label}”` : `a ${c.kind}`).join(", ")} ${conflicts.length === 1 ? "has" : "have"} changed since this edit. Nothing was changed.`), { conflicts });
   const next = structuredClone(trip);
+  const revert = (target, record) => { for (const { field } of fieldChanges(record)) target[field] = structuredClone(record.before[field] ?? (Array.isArray(record.after[field]) ? [] : typeof record.after[field] === "boolean" ? false : typeof record.after[field] === "string" ? "" : null)); };
   for (const record of records) {
-    if (record.kind === "trip") { Object.assign(next, record.before); continue; }
+    if (record.kind === "trip") { revert(next, record); continue; }
     const key = collectionOf(record.kind), rows = next[key] ||= [], index = rows.findIndex(r => r.id === record.id);
-    if (record.before === null) rows.splice(index, 1);
-    else if (index < 0) rows.splice(Number.isSafeInteger(record.at) ? Math.min(record.at, rows.length) : rows.length, 0, structuredClone(record.before));
-    else rows[index] = structuredClone(record.before);
+    if (record.incidental) {
+      // Restore a renumbered card's position only if nobody has moved it since.
+      if (index >= 0 && rows[index].order === record.after.order) rows[index].order = record.before.order;
+    }
+    else if (record.before === null) { if (index >= 0) rows.splice(index, 1); }
+    else if (record.after === null) { if (index < 0) rows.splice(Number.isSafeInteger(record.at) ? Math.min(record.at, rows.length) : rows.length, 0, structuredClone(record.before)); else throw Object.assign(new Error("Not undone: a record with that identifier exists again. Nothing was changed."), { conflicts: [{ kind: record.kind, id: record.id, label: label(rows[index]) }] }); }
+    else if (index >= 0) revert(rows[index], record);
   }
   return next;
 }

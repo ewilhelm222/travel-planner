@@ -54,7 +54,7 @@ export async function POST(request: Request) {
             db().prepare("INSERT INTO planner_trips (id,owner_id,document,revision,updated_at,updated_by) VALUES (?,?,?,1,?,?)").bind(id, user.userId, JSON.stringify(trip), now, user.displayName),
             db().prepare("INSERT INTO planner_changes (trip_id,revision,actor_id,actor_name,at,action,summary) VALUES (?,1,?,?,?,'create','Created this trip')").bind(id, user.userId, user.displayName, now),
         ]);
-        return response({ user: userView(user), snapshot: { trip, revision: 1, updatedAt: now, updatedBy: user.displayName } }, 201);
+        return response({ user: userView(user), snapshot: { trip, revision: 1, revisions: {}, updatedAt: now, updatedBy: user.displayName } }, 201);
     }
     catch (e) {
         return failed(e);

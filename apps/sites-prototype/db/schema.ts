@@ -13,7 +13,11 @@ export const plannerTrips = sqliteTable("planner_trips", {
   ownerId: text("owner_id").notNull(),
   editorEmails: text("editor_emails").notNull().default("[]"),
   document: text("document").notNull(),
+  // Trip-wide version counter: guards each atomic write. Conflicts are decided per record below.
   revision: integer("revision").notNull().default(1),
+  // JSON map of record key ("activity:<id>", "trip", "share", ...) to that record's revision.
+  // A missing key means revision 1, so trips saved before this column existed need no rewrite.
+  recordRevisions: text("record_revisions").notNull().default("{}"),
   updatedAt: text("updated_at").notNull(),
   updatedBy: text("updated_by").notNull(),
   shareTokenHash: text("share_token_hash").unique(),

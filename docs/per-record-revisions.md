@@ -93,3 +93,34 @@ editing a card no longer blocks enabling a link. Deleting a trip relies on the
 - Rules that span records are checked against the latest trip at save time. For
   example, if a place is deleted while you assign it to a card, your save is
   refused with "Choose a place from this trip".
+
+## What was built and checked
+
+Built as designed: `public/revisions.mjs` (rules), `staleCheck()` and
+`transact()` in `lib/trip-store.ts` (check and retry), migration
+`0003_record_revisions.sql`, and the planner sends `base` with every save.
+
+- `npm test`: 79 pass (10 new in `tests/revisions.test.mjs`).
+- `npm run test:api`: eight simultaneous saves to eight different cards all
+  succeed with none lost and one History row each; two simultaneous saves to
+  one card give exactly one success and one 409 naming the card; a request with
+  only the old trip-wide revision is 409 when stale and 400 with none; a drag
+  leaves neighbours' revisions alone; the guest link and trip delete use their
+  own records.
+- `npm run test:access`: organizer and editor accounts save different cards at
+  the same moment; the same card has one winner; a non-member is refused.
+- Headless Chromium, two signed-in browsers, at 1440 px and 390 px: both save
+  different cards and the second sees the first's change without refreshing; a
+  save to a card the other just changed shows the conflict with the draft kept.
+- Type check, lint (0 errors) and production build pass.
+
+Not verified: the migration on the hosted database, two real accounts on the
+hosted Site, and behaviour under real network delay (the local database
+answers in milliseconds, so the retry path is exercised but not stressed).
+
+| Different cards: both saved | Same card: refused, draft kept |
+| --- | --- |
+| <img src="design/record-revisions/phone-both-saved.jpg" width="240"> | <img src="design/record-revisions/phone-same-card-conflict.jpg" width="240"> |
+
+Desktop: [both saved](design/record-revisions/desktop-both-saved.jpg) ·
+[conflict](design/record-revisions/desktop-same-card-conflict.jpg).

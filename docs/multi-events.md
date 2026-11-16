@@ -80,7 +80,8 @@ editor-email membership, and guest-token hash. Migration
 Every document update uses an atomic revision comparison and appends a row to
 the `planner_changes` log in the same batch; History, conditional undo, trip
 archive and a manual full backup are described in [safety-net.md](safety-net.md).
-Per-record revisions, move-stay warnings, and an automatic independent backup
+Conflicts are decided per record ([per-record-revisions.md](per-record-revisions.md)):
+two planners saving different cards both succeed. Move-stay warnings and an automatic independent backup
 ([proposal](backup-proposal.md), not enabled) remain future work.
 
 Set `PLANNER_CREATOR_EMAILS` in Sites runtime configuration to the organizer's

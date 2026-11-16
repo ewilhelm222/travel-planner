@@ -3,6 +3,7 @@
     const { escape, dateLabel, days, preferredDay, board, card, dayChooser } = await import('/board.mjs');
     const { filterChoices, matchesSelection, defaultParticipants, includesPerson, peopleOf, isWholeTripGroup, participantRecord, participantReferences, referenceSummary } = await import('/participants.mjs');
     const { fieldChanges } = await import('/history.mjs');
+    const { baseFor, recordKey } = await import('/revisions.mjs');
     const { isSnapshot, restoreFromSnapshot } = await import('/backup.mjs');
     const { placeReferences, placeReferenceSummary, parseLinks, formatLinks, LEG_MODES } = await import('/structure.mjs');
     const { responsePolicy } = await import('/reading-copy.mjs');
@@ -14,6 +15,11 @@
     const state = { user: null, snapshot: null, library: [], archived: [], copies: {}, canCreate: false, isOwner: false, selected: new URLSearchParams(location.search).get('trip'), filter: 'all', day: null, compact: true, online: navigator.onLine, busy: false, message: '', downloadedAt: null, offlineReady: false, needsSignIn: false };
     const $ = s => document.querySelector(s);
     const writable = () => state.online && !state.needsSignIn && !state.busy;
+    // Each save names the records it relies on and the revision they had when the form opened.
+    // Only a change to one of those records is a conflict; other people's edits elsewhere are not.
+    const base = (...keys) => baseFor(state.snapshot?.revisions || {}, ...keys);
+    const baseAttr = (...keys) => escape(JSON.stringify(base(...keys)));
+    const formBase = form => JSON.parse(form.dataset.base || '{}');
     function restore() {
         try {
             let saved = JSON.parse(localStorage.getItem(KEY));
@@ -98,8 +104,8 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v17');
-            state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
+            const cache = await caches.open('waypoint-shell-v18');
+            state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
         catch { }
@@ -300,7 +306,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
         status();
         const shared = a.participants.length > 1 || a.participants.some(id => state.snapshot.trip.families.some(g => g.id === id && isWholeTripGroup(g)));
         try {
-            const saved = await request(endpoint('/api/trip'), 'PATCH', { action: 'move', revision: previous.revision, activityId, date, beforeId });
+            const saved = await request(endpoint('/api/trip'), 'PATCH', { action: 'move', base: baseFor(previous.revisions || {}, recordKey('activity', activityId)), activityId, date, beforeId });
             state.snapshot = saved.snapshot;
             remember();
             const where = result.from === date ? `Reordered “${a.title}” on ${dayName(date)}.` : `Moved “${a.title}” from ${dayName(result.from)} to ${dayName(date)}.`;
@@ -313,7 +319,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
             refreshBoard(activityId, { refused: true });
             if (e.status === 409) {
                 await load();
-                state.message = `Not moved: someone else saved a change to this trip first. Nothing was overwritten — the latest plan is now shown. Move “${a.title}” again if it is still needed.`;
+                state.message = `Not moved: someone else changed “${a.title}” first. Nothing was overwritten — the latest plan is now shown. Move it again if it is still needed.`;
             }
             else
                 state.message = `Not moved: ${e.message} “${a.title}” is back where it was.`;
@@ -377,7 +383,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
     }
     function openRoster(defaultFamily = '') {
         const t = state.snapshot.trip;
-        $('#roster-dialog').innerHTML = `<div class="dialog-heading"><span class="eyebrow">People on this trip</span><button type="button" class="icon-button" data-close="roster-dialog" aria-label="Close travelers">×</button></div><h2 id="roster-title">Travelers & groups</h2><p>Plan for people by display name. Adding a traveler does not invite them or grant editing access.</p><button type="button" class="secondary" id="roster-backup">Save JSON backup</button><div class="roster-grid"><section><h3>Travelers (${peopleOf(t).length})</h3><ul class="roster-list">${peopleOf(t).map(p => `<li><span><strong>${escape(p.name)}</strong><small>${escape(t.families.find(g => g.id === p.familyId)?.name || 'No family group')} · ${p.showOnGuest ? 'Name shown to guests' : 'Name private'}</small></span><span class="row-actions"><button type="button" class="secondary" data-person="${escape(p.id)}" aria-label="Edit traveler ${escape(p.name)}">Edit</button><button type="button" class="text-button danger" data-remove-person="${escape(p.id)}" aria-label="Remove traveler ${escape(p.name)}">Remove</button></span></li>`).join('') || '<li>No individual travelers yet. Existing group assignments still work.</li>'}</ul><form id="traveler-form" data-revision="${state.snapshot.revision}"><h3 id="traveler-form-title">Add traveler</h3><label>Display name<input name="name" required maxlength="80" autocomplete="off"></label><label>Family / group<select name="familyId"><option value="">No family group</option>${t.families.filter(g => !isWholeTripGroup(g)).map(g => `<option value="${escape(g.id)}">${escape(g.name)}</option>`).join('')}</select></label><label class="check-label"><input name="showOnGuest" type="checkbox" ${state.isOwner ? '' : 'disabled'}>Show display name on guest link</label>${state.isOwner ? '' : '<p class="form-hint">Only the organizer changes this setting.</p>'}<p class="form-hint">Private by default. This controls the guest filter and participant labels. Activity titles and guest descriptions are still shared as written.</p><p class="form-hint">Changing a family/group changes which group-based plans include this traveler. Everyone always includes the whole trip.</p><div class="dialog-actions"><button type="button" class="secondary" id="roster-new">New traveler</button><button class="primary" id="roster-save">Save traveler</button></div></form></section><section><h3>Families / groups</h3><ul class="roster-list">${t.families.map(g => `<li><span><strong>${escape(g.name)}</strong><small>${isWholeTripGroup(g) ? 'Automatically includes every traveler' : `${peopleOf(t).filter(p => p.familyId === g.id).length} travelers`}</small></span><span class="row-actions"><button type="button" class="secondary" data-family-edit="${escape(g.id)}" aria-label="Edit group ${escape(g.name)}">Edit</button>${isWholeTripGroup(g) ? '' : `<button type="button" class="text-button danger" data-remove-family="${escape(g.id)}" aria-label="Remove group ${escape(g.name)}">Remove</button>`}</span></li>`).join('')}</ul><form id="family-form" data-revision="${state.snapshot.revision}"><h3 id="family-form-title">Add family / group</h3><label>Group name<input name="name" required maxlength="80"></label><label>Accent<select name="color"><option value="green">Lagoon</option><option value="orange">Ember</option><option value="blue">Orchid</option></select></label><p class="form-hint">Group names appear in an enabled guest view. Create a group, then assign travelers to it above.</p><div class="dialog-actions"><button type="button" class="secondary" id="family-new">New group</button><button class="primary" id="family-save">Save group</button></div></form></section></div><p id="roster-message" role="status" aria-live="polite"></p><div class="dialog-actions"><button type="button" class="secondary" id="roster-copy" hidden>Copy roster draft</button><button type="button" class="secondary" id="roster-reload" hidden>Load latest plan</button><button type="button" class="secondary" data-close="roster-dialog">Done</button></div>`;
+        $('#roster-dialog').innerHTML = `<div class="dialog-heading"><span class="eyebrow">People on this trip</span><button type="button" class="icon-button" data-close="roster-dialog" aria-label="Close travelers">×</button></div><h2 id="roster-title">Travelers & groups</h2><p>Plan for people by display name. Adding a traveler does not invite them or grant editing access.</p><button type="button" class="secondary" id="roster-backup">Save JSON backup</button><div class="roster-grid"><section><h3>Travelers (${peopleOf(t).length})</h3><ul class="roster-list">${peopleOf(t).map(p => `<li><span><strong>${escape(p.name)}</strong><small>${escape(t.families.find(g => g.id === p.familyId)?.name || 'No family group')} · ${p.showOnGuest ? 'Name shown to guests' : 'Name private'}</small></span><span class="row-actions"><button type="button" class="secondary" data-person="${escape(p.id)}" aria-label="Edit traveler ${escape(p.name)}">Edit</button><button type="button" class="text-button danger" data-remove-person="${escape(p.id)}" aria-label="Remove traveler ${escape(p.name)}">Remove</button></span></li>`).join('') || '<li>No individual travelers yet. Existing group assignments still work.</li>'}</ul><form id="traveler-form"><h3 id="traveler-form-title">Add traveler</h3><label>Display name<input name="name" required maxlength="80" autocomplete="off"></label><label>Family / group<select name="familyId"><option value="">No family group</option>${t.families.filter(g => !isWholeTripGroup(g)).map(g => `<option value="${escape(g.id)}">${escape(g.name)}</option>`).join('')}</select></label><label class="check-label"><input name="showOnGuest" type="checkbox" ${state.isOwner ? '' : 'disabled'}>Show display name on guest link</label>${state.isOwner ? '' : '<p class="form-hint">Only the organizer changes this setting.</p>'}<p class="form-hint">Private by default. This controls the guest filter and participant labels. Activity titles and guest descriptions are still shared as written.</p><p class="form-hint">Changing a family/group changes which group-based plans include this traveler. Everyone always includes the whole trip.</p><div class="dialog-actions"><button type="button" class="secondary" id="roster-new">New traveler</button><button class="primary" id="roster-save">Save traveler</button></div></form></section><section><h3>Families / groups</h3><ul class="roster-list">${t.families.map(g => `<li><span><strong>${escape(g.name)}</strong><small>${isWholeTripGroup(g) ? 'Automatically includes every traveler' : `${peopleOf(t).filter(p => p.familyId === g.id).length} travelers`}</small></span><span class="row-actions"><button type="button" class="secondary" data-family-edit="${escape(g.id)}" aria-label="Edit group ${escape(g.name)}">Edit</button>${isWholeTripGroup(g) ? '' : `<button type="button" class="text-button danger" data-remove-family="${escape(g.id)}" aria-label="Remove group ${escape(g.name)}">Remove</button>`}</span></li>`).join('')}</ul><form id="family-form"><h3 id="family-form-title">Add family / group</h3><label>Group name<input name="name" required maxlength="80"></label><label>Accent<select name="color"><option value="green">Lagoon</option><option value="orange">Ember</option><option value="blue">Orchid</option></select></label><p class="form-hint">Group names appear in an enabled guest view. Create a group, then assign travelers to it above.</p><div class="dialog-actions"><button type="button" class="secondary" id="family-new">New group</button><button class="primary" id="family-save">Save group</button></div></form></section></div><p id="roster-message" role="status" aria-live="polite"></p><div class="dialog-actions"><button type="button" class="secondary" id="roster-copy" hidden>Copy roster draft</button><button type="button" class="secondary" id="roster-reload" hidden>Load latest plan</button><button type="button" class="secondary" data-close="roster-dialog">Done</button></div>`;
         $('#traveler-form').elements.familyId.value = defaultFamily;
         $('#roster-dialog').showModal();
         status();
@@ -481,7 +487,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
         state.busy = true;
         status();
         try {
-            const result = await request(endpoint('/api/trip'), 'PATCH', { action: group ? 'family-remove' : 'traveler-remove', revision: state.snapshot.revision, [group ? 'familyId' : 'personId']: id, unassign: refs.total > 0 });
+            const result = await request(endpoint('/api/trip'), 'PATCH', { action: group ? 'family-remove' : 'traveler-remove', base: base(recordKey(group ? 'group' : 'traveler', id)), [group ? 'familyId' : 'personId']: id, unassign: refs.total > 0 });
             state.snapshot = result.snapshot;
             if (state.filter === id)
                 state.filter = 'all';
@@ -510,7 +516,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
         const t = state.snapshot.trip;
         if (!confirm(`Delete “${t.title}”?\n\nIt disappears for you and every editor, and its guest link stops working. Nothing is erased: you can restore it from “Archived trips”.`))
             return;
-        await request(endpoint('/api/archive'), 'POST', { action: 'archive', revision: state.snapshot.revision });
+        await request(endpoint('/api/archive'), 'POST', { action: 'archive', base: base('trip') });
         $('#create-dialog').close();
         delete state.copies[state.selected];
         state.selected = null;
@@ -557,17 +563,17 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
     function openPlace(id) {
         const t = state.snapshot.trip, p = t.places.find(x => x.id === id) || { id: crypto.randomUUID(), name: '' }, disabled = writable() ? '' : 'disabled';
         const refs = placeReferences(t, p.id), others = t.places.filter(x => x.id !== p.id);
-        structureDialog('Place', id ? 'Edit place' : 'Add place', `<form id="place-form" data-id="${escape(p.id)}" data-new="${!id}" data-revision="${state.snapshot.revision}">${placeFields(p, '', disabled)}${id ? `<p class="form-hint">${refs.total ? `Used by ${escape(placeReferenceSummary(refs))}.` : 'Nothing uses this place yet.'}</p><div class="reassign" id="place-reassign" hidden><p><strong>This place is in use.</strong> Deleting it will not delete those plans. Choose where they should point instead.</p><label>Move ${escape(placeReferenceSummary(refs))} to<select name="reassignTo"><option value="">Choose…</option>${others.map(x => `<option value="${escape(x.id)}">${escape(placeLabel(x))}</option>`).join('')}<option value="__none">No place · “Location to confirm”</option></select></label><button type="button" class="secondary" id="place-delete-confirm">Move them and delete this place</button></div>` : ''}${formActions('place', !id, true)}</form>`, true);
+        structureDialog('Place', id ? 'Edit place' : 'Add place', `<form id="place-form" data-id="${escape(p.id)}" data-new="${!id}" data-base="${id ? baseAttr(recordKey('place', id)) : '{}'}">${placeFields(p, '', disabled)}${id ? `<p class="form-hint">${refs.total ? `Used by ${escape(placeReferenceSummary(refs))}.` : 'Nothing uses this place yet.'}</p><div class="reassign" id="place-reassign" hidden><p><strong>This place is in use.</strong> Deleting it will not delete those plans. Choose where they should point instead.</p><label>Move ${escape(placeReferenceSummary(refs))} to<select name="reassignTo"><option value="">Choose…</option>${others.map(x => `<option value="${escape(x.id)}">${escape(placeLabel(x))}</option>`).join('')}<option value="__none">No place · “Location to confirm”</option></select></label><button type="button" class="secondary" id="place-delete-confirm">Move them and delete this place</button></div>` : ''}${formActions('place', !id, true)}</form>`, true);
     }
     function openStay(id, back = false) {
         const t = state.snapshot.trip, s = t.stays.find(x => x.id === id) || { id: crypto.randomUUID(), name: '', placeId: t.places[0]?.id || '', start: state.day || t.start, end: '', lodging: '', note: '', participants: defaultParticipants(t) }, disabled = writable() ? '' : 'disabled';
-        structureDialog('Stay', id ? 'Edit stay' : 'Add stay', `<form id="stay-form" data-id="${escape(s.id)}" data-new="${!id}" data-revision="${state.snapshot.revision}"><label>Place<select name="placeId" required ${disabled}>${placeOptions(t, s.placeId, 'Choose a place…')}</select></label>${t.places.length ? '' : '<p class="form-hint">Add a place first (Back → Add place).</p>'}<div class="field-row"><label>Check-in<input type="date" name="start" value="${escape(s.start)}" required ${disabled}></label><label>Check-out<input type="date" name="end" value="${escape(s.end)}" required ${disabled}></label></div><p class="form-hint">The stay covers each night from check-in up to, not including, check-out. Changing these dates does not move any activities.</p><label>Lodging<input name="lodging" value="${escape(s.lodging)}" maxlength="500" ${disabled}><small>Private. Not shown on the guest link.</small></label><label>Short label <small>(optional)</small><input name="name" value="${escape(s.name)}" maxlength="160" ${disabled}></label><label>Private note<textarea name="note" rows="3" maxlength="4000" ${disabled}>${escape(s.note)}</textarea></label>${attendanceFields({ participants: s.participants || [] }, t, !writable(), 'Who is staying')}${formActions('stay', !id, back)}</form>`, back);
+        structureDialog('Stay', id ? 'Edit stay' : 'Add stay', `<form id="stay-form" data-id="${escape(s.id)}" data-new="${!id}" data-base="${id ? baseAttr(recordKey('stay', id)) : '{}'}"><label>Place<select name="placeId" required ${disabled}>${placeOptions(t, s.placeId, 'Choose a place…')}</select></label>${t.places.length ? '' : '<p class="form-hint">Add a place first (Back → Add place).</p>'}<div class="field-row"><label>Check-in<input type="date" name="start" value="${escape(s.start)}" required ${disabled}></label><label>Check-out<input type="date" name="end" value="${escape(s.end)}" required ${disabled}></label></div><p class="form-hint">The stay covers each night from check-in up to, not including, check-out. Changing these dates does not move any activities.</p><label>Lodging<input name="lodging" value="${escape(s.lodging)}" maxlength="500" ${disabled}><small>Private. Not shown on the guest link.</small></label><label>Short label <small>(optional)</small><input name="name" value="${escape(s.name)}" maxlength="160" ${disabled}></label><label>Private note<textarea name="note" rows="3" maxlength="4000" ${disabled}>${escape(s.note)}</textarea></label>${attendanceFields({ participants: s.participants || [] }, t, !writable(), 'Who is staying')}${formActions('stay', !id, back)}</form>`, back);
         updateAttendance($('#stay-form'));
     }
     function openLeg(id, back = false) {
         const t = state.snapshot.trip, l = t.legs.find(x => x.id === id) || { id: crypto.randomUUID(), title: '', date: state.day || t.start, arrivalDate: '', time: '', arrivalTime: '', mode: 'Train', participants: defaultParticipants(t), notes: '', from: '', to: '' }, disabled = writable() ? '' : 'disabled';
         const modes = LEG_MODES.includes(l.mode) || !l.mode ? LEG_MODES : [l.mode, ...LEG_MODES];
-        structureDialog('Journey', id ? 'Edit journey' : 'Add journey', `<form id="leg-form" data-id="${escape(l.id)}" data-new="${!id}" data-revision="${state.snapshot.revision}"><label>Title<input name="title" value="${escape(l.title)}" maxlength="160" required placeholder="e.g. Morning train to the coast" ${disabled}></label><div class="field-row"><label>Mode<select name="mode" ${disabled}>${modes.map(m => `<option ${m === l.mode ? 'selected' : ''}>${escape(m)}</option>`).join('')}</select></label><label>Departure day<select name="date" ${disabled}>${days(t).map(d => `<option value="${d}" ${l.date === d ? 'selected' : ''}>${dateLabel(d, { weekday: 'short', month: 'short', day: 'numeric' })}</option>`).join('')}</select></label></div><div class="field-row"><label>From<select name="from" ${disabled}>${placeOptions(t, l.from, 'Start to confirm')}</select></label><label>To<select name="to" ${disabled}>${placeOptions(t, l.to, 'End to confirm')}</select></label></div><div class="field-row"><label>Departure time<input name="time" value="${escape(l.time)}" maxlength="80" ${disabled}></label><label>Arrival time<input name="arrivalTime" value="${escape(l.arrivalTime)}" maxlength="80" ${disabled}></label></div><label>Arrival day <small>(only if different, e.g. overnight)</small><input type="date" name="arrivalDate" value="${escape(l.arrivalDate && l.arrivalDate !== l.date ? l.arrivalDate : '')}" min="${escape(t.start)}" ${disabled}></label><label>Private notes<textarea name="notes" rows="3" maxlength="4000" ${disabled}>${escape(l.notes)}</textarea><small>Journeys are not shown on the guest link.</small></label>${attendanceFields({ participants: l.participants || [] }, t, !writable(), 'Who is travelling')}${formActions('leg', !id, back)}</form>`, back);
+        structureDialog('Journey', id ? 'Edit journey' : 'Add journey', `<form id="leg-form" data-id="${escape(l.id)}" data-new="${!id}" data-base="${id ? baseAttr(recordKey('journey', id)) : '{}'}"><label>Title<input name="title" value="${escape(l.title)}" maxlength="160" required placeholder="e.g. Morning train to the coast" ${disabled}></label><div class="field-row"><label>Mode<select name="mode" ${disabled}>${modes.map(m => `<option ${m === l.mode ? 'selected' : ''}>${escape(m)}</option>`).join('')}</select></label><label>Departure day<select name="date" ${disabled}>${days(t).map(d => `<option value="${d}" ${l.date === d ? 'selected' : ''}>${dateLabel(d, { weekday: 'short', month: 'short', day: 'numeric' })}</option>`).join('')}</select></label></div><div class="field-row"><label>From<select name="from" ${disabled}>${placeOptions(t, l.from, 'Start to confirm')}</select></label><label>To<select name="to" ${disabled}>${placeOptions(t, l.to, 'End to confirm')}</select></label></div><div class="field-row"><label>Departure time<input name="time" value="${escape(l.time)}" maxlength="80" ${disabled}></label><label>Arrival time<input name="arrivalTime" value="${escape(l.arrivalTime)}" maxlength="80" ${disabled}></label></div><label>Arrival day <small>(only if different, e.g. overnight)</small><input type="date" name="arrivalDate" value="${escape(l.arrivalDate && l.arrivalDate !== l.date ? l.arrivalDate : '')}" min="${escape(t.start)}" ${disabled}></label><label>Private notes<textarea name="notes" rows="3" maxlength="4000" ${disabled}>${escape(l.notes)}</textarea><small>Journeys are not shown on the guest link.</small></label>${attendanceFields({ participants: l.participants || [] }, t, !writable(), 'Who is travelling')}${formActions('leg', !id, back)}</form>`, back);
         updateAttendance($('#leg-form'));
     }
     const checked = form => [...form.querySelectorAll('[name=participants]:checked')].filter(x => !x.disabled).map(x => x.value);
@@ -608,12 +614,12 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
         }
     }
     async function submitStructure(form) {
-        const kind = form.id.replace('-form', ''), noun = kind === 'leg' ? 'journey' : kind, record = structureDraft(form), revision = Number(form.dataset.revision);
-        await saveStructure(form.dataset.new === 'true' ? { action: `${kind}-add`, revision, [kind]: { ...record, id: form.dataset.id } } : { action: `${kind}-edit`, revision, [`${kind}Id`]: form.dataset.id, patch: record }, `${noun[0].toUpperCase()}${noun.slice(1)} saved.`);
+        const kind = form.id.replace('-form', ''), noun = kind === 'leg' ? 'journey' : kind, record = structureDraft(form), base = formBase(form);
+        await saveStructure(form.dataset.new === 'true' ? { action: `${kind}-add`, base, [kind]: { ...record, id: form.dataset.id } } : { action: `${kind}-edit`, base, [`${kind}Id`]: form.dataset.id, patch: record }, `${noun[0].toUpperCase()}${noun.slice(1)} saved.`);
     }
     async function deleteStructure(kind, extra = {}) {
         const form = $(`#${kind}-form`);
-        await saveStructure({ action: `${kind}-delete`, revision: Number(form.dataset.revision), [`${kind}Id`]: form.dataset.id, ...extra }, `${kind === 'leg' ? 'Journey' : kind === 'stay' ? 'Stay' : 'Place'} deleted. Undo is available in History.`);
+        await saveStructure({ action: `${kind}-delete`, base: formBase(form), [`${kind}Id`]: form.dataset.id, ...extra }, `${kind === 'leg' ? 'Journey' : kind === 'stay' ? 'Stay' : 'Place'} deleted. Undo is available in History.`);
     }
     // Activity form: add a place without leaving the form or losing the draft.
     async function saveInlinePlace() {
@@ -625,11 +631,10 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
         }
         const place = { id: crypto.randomUUID(), name, localName: form.elements.newPlacelocalName.value, address: form.elements.newPlaceaddress.value, localAddress: form.elements.newPlacelocalAddress.value };
         try {
-            const result = await request(endpoint('/api/trip'), 'PATCH', { action: 'place-add', revision: Number(form.dataset.revision), place });
+            const result = await request(endpoint('/api/trip'), 'PATCH', { action: 'place-add', base: {}, place });
             state.snapshot = result.snapshot;
             remember();
-            // The draft stays as typed; only the saved revision and the Place list move on.
-            form.dataset.revision = result.snapshot.revision;
+            // The draft stays as typed, and still relies on the activity as it was when the form opened.
             const select = form.elements.placeId, saved = result.snapshot.trip.places.find(p => p.id === place.id);
             select.querySelector('[value="__new"]').insertAdjacentHTML('beforebegin', `<option value="${escape(saved.id)}">${escape(placeLabel(saved))}</option>`);
             select.value = saved.id;
@@ -641,11 +646,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
             select.focus();
         }
         catch (e) {
-            $('#place-inline-message').textContent = e.status === 409 ? 'Another planner saved a change, so the place was not added. Copy your draft, load the latest plan, and try again.' : e.message;
-            if (e.status === 409) {
-                $('#copy-draft').hidden = false;
-                $('#reload-after-conflict').hidden = false;
-            }
+            $('#place-inline-message').textContent = e.message;
         }
     }
     function editPerson(id) {
@@ -653,6 +654,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
         const p = peopleOf(state.snapshot.trip).find(p => p.id === id);
         form.reset();
         form.dataset.id = p?.id || '';
+        form.dataset.base = JSON.stringify(p ? base(recordKey('traveler', p.id)) : {});
         form.elements.name.value = p?.name || '';
         form.elements.familyId.value = p?.familyId || '';
         form.elements.showOnGuest.checked = p?.showOnGuest === true;
@@ -664,6 +666,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
         const g = state.snapshot.trip.families.find(g => g.id === id);
         form.reset();
         form.dataset.id = g?.id || '';
+        form.dataset.base = JSON.stringify(g ? base(recordKey('group', g.id)) : {});
         form.elements.name.value = g?.name || '';
         form.elements.color.value = g?.color || 'green';
         $('#family-form-title').textContent = g ? 'Edit family / group' : 'Add family / group';
@@ -682,7 +685,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
         state.busy = true;
         status();
         try {
-            const result = await request(endpoint('/api/trip'), 'PATCH', { action: person ? 'traveler' : 'family', revision: Number(form.dataset.revision), [person ? 'person' : 'family']: record });
+            const result = await request(endpoint('/api/trip'), 'PATCH', { action: person ? 'traveler' : 'family', base: formBase(form), [person ? 'person' : 'family']: record });
             state.snapshot = result.snapshot;
             remember();
             state.busy = false;
@@ -703,7 +706,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
         }
     }
     function formData(a) { const t = state.snapshot.trip; const disabled = !writable(); return `<label>Activity<input name="title" value="${escape(a.title)}" maxlength="160" required ${disabled ? 'disabled' : ''}></label><div class="field-row"><label>Day<select name="date" ${disabled ? 'disabled' : ''}><option value="">Unscheduled idea</option>${days(t).map(d => `<option value="${d}" ${a.date === d ? 'selected' : ''}>${dateLabel(d, { weekday: 'short', month: 'short', day: 'numeric' })}</option>`).join('')}</select></label><label>Time or part of day<input name="time" value="${escape(a.time)}" maxlength="80" ${disabled ? 'disabled' : ''}></label></div><label>Place<select name="placeId" ${disabled ? 'disabled' : ''}><option value="">Location to confirm</option>${t.places.map(p => `<option value="${escape(p.id)}" ${a.placeId === p.id ? 'selected' : ''}>${escape(p.name)} ${escape(p.localName)}</option>`).join('')}${disabled ? '' : '<option value="__new">＋ Add new place…</option>'}</select></label><fieldset class="inline-place" id="place-inline" hidden><legend>New place</legend>${placeFields({}, 'newPlace', '')}<p id="place-inline-message" role="alert"></p><button type="button" class="secondary" id="place-inline-save">Add this place</button><p class="form-hint">Adds the place to the trip straight away. Your activity is saved separately with the Save button below.</p></fieldset><label>Address <small>(private)</small><input name="address" maxlength="500" value="${escape(a.address || '')}" ${disabled ? 'disabled' : ''}><small>For this activity only. Never shown on the guest link; use Guest meeting point for that.</small></label><label class="check-label"><input type="checkbox" name="fixed" ${a.fixed ? 'checked' : ''} ${disabled ? 'disabled' : ''}> Fixed booking · protect date and time</label><label class="check-label"><input type="checkbox" name="optional" ${a.optional ? 'checked' : ''} ${disabled ? 'disabled' : ''}> Optional · offered as a choice, not a commitment</label><label class="check-label"><input type="checkbox" name="highlight" ${a.highlight ? "checked" : ""} ${disabled ? "disabled" : ""}> Highlight a shared moment</label>${attendanceFields(a, t, disabled)}<label>Guest description<textarea name="guestNotes" rows="3" maxlength="4000" ${disabled ? 'disabled' : ''}>${escape(a.guestNotes)}</textarea><small>Visible if you enable this event's guest link.</small></label><label>Guest meeting point<input name="guestLocation" maxlength="500" value="${escape(a.guestLocation)}" ${disabled ? 'disabled' : ''}></label><label>Private planning notes<textarea name="notes" rows="4" maxlength="4000" ${disabled ? 'disabled' : ''}>${escape(a.notes)}</textarea><small>Excluded from the guest link.</small></label>${(a.links || []).length ? `<ul class="link-list" aria-label="Saved links">${a.links.map(l => `<li><a href="${escape(l.url)}" target="_blank" rel="noopener noreferrer">${escape(l.label || l.url)} ↗</a></li>`).join('')}</ul>` : ''}<label>Links <small>(private, optional)</small><textarea name="links" rows="2" maxlength="6000" spellcheck="false" placeholder="Tickets https://example.com/…" ${disabled ? 'disabled' : ''}>${escape(formatLinks(a.links))}</textarea><small>One per line: an optional label, then the web address. Excluded from the guest link.</small></label>`; }
-    function openEditor(id) { const a = state.snapshot.trip.activities.find(a => a.id === id) || { id: crypto.randomUUID(), date: state.day, time: '', title: '', placeId: state.snapshot.trip.places[0]?.id || null, participants: defaultParticipants(state.snapshot.trip), notes: '', guestNotes: '', guestLocation: '', fixed: false, optional: state.snapshot.trip.kind === 'event', order: state.snapshot.trip.activities.length, sourceKind: 'entered' }; const form = $('#edit-form'); form.dataset.id = a.id; form.dataset.new = String(!id); form.dataset.revision = state.snapshot.revision; $('#editor-fields').innerHTML = formData(a); $('#delete').hidden = !id || !writable(); $('#save').disabled = !writable(); $('#copy-draft').hidden = true; $('#reload-after-conflict').hidden = true; $('#edit-message').textContent = !writable() ? 'Downloaded reading copy. Connect and refresh before editing.' : a.sourceKind === 'tentative' ? 'Tentative source plan. Times, hosts, and bookings need review.' : a.sourceKind === 'synthetic' ? 'Synthetic detail for testing.' : ''; lockTiming(); updateAttendance(); $('#editor').showModal(); }
+    function openEditor(id) { const a = state.snapshot.trip.activities.find(a => a.id === id) || { id: crypto.randomUUID(), date: state.day, time: '', title: '', placeId: state.snapshot.trip.places[0]?.id || null, participants: defaultParticipants(state.snapshot.trip), notes: '', guestNotes: '', guestLocation: '', fixed: false, optional: state.snapshot.trip.kind === 'event', order: state.snapshot.trip.activities.length, sourceKind: 'entered' }; const form = $('#edit-form'); form.dataset.id = a.id; form.dataset.new = String(!id); form.dataset.base = JSON.stringify(id ? base(recordKey('activity', a.id)) : {}); $('#editor-fields').innerHTML = formData(a); $('#delete').hidden = !id || !writable(); $('#save').disabled = !writable(); $('#copy-draft').hidden = true; $('#reload-after-conflict').hidden = true; $('#edit-message').textContent = !writable() ? 'Downloaded reading copy. Connect and refresh before editing.' : a.sourceKind === 'tentative' ? 'Tentative source plan. Times, hosts, and bookings need review.' : a.sourceKind === 'synthetic' ? 'Synthetic detail for testing.' : ''; lockTiming(); updateAttendance(); $('#editor').showModal(); }
     function lockTiming() {
         const f = $('#edit-form');
         if (!f?.elements.fixed)
@@ -716,7 +719,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
     // A full backup is checked against its checksum first; then it restores as a separate new trip.
     async function importable(parsed) { return isSnapshot(parsed) ? restoreFromSnapshot(parsed) : parsed.trip || parsed; }
     function download(contents, mime, filename) { const url = URL.createObjectURL(new Blob([contents], { type: mime })); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
-    async function sharing() { const data = await request(endpoint('/api/share')); $('#share-body').innerHTML = `<p>${data.enabled ? 'A guest link is enabled. Replacing it disables the previous link.' : 'No guest link is enabled.'}</p><button class="primary" id="share-rotate">${data.enabled ? 'Replace guest link' : 'Enable guest link'}</button>${data.enabled ? '<button class="secondary" id="share-revoke">Disable guest link</button>' : ''}<details><summary>Preview exactly what guests will see</summary><div class="guest-preview">${board(data.preview, { day: state.day, guest: true })}</div></details>`; $('#share-error').textContent = ''; $('#share-dialog').showModal(); }
+    async function sharing() { const data = await request(endpoint('/api/share')); state.shareRevision = data.shareRevision; $('#share-body').innerHTML = `<p>${data.enabled ? 'A guest link is enabled. Replacing it disables the previous link.' : 'No guest link is enabled.'}</p><button class="primary" id="share-rotate">${data.enabled ? 'Replace guest link' : 'Enable guest link'}</button>${data.enabled ? '<button class="secondary" id="share-revoke">Disable guest link</button>' : ''}<details><summary>Preview exactly what guests will see</summary><div class="guest-preview">${board(data.preview, { day: state.day, guest: true })}</div></details>`; $('#share-error').textContent = ''; $('#share-dialog').showModal(); }
     document.addEventListener('click', async (event) => {
         const b = event.target.closest('button');
         if (!b)
@@ -785,6 +788,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
                 for (const k of ['title', 'subtitle', 'start', 'end', 'timezone', 'kind'])
                     f.elements[k].value = t[k];
                 f.dataset.edit = 'true';
+                f.dataset.base = JSON.stringify(base('trip'));
                 $('#trip-delete').hidden = !state.isOwner;
                 $('#create-submit').textContent = 'Save';
                 $('#create-error').textContent = '';
@@ -855,7 +859,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
                 await changeEditors('remove', b.dataset.removeEditor);
             if (b.id === 'share-rotate' || b.id === 'share-revoke') {
                 b.disabled = true;
-                const result = await request(endpoint('/api/share'), 'POST', { action: b.id === 'share-rotate' ? 'rotate' : 'revoke', revision: state.snapshot.revision });
+                const result = await request(endpoint('/api/share'), 'POST', { action: b.id === 'share-rotate' ? 'rotate' : 'revoke', base: { share: state.shareRevision } });
                 await load();
                 await sharing();
                 if (result.url)
@@ -884,7 +888,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
                 $('#edit-message').textContent = 'Draft copied.';
             }
             if (b.id === 'delete' && confirm('Delete this activity? Save its notes first if you want to keep them.'))
-                await saveChange({ action: 'delete', activityId: $('#edit-form').dataset.id, revision: Number($('#edit-form').dataset.revision) });
+                await saveChange({ action: 'delete', activityId: $('#edit-form').dataset.id, base: formBase($('#edit-form')) });
         }
         catch (e) {
             state.message = e.message;
@@ -965,13 +969,13 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
                 return;
             }
             const fresh = f.dataset.new === 'true';
-            await saveChange(fresh ? { action: 'add', revision: Number(f.dataset.revision), activity: { ...p, id: f.dataset.id, order: state.snapshot.trip.activities.length, sourceKind: 'entered' } } : { action: 'edit', revision: Number(f.dataset.revision), activityId: f.dataset.id, patch: p });
+            await saveChange(fresh ? { action: 'add', base: {}, activity: { ...p, id: f.dataset.id, order: state.snapshot.trip.activities.length, sourceKind: 'entered' } } : { action: 'edit', base: formBase(f), activityId: f.dataset.id, patch: p });
         }
         else {
             const fields = Object.fromEntries(new FormData(f));
             try {
                 if (f.dataset.edit === 'true') {
-                    await request(endpoint('/api/trip'), 'PATCH', { action: 'metadata', revision: state.snapshot.revision, patch: fields });
+                    await request(endpoint('/api/trip'), 'PATCH', { action: 'metadata', base: formBase(f), patch: fields });
                     f.dataset.edit = '';
                     $('#create-dialog').close();
                     await load();
