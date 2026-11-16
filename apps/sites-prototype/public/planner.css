@@ -141,7 +141,7 @@ details { margin-top: 24px; }
 summary { min-height: 44px; cursor: pointer; padding: 12px 0; font-weight: 700; }
 
 /* Date board */
-.date-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(300px, calc((100% - 48px) / 3)); gap: 24px; overflow-x: auto; padding-bottom: 24px; scroll-snap-type: x proximity; max-height: 78vh; overflow-y: auto; }
+.date-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(300px, calc((100% - 48px) / 3)); gap: 24px; overflow-x: auto; padding-bottom: 24px; scroll-snap-type: x proximity; align-items: start; }
 .agenda-day { min-width: 0; scroll-snap-align: start; padding: 0 0 24px; }
 .agenda-date { position: sticky; top: 0; z-index: 1; background: var(--night); padding: 8px 0 16px; margin-bottom: 4px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .agenda-date > span { order: 2; font: 800 var(--t0)/1.2 var(--font-ui); }
@@ -456,3 +456,84 @@ button.lodging:hover, button.journeys:hover, button.lodging:focus-visible, butto
 .move-list { list-style: none; padding: 0; margin: 4px 0 12px; display: grid; gap: 8px; }
 .move-list small { display: block; color: var(--muted); font-size: 14px; }
 .move-flag { display: inline-block; font: 600 12px/1.4 var(--font-mono); color: var(--ember-ink); border: 1px solid currentColor; border-radius: var(--radius-pill); padding: 2px 8px; margin-top: 4px; }
+/* Maps: tile-free schematics. Numbers and text carry the meaning; colour is secondary. */
+.maps { border: 2px solid var(--dusk); border-radius: var(--radius); padding: 20px 24px 24px; margin: 24px 0; }
+.maps-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.maps h2 { font: 900 var(--t1)/1 var(--font-display); letter-spacing: -.02em; margin: 0; }
+.map-tabs { display: flex; gap: 8px; }
+.map-tabs [aria-pressed=true] { background: var(--lagoon); color: var(--ink); border-color: var(--lagoon); }
+.map-title { font: 12px/1.5 var(--font-mono); color: var(--orchid); margin: 12px 0 8px; }
+.schematic-map { display: block; width: 100%; max-width: 760px; height: auto; background: var(--dusk); border-radius: 16px; }
+.map-edge { fill: none; stroke: var(--orchid); stroke-width: 2.5; }
+.map-edge.order { stroke-dasharray: 6 6; }
+#map-arrow path { fill: var(--orchid); }
+.map-edge-label { font-family: var(--font-mono); fill: var(--cream); paint-order: stroke; stroke: var(--dusk); stroke-width: 4px; }
+.map-node circle { fill: var(--magenta); stroke: var(--cream); stroke-width: 3; }
+.map-node.ordered circle { fill: var(--night); stroke: var(--lagoon); stroke-dasharray: 4 3; }
+.map-number { font-family: var(--font-ui); font-weight: 800; fill: var(--ink); }
+.map-node.ordered .map-number { fill: var(--cream); }
+.map-label { font-family: var(--font-ui); font-weight: 700; fill: var(--cream); paint-order: stroke; stroke: var(--dusk); stroke-width: 4px; }
+.map-caption, .map-unplaced { font-size: 14px; line-height: 1.5; color: var(--orchid); max-width: 760px; }
+.map-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 14px; max-width: 760px; }
+.map-list li { display: flex; gap: 12px; align-items: flex-start; }
+.map-list div { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.map-list small { color: var(--orchid); font-size: 14px; line-height: 1.5; }
+.map-local { font-family: var(--font-local); }
+.map-stop { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: var(--magenta); color: var(--ink); font: 800 14px/32px var(--font-ui); text-align: center; }
+.map-links { display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; }
+.map-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 2px solid var(--lagoon); border-radius: var(--radius-pill); color: var(--cream); font-weight: 700; text-decoration: none; }
+@media (max-width: 760px) { .maps { padding: 16px 14px; margin: 20px 0; } }
+@media print { .maps { border-color: black; } .schematic-map { background: white; } .map-edge { stroke: black; } .map-label, .map-edge-label { fill: black; stroke: white; } .map-caption, .map-list small { color: black; } }
+/* Schedule on the first screen: a one-line trip bar when the poster is collapsed, and the
+   drag and filter notes below the board. The board itself scrolls sideways only; the page
+   scrolls vertically, so nothing at the foot of a long day is cut off. */
+.board-notes { margin: 0 0 8px; }
+.board-notes .drag-hint, .board-notes #filter-status { margin: 0 0 6px; }
+@media (min-width: 761px) {
+  .compact .library-bar { padding-bottom: 12px; }
+  .compact .trip-header { padding: 6px 20px; border-width: 2px; }
+  .compact .trip-header > div { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 4px 16px; }
+  .compact .trip-header .eyebrow { display: none; }
+  .compact h1 { font-size: var(--t1); margin: 0; }
+  .compact .trip-facts { display: flex; font-size: 12px; }
+  .compact .trip-facts > span { border-width: 1px; padding: 3px 10px; }
+  .compact .story-toggle { order: 3; margin: 0 0 0 auto; align-self: center; }
+  .compact .view-title { display: none; }
+  .compact .toolbar { padding: 10px 0; gap: 8px 12px; }
+  .compact .toolbar .traveler-select { margin: 0; }
+  .compact .toolbar .tools { gap: 6px; }
+  .compact .toolbar .tools .secondary { padding-inline: 11px; font-size: 13px; }
+  .compact #status:not(.reading-copy) { margin: 0; }
+  .compact .day-rail { margin: 0 0 8px; }
+  .compact .medallions { gap: 10px; padding: 6px 4px 8px; }
+  .compact .medallion { width: 66px; height: 66px; border-width: 3px; }
+  .compact .medallion-num { font-size: var(--t1); }
+  .compact .agenda-date { padding: 4px 0 10px; }
+  .compact .agenda-date .date-number { font-size: var(--t3); letter-spacing: -2px; }
+}
+#density[aria-pressed=true] { background: var(--lagoon); color: var(--ink); border-color: var(--lagoon); }
+@media (max-width: 999px) { #density { display: none; } }
+/* Denser desktop week view for long trips: seven day columns. Titles, times, the fixed-booking
+   label and traveler names stay; descriptions are opened from the card. */
+@media (min-width: 1000px) {
+  .dense .date-board { grid-auto-columns: minmax(172px, calc((100% - 60px) / 7)); gap: 10px; }
+  .dense .agenda-date { gap: 6px 8px; padding-bottom: 8px; }
+  .dense .agenda-date .date-number { font-size: var(--t2); letter-spacing: -1px; }
+  .dense .agenda-date > span { font-size: 14px; }
+  .dense .agenda-city { margin-bottom: 12px; padding-top: 10px; }
+  .dense .agenda-city h3 { font-size: 16px; letter-spacing: 0; margin-bottom: 6px; overflow-wrap: anywhere; }
+  .dense button.lodging { padding-bottom: 4px; margin-bottom: 4px; }
+  .dense .lodging .edit-hint, .dense .journeys .edit-hint { display: none; }
+  .dense .cards { display: grid; gap: 8px; }
+  .dense .activity { padding: 10px 12px; border-radius: 14px; }
+  .dense .activity strong { font-size: 15px; line-height: 1.2; letter-spacing: 0; margin-bottom: 6px; overflow-wrap: anywhere; }
+  .dense .activity.rendezvous { margin: 4px 0; }
+  .dense .activity.rendezvous strong { font-size: 17px; line-height: 1.1; }
+  .dense .card-meta { margin-bottom: 4px; gap: 2px 6px; }
+  .dense .card-note, .dense .option-label, .dense .card-where, .dense .open-card { display: none; }
+  .dense .shared-label { margin-bottom: 4px; }
+  .dense .person { font-size: 12px; padding: 2px 7px; border-width: 1px; }
+  .dense .empty-lane, .dense .empty-day { padding: 10px; font-size: 13px; }
+  .dense .empty-day span { display: none; }
+  .dense .journeys { padding: 10px 12px; border-radius: 14px; margin-top: 10px; }
+}

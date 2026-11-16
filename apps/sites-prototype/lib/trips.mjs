@@ -2,6 +2,7 @@ import { isWholeTripGroup, participantReferences, referenceSummary } from "../pu
 import { moveActivity } from "../public/move.mjs";
 import { normalizeLinks, placeReferences, placeReferenceSummary } from "../public/structure.mjs";
 import { applyStayMove } from "../public/stay-move.mjs";
+import { normalizePlaceGeo } from "../public/maps.mjs";
 const text = (v, max = 4000) => typeof v === "string" ? v.trim().slice(0, max) : "";
 export const validDate = v => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
 const id = v => typeof v === "string" && /^[a-zA-Z0-9_-]{1,80}$/.test(v);
@@ -50,7 +51,7 @@ export function normalizeTrip(input, tripId) {
             throw new Error("Choose participants from this trip.");
         return p;
     };
-    const places = unique(list(input.places || [], 100).map(p => ({ id: p.id, name: text(p.name, 160), localName: text(p.localName, 160), address: text(p.address, 500), localAddress: text(p.localAddress, 500) })));
+    const places = unique(list(input.places || [], 100).map(p => ({ id: p.id, name: text(p.name, 160), localName: text(p.localName, 160), address: text(p.address, 500), localAddress: text(p.localAddress, 500), ...normalizePlaceGeo(p) })));
     const placeIds = new Set(places.map(p => p.id));
     const place = value => {
         if (value && !placeIds.has(value))
@@ -144,6 +145,9 @@ export function applyTripChange(trip, change) {
                 const p = change.patch;
                 if (!p || typeof p !== "object" || Array.isArray(p) || !Object.keys(p).length || Object.keys(p).some(k => !fields.includes(k)))
                     throw new Error("Unsupported edit.");
+                // A map link that changes is unreviewed again unless the same save says it was checked.
+                if (noun === "place" && p.navReviewed !== true && ["amapUrl", "appleMapsUrl"].some(k => k in p && (p[k] || "").trim() !== (rows[index][k] || "")))
+                    rows[index].navReviewed = false;
                 Object.assign(rows[index], p);
                 checkStructure(noun, rows[index]);
             }
@@ -212,7 +216,7 @@ export function applyTripChange(trip, change) {
     }
     return normalizeTrip(next, trip.id);
 }
-const PLACE_FIELDS = ["name", "localName", "address", "localAddress"];
+const PLACE_FIELDS = ["name", "localName", "address", "localAddress", "lat", "lng", "coordSystem", "coordSource", "amapUrl", "appleMapsUrl", "navReviewed"];
 const STAY_FIELDS = ["name", "placeId", "start", "end", "lodging", "note", "participants"];
 const LEG_FIELDS = ["title", "date", "arrivalDate", "time", "arrivalTime", "mode", "participants", "notes", "from", "to"];
 const structure = (key, noun, fields) => Object.fromEntries(["add", "edit", "delete"].map(op => [`${noun}-${op}`, { key, noun, idField: `${noun}Id`, fields, op }]));
@@ -257,7 +261,12 @@ export function editorEmail(value) {
     return email;
 }
 // Changes an editor may not make through the shared save path. Returns a message, or null when allowed.
+export const EDITOR_TRIP_DETAILS = "Only the organizer changes the trip's name, subtitle, dates, time zone or kind.";
 export function editorRestriction(trip, change) {
+    // Decided November 16, 2026 (docs/editors.md): the trip's own details are the organizer's.
+    // Editors may still write an activity's guest description and meeting point.
+    if (change?.action === "metadata")
+        return EDITOR_TRIP_DETAILS;
     if (change?.action === "traveler") {
         const existing = (trip.people || []).find(p => p.id === change.person?.id);
         if ((change.person?.showOnGuest === true) !== (existing?.showOnGuest === true))
@@ -268,6 +277,9 @@ export function editorRestriction(trip, change) {
 // The same rule for a whole before/after pair, used where there is no single request to inspect (undo).
 export function editorDiffRestriction(before, after) {
     const shown = trip => JSON.stringify((trip.people || []).filter(p => p.showOnGuest === true).map(p => p.id).sort());
+    const details = trip => JSON.stringify(["title", "subtitle", "start", "end", "timezone", "kind"].map(k => trip[k] ?? null));
+    if (details(before) !== details(after))
+        return EDITOR_TRIP_DETAILS;
     return shown(before) === shown(after) ? null : "Only the organizer chooses whether a traveler's name shows on the guest link.";
 }
 export function publicTrip(trip) {
