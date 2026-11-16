@@ -31,7 +31,7 @@ assert.equal(guest.status, 200);
 assert.match(guest.headers.get('Cache-Control'), /no-store/);
 const data = await guest.json();
 assert.ok(!JSON.stringify(data).includes('PRIVATE'));
-assert.equal(data.trip.activities[0].notes, a.guestNotes);
+assert.deepEqual(data.trip.activities, [], 'examples are never sent to guests');
 assert.equal((await anon('/api/shared', { method: 'PATCH', headers: { Authorization: `Share ${token}`, Origin: origin, 'Content-Type': 'application/json' }, body: '{}' })).status, 405);
 assert.equal((await anon(path, { method: 'PATCH', headers: { Authorization: `Share ${token}`, Origin: origin, 'Content-Type': 'application/json' }, body: '{}' })).status, 401);
 assert.equal((await anon('/api/shared', { headers: { Authorization: `Share ${'x'.repeat(43)}` } })).status, 404);
@@ -267,4 +267,18 @@ console.log('PASS: organizer full backup download and a verified restore into a 
     const guestMap = JSON.stringify(await (await anon('/api/shared', { headers: { Authorization: `Share ${new URL(shareOn.url).hash.slice(1)}` } })).json());
     assert.ok(!/45\.5|GCJ02|PRIVATE|amap/.test(guestMap), 'coordinates, their source and map links are not in the guest view');
     console.log('PASS: place coordinates need an explicit system, map links must be on the provider\'s site, and none of it reaches guests.');
+}
+
+// Guest projection of an entered plan: guest description only, never private notes; examples are left out.
+{
+    const made = await (await req('/api/trips', 'POST', { template: 'thanksgiving' })).json(), tid = made.snapshot.trip.id, t = `/api/trip?id=${tid}`;
+    const added = await req(t, 'PATCH', { action: 'add', revision: 1, activity: { id: 'api-entered', title: 'Entered plan', date: '2026-11-27', time: 'Morning', placeId: 'home', order: 99, participants: ['cedar'], notes: 'PRIVATE entered note', address: 'PRIVATE entered address', guestNotes: 'Shown to guests', guestLocation: 'Front gate', fixed: false, optional: true, sourceKind: 'entered' } });
+    assert.equal(added.status, 200, await added.clone().text());
+    const on = await (await req(`/api/share?id=${tid}`, 'POST', { revision: 2, action: 'rotate' })).json();
+    const shown = await (await anon('/api/shared', { headers: { Authorization: `Share ${new URL(on.url).hash.slice(1)}` } })).json();
+    assert.deepEqual(shown.trip.activities.map(x => x.id), ['api-entered'], 'only the entered plan is shared; the examples are not');
+    assert.equal(shown.trip.activities[0].notes, 'Shown to guests');
+    assert.equal(shown.trip.activities[0].address, 'Front gate');
+    assert.ok(!JSON.stringify(shown).includes('PRIVATE'));
+    console.log('PASS: guests receive entered plans with guest fields only, and no examples.');
 }

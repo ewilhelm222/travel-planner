@@ -170,13 +170,10 @@ summary { min-height: 44px; cursor: pointer; padding: 12px 0; font-weight: 700; 
 .person.orange { color: var(--family-maple-ink); }
 .person.blue { color: var(--family-birch-ink); }
 .open-card { font: 900 var(--t1)/1 var(--font-display); color: var(--violet); }
-.activity.rendezvous { background: var(--magenta); color: var(--ink); box-shadow: var(--glow); margin: 10px 0; }
-.activity.rendezvous:hover { box-shadow: var(--glow), 0 0 0 3px var(--cream); }
-.activity.rendezvous strong { font-size: var(--t2); line-height: .98; }
-.rendezvous .card-note, .rendezvous .card-meta, .rendezvous .option-label, .rendezvous .kind { color: var(--ink); }
-.rendezvous .booking { color: var(--ink); background: var(--cream); padding: 2px 8px; border-radius: var(--radius-pill); }
-.rendezvous .person { background: var(--cream); }
-.rendezvous .open-card { color: var(--ink); }
+.activity.rendezvous { box-shadow: inset 0 8px 0 var(--magenta); padding-top: 28px; }
+.activity.rendezvous:hover { box-shadow: inset 0 8px 0 var(--magenta), 0 0 0 3px var(--lagoon); }
+.activity.rendezvous.reserved { box-shadow: inset 0 8px 0 var(--magenta), inset 6px 0 0 var(--ember-ink); }
+.activity.rendezvous.reserved:hover { box-shadow: inset 0 8px 0 var(--magenta), inset 6px 0 0 var(--ember-ink), 0 0 0 3px var(--lagoon); }
 .shared-label { display: block; font: 12px var(--font-mono); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
 .empty-lane { color: var(--orchid); font-size: 14px; padding: 18px 20px; border: 2px dashed var(--orchid); border-radius: var(--radius); text-align: center; margin: 0; }
 .empty-day { font: 800 var(--t0)/1.5 var(--font-ui); color: var(--cream); padding: 24px; border: 2px dashed var(--orchid); border-radius: var(--radius); text-align: center; }
@@ -297,7 +294,6 @@ dialog input, dialog textarea, dialog select { border-color: #cfc3e3; }
   .agenda-city h3 { font-size: var(--t2); }
   .activity { padding: 20px; }
   .activity strong { font-size: 28px; }
-  .activity.rendezvous strong { font-size: 40px; }
   .card-note { font-size: 15px; }
   .person, .card-meta, .kind, .booking, .option-label { font-size: 13px; }
   .idea-cards { grid-template-columns: minmax(0, 1fr); }
@@ -377,8 +373,6 @@ dialog input, dialog textarea, dialog select { border-color: #cfc3e3; }
   .schedule-first .activity .card-bottom { order: 6; margin-top: 5px; }
   .schedule-first .activity .person { font-size: 12px; padding: 2px 9px; }
   .schedule-first .activity .open-card { font-size: 18px; }
-  .schedule-first .activity.rendezvous { margin: 6px 0; }
-  .schedule-first .activity.rendezvous strong { font-size: 23px; line-height: 1.05; }
   .schedule-first .empty-lane, .schedule-first .empty-day { padding: 14px 16px; border-radius: 16px; }
   .schedule-first .ideas { margin: 20px 0; padding: 16px 14px 14px; scroll-margin-top: 84px; }
   .schedule-first .ideas h2 { font-size: 20px; margin-bottom: 12px; }
@@ -527,8 +521,6 @@ button.lodging:hover, button.journeys:hover, button.lodging:focus-visible, butto
   .dense .cards { display: grid; gap: 8px; }
   .dense .activity { padding: 10px 12px; border-radius: 14px; }
   .dense .activity strong { font-size: 15px; line-height: 1.2; letter-spacing: 0; margin-bottom: 6px; overflow-wrap: anywhere; }
-  .dense .activity.rendezvous { margin: 4px 0; }
-  .dense .activity.rendezvous strong { font-size: 17px; line-height: 1.1; }
   .dense .card-meta { margin-bottom: 4px; gap: 2px 6px; }
   .dense .card-note, .dense .option-label, .dense .card-where, .dense .open-card { display: none; }
   .dense .shared-label { margin-bottom: 4px; }
@@ -547,3 +539,29 @@ p.edit-state:empty { display: none; }
 .guest-banner a { color: var(--lagoon); font-weight: 700; }
 @media (max-width: 760px) { .guest-banner { margin: 8px 0 10px; padding: 10px 14px; font-size: 14px; } }
 @media print { .guest-banner, .edit-state { display: none; } }
+
+/* Plain words (feedback plan PR 2): whole-group card on cream with a magenta band, examples marked in
+   every density, Optional as a chip, the meeting point on every card. */
+.shared-label { font-weight: 700; color: var(--ink); }
+.shared-dot { color: var(--magenta); }
+.card-where { display: block; font: 600 13px/1.35 var(--font-ui); color: var(--ink); margin: 0 0 8px; }
+.card-bottom { margin-top: 16px; }
+.optional-chip { display: inline-block; font: 700 12px/1.3 var(--font-ui); padding: 4px 10px; border-radius: var(--radius-pill); border: 2px dashed var(--muted); color: var(--muted); }
+.activity.example { outline: 2px dashed var(--muted); outline-offset: -7px; }
+.example-label { display: inline-block; font: 700 12px/1.3 var(--font-mono); color: var(--ink); background: #ecdfc9; border-radius: var(--radius-pill); padding: 3px 10px; margin: 0 0 10px; }
+.examples-toggle { margin: 8px 0 0; color: var(--orchid); }
+@media (max-width: 760px) {
+  .schedule-first .activity.rendezvous { padding-top: 20px; }
+  .schedule-first .activity .example-label { order: 0; flex: 0 0 auto; font-size: 11px; margin: 0; }
+  .schedule-first .activity .card-where { margin: 0; }
+  .schedule-first .activity .optional-chip { font-size: 12px; padding: 2px 9px; }
+}
+@media (min-width: 1000px) {
+  .dense .activity.rendezvous { padding-top: 18px; }
+  .dense .card-where { display: none; }
+  .dense .card-bottom { margin-top: 6px; }
+  .dense .example-label { font-size: 10px; padding: 2px 7px; margin-bottom: 4px; border-radius: 8px; }
+  .dense .optional-chip { font-size: 12px; padding: 2px 7px; border-width: 1px; }
+  .dense .activity.example { outline-offset: -5px; outline-width: 1px; }
+}
+@media print { .activity.example { outline: 1px dashed black; } .example-label { background: none; border: 1px solid black; } }

@@ -17,6 +17,8 @@ const log = (...a) => console.log(...a);
   const id = created.snapshot.trip.id; log('trip', id);
   const api = (body) => page.evaluate(async ([id, body]) => { const r = await fetch('/api/trip?id=' + id, { method: body ? 'PATCH' : 'GET', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, json: await r.json() }; }, [id, body]);
   await page.goto(O + '/?trip=' + id);
+  // The traveler filter is only offered when it would change what is shown, so give one family a plan of its own.
+  { const c0 = await api(); await api({ action: 'edit', revision: c0.json.snapshot.revision, activityId: 'option-12', patch: { participants: ['cedar'] } }); await page.reload(); }
   await page.waitForSelector('#itinerary.can-drag .activity');
   const toBoard = () => page.evaluate(() => { document.querySelector('.toolbar').scrollIntoView(); });
 
@@ -123,6 +125,10 @@ const log = (...a) => console.log(...a);
   log('after escape dock gone?', !(await page.$('.drop-dock')), 'option-11 day', await page.$eval('.activity[data-detail="option-11"]', e => e.closest('.agenda-day').dataset.date));
 
   // ---------- Guest view ----------
+  // Examples are not sent to guests, so add one entered plan for the guest page to show.
+  cur = await api();
+  await api({ action: 'add', revision: cur.json.snapshot.revision, activity: { id: 'guest-visible', title: 'Entered plan guests can see', date: '2026-11-27', time: 'Morning', placeId: 'home', order: 99, participants: ['cedar', 'maple', 'birch'], notes: '', guestNotes: '', guestLocation: '', fixed: false, optional: true, sourceKind: 'entered' } });
+  cur = await api();
   const share = await page.evaluate(async ([id, rev]) => (await (await fetch('/api/share?id=' + id, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'rotate', revision: rev }) })).json()), [id, cur.json.snapshot.revision]);
   const gctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2, serviceWorkers: 'block' });
   const g = await gctx.newPage();

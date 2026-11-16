@@ -119,6 +119,32 @@ Authentication, concurrency, exports, offline/session clearing, navigation prove
 
 Verification of the application pass: 18 Node tests, `tsc --noEmit`, the production build, and the loopback API checks pass. Headless Chromium at 1423 × 742 and 390 × 844 showed no horizontal overflow and no script errors on the planner (compact and poster), the activity editor, the share dialog, the guest view and its detail dialog, the parallel-stay study with its move preview, and the rendered offline reading copy. Physical phones, hosted deployment, and real network loss were not tested in this pass; see [prototype status](prototype.md) for the outstanding checks.
 
+## Amendment — November 16, 2026
+
+After the November 15 family test sessions the organizer approved these changes
+to the system above ([feedback plan](feedback-2026-11-15-plan.md),
+[what was built](plain-words.md)). Where this section and the text above
+differ, this section is current.
+
+- **The whole-group card is no longer solid magenta and has no glow.** It is a
+  cream card like the others with an 8 px magenta band across the top and the
+  words "● Whole-group activity". Magenta remains the primary action and the
+  mark on the day rail. `--glow` is unused by cards.
+- **Functional labels.** "Whole-group activity" replaces "The rendezvous" and
+  "Highlight a shared moment". "Ideas · not scheduled yet" replaces "Not on the
+  itinerary. Yet." The activity form has no eyebrow line.
+- **Booking state.** `■ Fixed booking` stays, in words. `○ Flexible` is no
+  longer shown: a card with no booking mark is simply not fixed.
+- **Optional** is a dashed chip beside the people labels. An ordinary planned
+  activity carries no label.
+- **Examples.** An invented item carries "Example · not a real plan" and a
+  dashed inner outline in every density, and is never sent to the guest link.
+- **Forms go dark; reading dialogs stay cream** (approved, not yet built).
+
+Still true: state is never colour alone, long reading stays on cream cards, and
+the contrast pairs listed above are the ones in use (ink on cream for all new
+labels; muted on cream, 7.1:1, for the Optional chip).
+
 ## Verification
 
 Rendered in headless Chromium at 1423 × 742 CSS pixels and 390 × 844, with no horizontal overflow and no script errors. Birch filtering shows arrival, the dinner, the optional light-room card, and the river walk; exactly one shared card exists and keeps all three participant labels. Route text matches Birch's Osaka base and Kyoto dinner visit. Offline preview disables all three online actions. No visible button is under 44 px. Phone day selection shows only the chosen day; the shared detail opens and Escape returns focus to the card. Physical-phone, real network-loss, and production deployment testing are not implied.

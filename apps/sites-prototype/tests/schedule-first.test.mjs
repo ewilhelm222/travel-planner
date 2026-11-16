@@ -19,6 +19,7 @@ test('a visit opens on today while the trip is under way, otherwise on the first
 test('cards carry time, title, people and the meeting point without opening', () => {
     const trip = thanksgivingExample();
     trip.activities[1].guestLocation = 'Front <porch>';
+    trip.activities.forEach(a => { a.sourceKind = 'entered'; });
     const html = card(trip.activities[1], trip);
     for (const part of ['Morning', 'Neighborhood walk', 'Cedar family', 'Meet · Front &lt;porch&gt;'])
         assert.ok(html.includes(part), part);
