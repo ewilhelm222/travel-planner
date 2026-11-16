@@ -6,7 +6,9 @@ applied to the app. Use `docs/design/night-market/tokens.css` and its references
 for ongoing implementation. The superseded Departure Board study remains in
 `docs/design.md` and the earlier Field Atlas study in `docs/design-field-atlas.md`.
 
-`docs/plan.md` governs confirmed requirements and data behavior. Design studies
+`docs/plan.md` governs confirmed requirements and data behavior. Every save goes
+through `commit()`/`transact()` in `apps/sites-prototype/lib/trip-store.ts` so it is
+logged and checked per record (`docs/safety-net.md`, `docs/per-record-revisions.md`). Design studies
 illustrate proposals; they do not establish completed features or approved
 schema changes. Read `docs/prototype.md` for implementation status and checks.
 

@@ -78,11 +78,12 @@ test('the server refuses editors for sharing, the editor list and trip creation,
     const archive = await source('app/api/archive/route.ts'), history = await source('app/api/history/route.ts');
     assert.ok(!/export async function DELETE|DELETE FROM/i.test(share + editors + trips + trip + archive + history + store), 'no route erases a trip or its history');
     assert.match(archive, /if \(!a\.isOwner\)\s+return response\(\{ error: "Only the organizer can delete or restore a trip\." \}, 403\)/, 'archiving and restoring are organizer-only');
-    assert.match(trip, /if \(a\.row!\.revision !== input\.revision\)\s+return conflict\(\)/, 'a stale revision is a conflict for every role');
+    assert.match(store, /return r\.revision === input\.revision \? null : conflict\(\)/, 'an older page is held to the trip-wide revision');
+    assert.match(store, /return stale\.length \? response\(\{ error: staleMessage\(stale\), conflicts: stale \}, 409\) : null/, 'a stale record is a conflict for every role');
     assert.match(store, /guard = `id=\? AND revision=\? AND archived_at IS \$\{o\.archived \? "NOT NULL" : "NULL"\}`/, 'the save itself is conditional on the revision');
     assert.match(store, /UPDATE planner_trips SET .*WHERE \$\{guard\} RETURNING revision/);
     assert.ok(!/UPDATE planner_trips/.test(trip + share + archive + history), 'documents are only written through commit()');
-    assert.ok(trip.indexOf('return conflict()') < trip.indexOf('editorRestriction('), 'the revision check runs before role rules');
+    assert.ok(trip.indexOf('staleCheck(input, current)') > 0 && trip.indexOf('staleCheck(input, current)') < trip.indexOf('editorRestriction('), 'the revision check runs before role rules');
 });
 
 test('the planner offers Editors and Guest link only to the organizer', async () => {

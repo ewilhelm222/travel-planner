@@ -178,3 +178,93 @@ console.log('PASS: organizer full backup download and a verified restore into a 
     assert.equal((await anon(sp, { method: 'PATCH', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'place-add', revision: 1, place: { id: 'x', name: 'x' } }) })).status, 401);
     console.log('PASS: place, stay and journey edits with revision checks, explicit place reassignment, private address/links, and undo of a place delete.');
 }
+// Per-record revisions: different cards save side by side; the same card still conflicts; older pages keep the strict rule.
+{
+    const made = await (await req('/api/trips', 'POST', { template: 'thanksgiving' })).json(), tid = made.snapshot.trip.id, tp = `/api/trip?id=${tid}`;
+    assert.deepEqual(made.snapshot.revisions, {});
+    const edit = (activityId, patch, base) => req(tp, 'PATCH', { action: 'edit', activityId, patch, base });
+    // Eight planners save eight different cards at the same moment, all from the freshly loaded trip.
+    const ids = ['option-1', 'option-2', 'option-3', 'option-4', 'option-5', 'option-6', 'option-7', 'option-8'];
+    const together = await Promise.all(ids.map(x => edit(x, { notes: `note for ${x}` }, { [`activity:${x}`]: 1 })));
+    assert.deepEqual(together.map(r => r.status), ids.map(() => 200), 'edits to different cards never conflict');
+    let now = (await (await req(tp)).json()).snapshot;
+    assert.equal(now.revision, 9, 'each save is its own version');
+    for (const x of ids) {
+        assert.equal(now.trip.activities.find(a => a.id === x).notes, `note for ${x}`, 'no save was lost');
+        assert.equal(now.revisions[`activity:${x}`], 2);
+    }
+    assert.equal((await (await req(`/api/history?id=${tid}`)).json()).changes.length, 9, 'one log row per save');
+    // Two planners save the same card at the same moment: exactly one wins.
+    const same = await Promise.all(['A', 'B'].map(n => edit('option-9', { notes: n }, { 'activity:option-9': 1 })));
+    assert.deepEqual(same.map(r => r.status).sort(), [200, 409]);
+    const lost = await same.find(r => r.status === 409).json();
+    assert.match(lost.error, /“Leftovers & a movie” was changed by another planner after you opened it/);
+    assert.equal(lost.conflicts[0].key, 'activity:option-9');
+    // A stale card is refused however long ago; an unrelated card opened at the same time is fine.
+    assert.equal((await edit('option-1', { notes: 'stale' }, { 'activity:option-1': 1 })).status, 409);
+    assert.equal((await edit('option-12', { notes: 'fine' }, { 'activity:option-12': 1 })).status, 200);
+    assert.equal((await edit('option-12', { notes: 'x' }, { 'activity:option-12': 0 })).status, 400);
+    assert.equal((await edit('option-12', { notes: 'x' }, 'nonsense')).status, 400);
+    // An older page sends only the trip-wide revision and is held to the old all-or-nothing rule.
+    assert.equal((await req(tp, 'PATCH', { action: 'edit', revision: 1, activityId: 'option-10', patch: { notes: 'old page' } })).status, 409);
+    assert.equal((await req(tp, 'PATCH', { action: 'edit', activityId: 'option-10', patch: { notes: 'no revision at all' } })).status, 400);
+    // Drag: neighbours are renumbered without a new revision, so their open forms still save.
+    const dragged = await (await req(tp, 'PATCH', { action: 'move', activityId: 'option-3', date: '2026-11-27', beforeId: 'option-6', base: { 'activity:option-3': 2 } })).json();
+    assert.equal(dragged.snapshot.revisions['activity:option-6'], 2);
+    assert.equal(dragged.snapshot.revisions['activity:option-3'], 3);
+    assert.equal((await edit('option-6', { title: 'Hike, renamed after the drag' }, { 'activity:option-6': 2 })).status, 200);
+    // Guest link and trip delete have their own records.
+    const sp2 = `/api/share?id=${tid}`, shareState = await (await req(sp2)).json();
+    assert.equal(shareState.shareRevision, 1);
+    const on = await req(sp2, 'POST', { action: 'rotate', base: { share: 1 } });
+    assert.equal(on.status, 200, 'card edits do not block enabling the guest link');
+    assert.equal((await req(sp2, 'POST', { action: 'rotate', base: { share: 1 } })).status, 409, 'a second organizer tab cannot silently replace the link');
+    assert.equal((await req(sp2, 'POST', { action: 'revoke', base: { share: 2 } })).status, 200);
+    assert.equal((await req(tp, 'PATCH', { action: 'metadata', patch: { subtitle: 'changed' }, base: { trip: 1 } })).status, 200);
+    assert.equal((await req(`/api/archive?id=${tid}`, 'POST', { action: 'archive', base: { trip: 1 } })).status, 409, 'a page showing old trip details cannot delete the trip');
+    assert.equal((await req(`/api/archive?id=${tid}`, 'POST', { action: 'archive', base: { trip: 2 } })).status, 200);
+    console.log('PASS: per-record revisions: parallel saves to different cards, single winner on one card, strict rule for older pages, drag without neighbour conflicts, separate guest-link and trip records.');
+}
+// Stay move: confirmed activities shift with the stay; fixed and mixed ones cannot be moved this way; undo restores everything.
+{
+    const { parallelTripInput } = await import('../tests/fixtures/parallel-trip.mjs');
+    const made = await (await req('/api/trips', 'POST', { trip: parallelTripInput() })).json(), tid = made.snapshot.trip.id, tp = `/api/trip?id=${tid}`;
+    const move = (shiftActivityIds, base) => req(tp, 'PATCH', { action: 'stay-move', stayId: 'cedar-kyoto', days: 1, shiftActivityIds, base });
+    for (const blocked of ['shared-dinner', 'shared-walk', 'museum'])
+        assert.equal((await move([blocked], { 'stay:cedar-kyoto': 1 })).status, 400, `${blocked} must not move with Cedar's stay`);
+    // Another planner makes the garden a fixed booking after the preview: the confirmed move is refused by its base revision.
+    assert.equal((await req(tp, 'PATCH', { action: 'edit', activityId: 'solo-garden', patch: { fixed: true }, base: { 'activity:solo-garden': 1 } })).status, 200);
+    assert.equal((await move(['solo-garden', 'cedar-arrival'], { 'stay:cedar-kyoto': 1, 'activity:solo-garden': 1, 'activity:cedar-arrival': 1 })).status, 409);
+    assert.equal((await move(['solo-garden'], { 'stay:cedar-kyoto': 1, 'activity:solo-garden': 2 })).status, 400, 'and by the rules even with a fresh revision');
+    const ok = await move(['cedar-arrival', 'cy-only'], { 'stay:cedar-kyoto': 1, 'activity:cedar-arrival': 1, 'activity:cy-only': 1 });
+    assert.equal(ok.status, 200, await ok.clone().text());
+    const after = (await ok.json()).snapshot;
+    assert.deepEqual([after.trip.stays[0].start, after.trip.stays[0].end], ['2027-04-13', '2027-04-15']);
+    assert.equal(after.trip.activities.find(x => x.id === 'cedar-arrival').date, '2027-04-13');
+    assert.equal(after.trip.activities.find(x => x.id === 'solo-garden').date, '2027-04-13', 'the fixed booking stayed');
+    assert.equal(after.trip.activities.find(x => x.id === 'museum').date, '2027-04-13');
+    assert.deepEqual(after.trip.stays.slice(1).map(x => x.start), ['2027-04-13', '2027-04-13', '2027-04-14'], 'other stays untouched');
+    const entry = (await (await req(`/api/history?id=${tid}`)).json()).changes[0];
+    assert.match(entry.summary, /Moved a stay 1 day later .* with 2 flexible activities/);
+    assert.equal(entry.records.length, 3);
+    const undone2 = await (await req(`/api/history?id=${tid}`, 'POST', { action: 'undo', changeId: entry.id })).json();
+    assert.equal(undone2.snapshot.trip.stays[0].start, '2027-04-12');
+    assert.equal(undone2.snapshot.trip.activities.find(x => x.id === 'cy-only').date, '2027-04-13');
+    assert.equal(undone2.snapshot.trip.activities.find(x => x.id === 'cedar-arrival').date, '2027-04-12');
+    console.log('PASS: stay move shifts only confirmed flexible activities, refuses fixed/mixed/stale ones, and undoes as one step.');
+}
+// Maps: place locations are validated and stored as entered; guests never receive them.
+{
+    const made = await (await req('/api/trips', 'POST', { template: 'thanksgiving' })).json(), tid = made.snapshot.trip.id, tp = `/api/trip?id=${tid}`;
+    const edit = (patch, base = { 'place:home': 1 }) => req(tp, 'PATCH', { action: 'place-edit', placeId: 'home', patch, base });
+    assert.equal((await edit({ lat: '45.5', lng: '-122.6' })).status, 400, 'coordinates need an explicit system');
+    assert.equal((await edit({ lat: '45.5', lng: '-122.6', coordSystem: 'GCJ02', amapUrl: 'https://example.com/not-amap' })).status, 400);
+    const ok = await edit({ lat: '45.5', lng: '-122.6', coordSystem: 'GCJ02', coordSource: 'PRIVATE SOURCE', amapUrl: 'https://surl.amap.com/PRIVATE', navReviewed: true });
+    assert.equal(ok.status, 200, await ok.clone().text());
+    const home = (await ok.json()).snapshot.trip.places[0];
+    assert.deepEqual([home.lat, home.lng, home.coordSystem, home.navReviewed], [45.5, -122.6, 'GCJ02', true], 'stored exactly as entered, never converted');
+    const shareOn = await (await req(`/api/share?id=${tid}`, 'POST', { action: 'rotate', base: { share: 1 } })).json();
+    const guestMap = JSON.stringify(await (await anon('/api/shared', { headers: { Authorization: `Share ${new URL(shareOn.url).hash.slice(1)}` } })).json());
+    assert.ok(!/45\.5|GCJ02|PRIVATE|amap/.test(guestMap), 'coordinates, their source and map links are not in the guest view');
+    console.log('PASS: place coordinates need an explicit system, map links must be on the provider\'s site, and none of it reaches guests.');
+}

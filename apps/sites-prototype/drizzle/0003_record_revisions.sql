@@ -1,0 +1,1 @@
+ALTER TABLE `planner_trips` ADD `record_revisions` text DEFAULT '{}' NOT NULL;

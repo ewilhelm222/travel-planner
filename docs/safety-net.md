@@ -53,10 +53,9 @@ change which traveler names guests see.
 - Archive sets `archived_at` and clears the guest-link hash. Archived trips are
   refused for reads and writes and absent from editors' lists.
 
-The trip still has one trip-wide revision, so two people saving at the same
-moment still get one success and one "load the latest plan". Per-record
-revisions are the next step and will let undo compare record revisions instead
-of whole records.
+Since [per-record revisions](per-record-revisions.md), saves to different cards
+no longer conflict, and undo compares each record's revision instead of its
+whole content.
 
 ## Checks
 

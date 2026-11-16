@@ -12,7 +12,8 @@ const base = () => applyTripChange(thanksgivingExample(), { action: 'place-add',
 
 test('places can be added and edited, and are validated', () => {
     const trip = base();
-    assert.deepEqual(trip.places.find(p => p.id === 'trailhead'), { id: 'trailhead', name: 'Synthetic trailhead', localName: '示例步道', address: '1 Example Road', localAddress: '示例路1号' });
+    const { id, name, localName, address, localAddress } = trip.places.find(p => p.id === 'trailhead');
+    assert.deepEqual({ id, name, localName, address, localAddress }, { id: 'trailhead', name: 'Synthetic trailhead', localName: '示例步道', address: '1 Example Road', localAddress: '示例路1号' });
     const edited = applyTripChange(trip, { action: 'place-edit', placeId: 'trailhead', patch: { name: 'Renamed trailhead' } });
     assert.equal(edited.places.find(p => p.id === 'trailhead').name, 'Renamed trailhead');
     assert.equal(edited.places.find(p => p.id === 'trailhead').localName, '示例步道', 'fields not in the patch are kept');
@@ -120,8 +121,7 @@ test('the board opens stays and journeys for editing; the guest view has neither
 test('the planner offers inline place creation, structure editing and a Save label for trip details', async () => {
     const script = await source('public/planner.js');
     assert.match(script, /<option value="__new">＋ Add new place…<\/option>/);
-    assert.match(script, /action: 'place-add', revision: Number\(form\.dataset\.revision\), place/);
-    assert.match(script, /form\.dataset\.revision = result\.snapshot\.revision/, 'the open activity draft continues from the new revision');
+    assert.match(script, /action: 'place-add', base: \{\}, place/, 'adding a place relies on no existing record, so it cannot conflict with the open draft');
     assert.equal(script.match(/id="structure"/g).length, 2, 'desktop toolbar and phone manage section');
     for (const id of ['place-form', 'stay-form', 'leg-form'])
         assert.ok(script.includes(`<form id="${id}"`));

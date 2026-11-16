@@ -124,8 +124,9 @@ test('every write path appends its log row in the same batch as the trip update'
     const batch = store.slice(store.indexOf('await db().batch'), store.indexOf('const saved = updated.results'));
     assert.match(batch, /INSERT INTO planner_changes .* FROM planner_trips WHERE \$\{guard\}/, 'the log row is only written when the revision still matches');
     assert.match(batch, /UPDATE planner_trips SET .* WHERE \$\{guard\} RETURNING revision/);
+    assert.match(store, /const saved = await commit\(\{ \.\.\.change, id: current\.id, expected: current\.revision \}\)/, 'transact() writes only through commit()');
     for (const route of ['trip', 'share', 'archive', 'history'])
-        assert.match(await source(`app/api/${route}/route.ts`), /await commit\(/, `${route} saves through commit()`);
+        assert.match(await source(`app/api/${route}/route.ts`), /await transact\(/, `${route} saves through transact()`);
     assert.match(await source('app/api/trips/route.ts'), /db\(\)\.batch\(\[\s+db\(\)\.prepare\("INSERT INTO planner_trips[\s\S]+INSERT INTO planner_changes/, 'creating a trip logs it in one batch');
     const migration = await source('drizzle/0002_change_log_and_archive.sql');
     assert.match(migration, /CREATE TABLE `planner_changes`/);

@@ -1,8 +1,10 @@
 # Editors: letting someone else edit a trip
 
-Status: November 13, 2026. Built and checked locally with synthetic data and
-local test accounts; not yet deployed, and not yet tried with a second real
-account on the hosted Site.
+Status: November 13, 2026; merged into `main` on November 15; permissions
+decided November 16. Built and checked locally with synthetic data and local
+test accounts. Not yet tried with a second real account on the hosted Site, and
+whether it is live is not recorded in this repository (see
+[release provenance](multi-events.md#release-provenance)).
 
 ## For the organizer
 
@@ -19,20 +21,37 @@ person's sign-in email and choose **Add editor**. **Remove** takes them off.
 
 | An editor can | Only the organizer can |
 | --- | --- |
-| Open the trip in the planner | Enable, replace or disable the guest link |
-| Add, change, move and delete activities and ideas | Choose which traveler names guests see |
-| Update travelers, groups and trip details | See, add or remove editors |
+| Open the trip in the planner | Change the trip's name, subtitle, dates, time zone or kind |
+| Add, change, move and delete activities and ideas, including their **guest description** and **guest meeting point** | Enable, replace or disable the guest link |
+| Update and remove travelers and groups | Choose which traveler names guests see |
+| Add, edit and delete places, stays and journeys; move a stay | See, add or remove editors |
+| Read History and undo ordinary edits | Delete or restore a trip; download the full backup |
 | Save an offline copy or JSON of the trip | Create or import trips |
-| Read History, undo ordinary edits, remove travelers and groups | Delete or restore a trip; download the full backup |
 
-Only the organizer can delete (archive) or restore a trip; see
-[safety-net.md](safety-net.md). Editors do not see the **Guest link**,
-**Editors**, **New trip or event**, **Paste JSON** or **Import JSON** controls, and
-the server refuses those requests from them regardless of what the page shows.
+Editors do not see the **Trip details**, **Guest link**, **Editors**, **New trip
+or event**, **Paste JSON** or **Import JSON** controls, and the server refuses
+those requests from them regardless of what the page shows.
 
-Letting editors update travelers and trip details follows the existing behavior
-of the shared save path. If editors should be limited to activities only, that
-is a small server rule to add in `editorRestriction` (`lib/trips.mjs`).
+### Decision of November 16, 2026
+
+Two questions were open: may editors change guest descriptions, and may they
+change the trip's title and dates?
+
+- **Guest descriptions and meeting points: yes.** An editor already writes
+  activity titles and times, which guests also see, so blocking the description
+  would not protect the guest view and would stop a co-planner from adding
+  "bring boots". Every such edit is in History with the editor's name and can
+  be undone.
+- **Trip title, subtitle, dates, time zone and kind: no, organizer only.**
+  Changing the dates can push every activity outside the trip, and the title
+  and subtitle head the guest page. The server enforces this in
+  `editorRestriction` (`lib/trips.mjs`) and again for undo, so an editor cannot
+  reverse the organizer's change either.
+
+This was decided by the agent as the cautious default and is easy to change:
+remove the `metadata` rule in `editorRestriction` to let editors edit trip
+details, or add `guestNotes`/`guestLocation` to it to make guest text
+organizer-only.
 
 ## How access is decided
 
