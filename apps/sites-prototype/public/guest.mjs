@@ -1,5 +1,5 @@
 import { usefulFilterChoices, participantRecord } from "./participants.mjs";
-import { escape, preferredDay, board, dayChooser, dateLabel, ideaCards, timingOf, PHONE_QUERY, dayInView, pressDay } from './board.mjs';
+import { escape, preferredDay, board, dayChooser, dateLabel, ideaCards, timingOf, PHONE_QUERY, dayInView, pressDay, fitColumns } from './board.mjs';
 import { matchesSelection } from './participants.mjs';
 import { buildOfflineHtml } from './offline-export.mjs';
 const app = document.querySelector('#guest-app'), token = location.hash.slice(1);
@@ -29,6 +29,7 @@ function render() {
     app.innerHTML = layout
         ? `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar slim" id="top"><span class="brand">Waypoint<span class="brand-dot">↗</span></span><span class="private-label">● Guest view · read only</span></header><main class="compact schedule-first${allDays ? ' all-days' : ''}"><section class="trip-bar" aria-label="Schedule and traveler selection"><h1 class="trip-name">${escape(trip.title)}</h1>${filterLabel}</section>${banner}${schedule}<section class="manage" id="manage" aria-labelledby="manage-title"><h2 id="manage-title">About this schedule</h2><p class="manage-trip">${escape(trip.title)} · ${escape(trip.start)} – ${escape(trip.end)} · ${escape(trip.timezone)}</p>${trip.subtitle ? `<p>${escape(trip.subtitle)}</p>` : ''}<p role="status" id="guest-status">${guide}</p><div class="manage-group"><h3>Copies &amp; updates</h3><div class="tools"><button class="secondary" id="refresh">Refresh</button><button class="secondary" id="download">Save a reading copy</button></div><p class="study-meta">${meta}</p></div><a class="jump-link back-top" href="#top">↑ Back to the schedule</a></section><footer>Read-only guest link · No account or RSVP required. Keep the link within your group.</footer></main>${dialog}`
         : `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar"><span class="brand">Waypoint<span class="brand-dot">↗</span></span><span class="private-label">● Guest view · read only</span></header><main class="compact"><header class="trip-header"><div><span class="eyebrow">An invitation to explore</span><h1>${escape(trip.title)}<span class="title-dot">.</span></h1><p class="trip-subtitle">${escape(trip.subtitle)}</p><p class="trip-facts">${escape(trip.start)} – ${escape(trip.end)} · ${escape(trip.timezone)}</p></div></header><div class="toolbar">${filterLabel}<button class="secondary" id="refresh">Refresh</button><button class="secondary" id="download">Save a reading copy</button></div>${banner}<p role="status" id="guest-status">${guide}</p><p class="study-meta">${meta}</p>${schedule}<footer>Read-only guest link · No account or RSVP required. Keep the link within your group.</footer></main>${dialog}`;
+    fitColumns(document.querySelector('#itinerary'));
     const selected = document.querySelector(`[data-date="${day}"]`);
     if (selected)
         document.querySelector('#itinerary').scrollLeft = selected.offsetLeft - document.querySelector('#itinerary').offsetLeft;
@@ -105,3 +106,4 @@ document.addEventListener('click', async (e) => { if (e.target.closest('.skip-li
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 } });
 load();
+window.addEventListener('resize', () => fitColumns(document.querySelector('#itinerary')));

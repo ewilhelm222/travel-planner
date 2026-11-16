@@ -23,8 +23,7 @@ test('a short, wide screen keeps the wide layout but gives the height to the day
     assert.ok(start > 0);
     const block = css.slice(start);
     assert.match(block, /main \.library-bar ~ \.trip-header, \.view-title, #status:not\(\.reading-copy\)[^{]*\{ display: none; \}/, 'the poster bar and the status line fold away; an offline or expired notice does not');
-    assert.match(block, /\.board-wrap:not\(\.ideas-closed\) > \.date-board \{ grid-auto-columns: minmax\(190px, calc\(\(100% - 12px\) \/ 2\)\); \}/, 'ideas plus two days');
-    assert.match(block, /\.date-board \{ grid-auto-columns: minmax\(190px, calc\(\(100% - 24px\) \/ 3\)\)/, 'or three days with the ideas folded');
+    assert.match(block, /\.board-wrap > \.date-board, \.dense \.board-wrap > \.date-board \{ --col-min: 190; --gap: 12px; --cols-default: 3; \}/, 'day columns may be as narrow as 190 px');
     assert.match(drag, /@media\(max-height:520px\)\{\.drop-dock h2\{display:none\}/, 'the drop panel is slimmer on a short screen');
     // A phone on its side is usually narrower than 761 px in the browser, so width alone must not decide.
     const { PHONE_QUERY } = await import('../public/board.mjs');

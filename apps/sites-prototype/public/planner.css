@@ -510,7 +510,7 @@ button.lodging:hover, button.journeys:hover, button.lodging:focus-visible, butto
 /* Denser desktop week view for long trips: seven day columns. Titles, times, the fixed-booking
    label and traveler names stay; descriptions are opened from the card. */
 @media (min-width: 1000px) {
-  .dense .date-board { grid-auto-columns: minmax(172px, calc((100% - 60px) / 7)); gap: 10px; }
+  .dense .date-board { --col-min: 172; --gap: 10px; --cols-default: 7; }
   .dense .agenda-date { gap: 6px 8px; padding-bottom: 8px; }
   .dense .agenda-date .date-number { font-size: var(--t2); letter-spacing: -1px; }
   .dense .agenda-date > span { font-size: 14px; }
@@ -686,8 +686,8 @@ button.lodging { padding-left: 8px; }
   .board-wrap { gap: 12px; }
   .board-wrap > .ideas { flex-basis: 200px; padding: 10px; border-radius: 16px; }
   .board-wrap > .ideas h2 { font-size: 18px; }
-  .date-board { grid-auto-columns: minmax(190px, calc((100% - 24px) / 3)); gap: 12px; }
-  .board-wrap:not(.ideas-closed) > .date-board { grid-auto-columns: minmax(190px, calc((100% - 12px) / 2)); }
+  .board-wrap > .date-board, .dense .board-wrap > .date-board { --col-min: 190; --gap: 12px; --cols-default: 3; }
+  .board-wrap:not(.ideas-closed) > .date-board { --cols-default: 2; }
   .agenda-date { padding-bottom: 4px; }
   .agenda-date .date-number, .compact .agenda-date .date-number { font-size: var(--t2); letter-spacing: -1px; }
   .agenda-city { margin-bottom: 8px; padding-top: 6px; }
@@ -734,3 +734,26 @@ button.lodging { padding-left: 8px; }
   .schedule-first.all-days .agenda-day:last-child { border-bottom: 0; }
 }
 @media print { .all-stop { display: none !important; } }
+
+/* Even day columns (November 17). Every header is one line whatever the weekday, the stay line and place name
+   are one line each, so the first card starts at the same height in every column. A whole number of columns
+   fills the board (--cols is set by fitColumns in board.mjs) and scrolling snaps to a column. */
+.wd-short { display: none; text-decoration: none; }
+.agenda-date { flex-wrap: nowrap; }
+.agenda-date > .weekday { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agenda-date h2 { flex-shrink: 0; white-space: nowrap; }
+@media (min-width: 761px), (min-width: 560px) and (orientation: landscape) {
+  .date-board { --col-min: 280; --gap: 24px; --cols-default: 3; gap: var(--gap); grid-auto-columns: calc((100% - (var(--cols, var(--cols-default)) - 1) * var(--gap)) / var(--cols, var(--cols-default))); scroll-snap-type: x mandatory; }
+  .is-dragging .date-board { scroll-snap-type: none; }
+  .agenda-day { container-type: inline-size; }
+  .agenda-city h3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  button.lodging { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; white-space: nowrap; }
+  .lodging-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .lodging .edit-hint { flex: 0 0 auto; margin-left: 0; }
+  @container (max-width: 259px) {
+    .wd-long { display: none; }
+    .wd-short { display: inline; }
+  }
+}
+@media (max-width: 559px), (max-width: 760px) and (orientation: portrait) { .schedule-first .agenda-date { flex-wrap: wrap; } }
+@media print { .agenda-day { container-type: normal; } .agenda-date { flex-wrap: wrap; } .wd-short { display: none !important; } .wd-long { display: inline !important; } }

@@ -26,7 +26,7 @@ test('a denser week view exists for long trips and keeps the essential labels', 
     const script = await read('planner.js'), css = await read('planner.css');
     assert.match(script, /state\.dense = !!t && \(typeof state\.denseChoice === 'boolean' \? state\.denseChoice : dates\.length > 4\);/, 'trips longer than four days start in the week view');
     assert.match(script, /id="density" aria-pressed="\$\{state\.dense\}"/);
-    assert.match(css, /\.dense \.date-board \{ grid-auto-columns: minmax\(172px, calc\(\(100% - 60px\) \/ 7\)\)/, 'seven day columns');
+    assert.match(css, /\.dense \.date-board \{ --col-min: 172; --gap: 10px; --cols-default: 7; \}/, 'narrow day columns: seven on a laptop, fewer when the board is narrower');
     const dense = css.slice(css.indexOf('/* Denser desktop week view'));
     const hidden = dense.match(/([^{}]+)\{ display: none; \}/g).join(' ');
     for (const kept of ['.card-meta', '.booking', '.kind', '.people', '.person', 'strong', '.shared-label'])
