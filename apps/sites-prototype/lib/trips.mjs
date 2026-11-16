@@ -305,7 +305,9 @@ export function publicTrip(trip) {
         }
         return anonymous.get(key);
     }
-    const activities = trip.activities.filter(a => a.date).map(a => ({ id: a.id, title: a.title, date: a.date, placeId: a.placeId, time: a.time, order: a.order, fixed: a.fixed, optional: a.optional, highlight: a.highlight, participants: [...new Set(a.participants.map(guestId))], notes: a.guestNotes, address: a.guestLocation, sourceKind: a.sourceKind }));
+    // Examples (invented items) are never sent to guests: an example must not be read as a plan.
+    // Unscheduled ideas are shared too (decided November 16, 2026), with the same limited fields.
+    const activities = trip.activities.filter(a => a.sourceKind !== "synthetic").map(a => ({ id: a.id, title: a.title, date: a.date, placeId: a.placeId, time: a.time, order: a.order, fixed: a.fixed, optional: a.optional, highlight: a.highlight, participants: [...new Set(a.participants.map(guestId))], notes: a.guestNotes, address: a.guestLocation, sourceKind: a.sourceKind }));
     return { schemaVersion: 2, id: 'guest-view', title: trip.title, subtitle: trip.subtitle, kind: trip.kind, start: trip.start, end: trip.end, timezone: trip.timezone,
         families, people, places: trip.places.map(p => ({ id: p.id, name: p.name, localName: p.localName })), stays: [], legs: [], activities };
 }

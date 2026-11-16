@@ -14,13 +14,19 @@ Merged into `main` (November 12–15, 2026): **drag-and-drop** moves on desktop
 and phone, the **schedule-first** phone layout, and **editors** the organizer
 can add by sign-in email.
 
-Opened as pull requests on November 16, 2026, in this order and not yet
-deployed: [the safety net](docs/safety-net.md) (History, undo, remove, delete
+Merged and deployed on November 15, 2026 (Pacific time; see
+[release provenance](docs/multi-events.md#release-provenance)): [the safety net](docs/safety-net.md) (History, undo, remove, delete
 and restore a trip, full backup), [editing places, stays and
 journeys](docs/structure.md), [per-record
 revisions](docs/per-record-revisions.md), [moving a stay with a
 preview](docs/stay-move.md), [schematic maps](docs/maps.md), and [layout
-changes](docs/layout.md). A daily automatic backup is
+changes](docs/layout.md). Built on November 16 from the
+[family feedback plan](docs/feedback-2026-11-15-plan.md) and not yet deployed:
+[sign-in and read-only messages](docs/getting-in.md),
+[plain wording](docs/plain-words.md), [dark forms](docs/dark-forms.md),
+[Add and Ideas within reach](docs/within-reach.md), [Ideas beside the
+days](docs/ideas-column.md), and [one Manage menu and a sideways-phone
+layout](docs/landscape-and-menu.md). A daily automatic backup is
 [proposed](docs/backup-proposal.md) and not enabled.
 
 [Open the planner](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site) · [Current implementation and access status](docs/multi-events.md) · [What is deployed](docs/multi-events.md#release-provenance) · [Managing travelers](docs/travelers.md) · [Drag-and-drop](docs/drag-drop.md) · [Schedule-first phone layout](docs/schedule-first.md) · [Editors and what they may change](docs/editors.md) · [Source](apps/sites-prototype)

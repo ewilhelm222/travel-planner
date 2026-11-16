@@ -17,6 +17,8 @@ const log = (...a) => console.log(...a);
   const id = created.snapshot.trip.id; log('trip', id);
   const api = (body) => page.evaluate(async ([id, body]) => { const r = await fetch('/api/trip?id=' + id, { method: body ? 'PATCH' : 'GET', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, json: await r.json() }; }, [id, body]);
   await page.goto(O + '/?trip=' + id);
+  // The traveler filter is only offered when it would change what is shown, so give one family a plan of its own.
+  { const c0 = await api(); await api({ action: 'edit', revision: c0.json.snapshot.revision, activityId: 'option-12', patch: { participants: ['cedar'] } }); await page.reload(); }
   await page.waitForSelector('#itinerary.can-drag .activity');
   const toBoard = () => page.evaluate(() => { document.querySelector('.toolbar').scrollIntoView(); });
 
@@ -83,7 +85,7 @@ const log = (...a) => console.log(...a);
   await page.evaluate(() => document.querySelector('.ideas').scrollIntoView({ block: 'center' }));
   await page.mouse.move(s9.x + 55, s9.y + 65);
   const ideas = await box('.ideas');
-  await page.mouse.move(ideas.x + 200, ideas.y + 30, { steps: 8 });
+  await page.mouse.move(ideas.x + 60, ideas.y + 60, { steps: 8 });
   await page.screenshot({ path: SHOTS + '/desktop-4-to-ideas.png' });
   await page.mouse.up();
   await page.waitForFunction(() => /to Unscheduled ideas.*Saved/.test(document.querySelector('#message').textContent));
@@ -91,7 +93,7 @@ const log = (...a) => console.log(...a);
   // Fixed booking: make dinner fixed via API, reload, drag to another day.
   let cur = await api();
   await api({ action: 'edit', revision: cur.json.snapshot.revision, activityId: 'option-5', patch: { fixed: true } });
-  await page.click('#refresh'); await page.waitForTimeout(800);
+  await page.evaluate(() => document.querySelector('#refresh').click()); await page.waitForTimeout(800);
   await toBoard();
   await drag('.activity[data-detail="option-5"]', '.agenda-day[data-date="2026-11-28"] .activity[data-detail]', 20, async () => {
     log('fixed hover class:', await page.$eval('.agenda-day[data-date="2026-11-28"]', e => e.className), '| dock:', await page.textContent('.drop-dock p'));
@@ -123,6 +125,10 @@ const log = (...a) => console.log(...a);
   log('after escape dock gone?', !(await page.$('.drop-dock')), 'option-11 day', await page.$eval('.activity[data-detail="option-11"]', e => e.closest('.agenda-day').dataset.date));
 
   // ---------- Guest view ----------
+  // Examples are not sent to guests, so add one entered plan for the guest page to show.
+  cur = await api();
+  await api({ action: 'add', revision: cur.json.snapshot.revision, activity: { id: 'guest-visible', title: 'Entered plan guests can see', date: '2026-11-27', time: 'Morning', placeId: 'home', order: 99, participants: ['cedar', 'maple', 'birch'], notes: '', guestNotes: '', guestLocation: '', fixed: false, optional: true, sourceKind: 'entered' } });
+  cur = await api();
   const share = await page.evaluate(async ([id, rev]) => (await (await fetch('/api/share?id=' + id, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'rotate', revision: rev }) })).json()), [id, cur.json.snapshot.revision]);
   const gctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2, serviceWorkers: 'block' });
   const g = await gctx.newPage();

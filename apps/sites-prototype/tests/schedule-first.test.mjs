@@ -19,6 +19,7 @@ test('a visit opens on today while the trip is under way, otherwise on the first
 test('cards carry time, title, people and the meeting point without opening', () => {
     const trip = thanksgivingExample();
     trip.activities[1].guestLocation = 'Front <porch>';
+    trip.activities.forEach(a => { a.sourceKind = 'entered'; });
     const html = card(trip.activities[1], trip);
     for (const part of ['Morning', 'Neighborhood walk', 'Cedar family', 'Meet · Front &lt;porch&gt;'])
         assert.ok(html.includes(part), part);
@@ -34,8 +35,8 @@ test('the phone page puts the schedule before every management control', async (
     assert.ok(phonePage.length > 500);
     const at = text => { const i = phonePage.indexOf(text); assert.ok(i >= 0, `${text} is present`); return i; };
     const schedule = at('id="itinerary"');
-    assert.ok(at('id="trip-select"') < schedule && at('${dayChooser(t, state.day)}') < schedule);
-    assert.ok(at('class="ideas"') > schedule && at('class="ideas"') < at('id="manage"'), 'ideas stay reachable right after the day');
+    assert.ok(at('id="trip-select"') < schedule && at('${rail(t, state.day)}') < schedule);
+    assert.ok(at('${ideasSection(t)}') > schedule && at('${ideasSection(t)}') < at('${mapsSection(t)}') && at('${mapsSection(t)}') < at('id="manage"'), 'ideas come right after the day, before the map');
     for (const id of ['add', 'travelers', 'settings', 'share', 'offline-file', 'export', 'refresh', 'status', 'drag-hint', 'new-trip', 'paste-import', 'import', 'sign-out'])
         assert.ok(at(`id="${id}"`) > at('id="manage"'), `${id} sits in the manage section below the schedule`);
     assert.ok(at('href="#manage"') < schedule, 'a small jump link reaches the manage section');

@@ -44,3 +44,9 @@ export function referenceSummary(refs) {
     const part = (rows, one, many) => rows.length ? `${rows.length} ${rows.length === 1 ? one : many}` : '';
     return [part(refs.activities, 'activity', 'activities'), part(refs.stays, 'stay', 'stays'), part(refs.legs, 'journey', 'journeys'), part(refs.members, 'traveler in this group', 'travelers in this group')].filter(Boolean).join(', ');
 }
+// Filter choices that would show something different from "Everyone". A choice that hides nothing
+// (one family that contains the whole trip, say) only looks broken, so it is not offered.
+export function usefulFilterChoices(trip) {
+    const rows = [...(trip.activities || []), ...(trip.stays || []), ...(trip.legs || [])];
+    return filterChoices(trip).filter(f => rows.some(r => !matchesSelection(r, f.id, trip)));
+}

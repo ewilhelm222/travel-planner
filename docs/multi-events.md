@@ -31,9 +31,12 @@ on desktop and phone.
   [drag-drop.md](drag-drop.md) (merged). Independent activities
   can be unscheduled ideas; no stay foreign key is required. Explicit fixed
   bookings protect date/time until deliberately made flexible.
-- Optional activities communicate availability rather than attendance or RSVPs.
-  An explicit shared-moment highlight supplies the acid-yellow rendezvous card;
-  shared attendance alone does not turn every card yellow.
+- Optional activities communicate availability rather than attendance or RSVPs,
+  shown as an "Optional" chip. An explicit **Whole-group activity** tick marks a
+  card with a magenta band and those words; shared attendance alone does not.
+  Invented items are labelled "Example · not a real plan" and are left out of
+  the guest link. See [plain-words.md](plain-words.md) and
+  [getting-in.md](getting-in.md) (built November 16, not yet deployed).
 - Guest descriptions and meeting points are separate from private planning notes.
   Read the exact projection in Guest link → Preview before enabling a link.
 - Private per-trip JSON and self-contained HTML export. Device reading copies are
@@ -69,11 +72,14 @@ Responses use no-store, noindex, and no-referrer policies. The static guest page
 does not request identity or send cookies for its data read.
 
 The server projection explicitly permits the title, subtitle, range/time zone,
-group display names, place display names, and dated activity details. Activity
+group display names, place display names, and activity details (dated, and
+from November 16 also unscheduled ideas). Activity
 notes come only from **guest descriptions** and locations only from **guest
 meeting points**. Private notes/addresses, lodging records, journey notes,
-unscheduled ideas, source fields, owner identity, editor lists, and token hashes
-are excluded. A guest token never authorizes a write or a private API read.
+examples (items marked "not a real plan"), source fields, owner identity,
+editor lists, and token hashes are excluded. Unscheduled ideas are included
+from the "within reach" change of November 16 ([within-reach.md](within-reach.md),
+not yet deployed), with the same limited fields as dated activities. A guest token never authorizes a write or a private API read.
 
 Anyone receiving a guest link can forward it. Revocation cannot recall a file or
 copy someone already downloaded. This is explained beside the sharing controls.

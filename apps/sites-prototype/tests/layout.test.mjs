@@ -24,7 +24,7 @@ test('the board scrolls sideways only, so journey cards at the foot of a day are
 
 test('a denser week view exists for long trips and keeps the essential labels', async () => {
     const script = await read('planner.js'), css = await read('planner.css');
-    assert.match(script, /state\.dense = !!t && \(typeof state\.denseChoice === 'boolean' \? state\.denseChoice : dates\.length >= 10\);/, 'trips of ten days or more start in the week view');
+    assert.match(script, /state\.dense = !!t && \(typeof state\.denseChoice === 'boolean' \? state\.denseChoice : dates\.length > 4\);/, 'trips longer than four days start in the week view');
     assert.match(script, /id="density" aria-pressed="\$\{state\.dense\}"/);
     assert.match(css, /\.dense \.date-board \{ grid-auto-columns: minmax\(172px, calc\(\(100% - 60px\) \/ 7\)\)/, 'seven day columns');
     const dense = css.slice(css.indexOf('/* Denser desktop week view'));
