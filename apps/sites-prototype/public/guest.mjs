@@ -1,5 +1,5 @@
 import { usefulFilterChoices, participantRecord } from "./participants.mjs";
-import { escape, preferredDay, board, dayChooser, dateLabel, ideaCards, timingOf, PHONE_QUERY, dayInView, pressDay, fitColumns } from './board.mjs';
+import { escape, preferredDay, board, dayChooser, dateLabel, ideaCards, timingOf, PHONE_QUERY, dayInView, pressDay, fitColumns, swipeStep, days } from './board.mjs';
 import { matchesSelection } from './participants.mjs';
 import { buildOfflineHtml } from './offline-export.mjs';
 const app = document.querySelector('#guest-app'), token = location.hash.slice(1);
@@ -116,3 +116,20 @@ document.addEventListener('click', async (e) => { if (e.target.closest('.skip-li
 } });
 load();
 window.addEventListener('resize', () => fitColumns(document.querySelector('#itinerary')));
+// One-day phone view: flick left or right on the day to go to the next or previous day.
+let flick = null;
+document.addEventListener('touchstart', e => { const t = e.touches[0]; flick = e.touches.length === 1 && trip && phone() && !allDays && !document.querySelector('dialog[open]') && e.target.closest?.('#itinerary') ? { x: t.clientX, y: t.clientY, at: Date.now() } : null; }, { passive: true });
+document.addEventListener('touchend', e => {
+    const start = flick, t = e.changedTouches[0];
+    flick = null;
+    if (!start || !t || document.querySelector('dialog[open]'))
+        return;
+    const step = swipeStep({ dx: t.clientX - start.x, dy: t.clientY - start.y, ms: Date.now() - start.at, startX: start.x, width: window.innerWidth });
+    const dates = days(trip), next = dates[dates.indexOf(day) + step];
+    if (step && next) {
+        day = next;
+        render();
+        document.querySelector('#itinerary')?.classList.add(step > 0 ? 'flick-next' : 'flick-prev');
+    }
+}, { passive: true });
+document.addEventListener('touchcancel', () => { flick = null; }, { passive: true });

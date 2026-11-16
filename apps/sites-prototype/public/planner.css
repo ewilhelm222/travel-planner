@@ -762,3 +762,23 @@ button.lodging { padding-left: 8px; }
 .card-venue { display: block; font: 600 13px/1.35 var(--font-ui); color: var(--muted); margin: 0 0 6px; }
 @media (max-width: 559px), (max-width: 760px) and (orientation: portrait) { .schedule-first .activity .card-venue { order: 4; margin: 0; } }
 @media (min-width: 1000px) { .dense .card-venue { font-size: 12px; margin-bottom: 4px; } }
+
+/* Add here, between two cards (wide screens with a pointer that can hover; keyboard focus shows it too). The
+   button takes no room, so cards do not shift when it appears. */
+.insert-here { display: none; }
+@media (hover: hover) and (min-width: 761px) {
+  .can-drag .insert-here { --card-gap: 14px; display: block; position: relative; z-index: 2; height: 0; width: 100%; margin: calc(var(--card-gap) / -2) 0; padding: 0; border: 0; background: none; cursor: copy; overflow: visible; }
+  .dense .can-drag .insert-here { --card-gap: 8px; }
+  .can-drag .insert-here::before { content: ''; position: absolute; left: 0; right: 0; top: calc(var(--card-gap) / -2 - 3px); height: calc(var(--card-gap) + 6px); }
+  .can-drag .insert-here::after { content: ''; position: absolute; left: 8px; right: 8px; top: -1px; border-top: 2px dashed var(--lagoon); opacity: 0; }
+  .can-drag .insert-here span { position: absolute; z-index: 1; left: 50%; top: 0; transform: translate(-50%, -50%); padding: 3px 10px; border-radius: var(--radius-pill); background: var(--lagoon); color: var(--ink); font: 700 12px/1.2 var(--font-ui); white-space: nowrap; opacity: 0; pointer-events: none; }
+  .can-drag .insert-here:hover::after, .can-drag .insert-here:focus-visible::after, .can-drag .insert-here:hover span, .can-drag .insert-here:focus-visible span { opacity: 1; }
+  .can-drag .insert-here:focus-visible { outline: none; }
+  .is-dragging .insert-here { display: none; }
+}
+/* A short slide when a flick changes the day on a phone. */
+@keyframes waypoint-flick-next { from { transform: translateX(28px); opacity: .4; } to { transform: none; opacity: 1; } }
+@keyframes waypoint-flick-prev { from { transform: translateX(-28px); opacity: .4; } to { transform: none; opacity: 1; } }
+.flick-next .agenda-day[data-selected=true] { animation: waypoint-flick-next .18s ease-out; }
+.flick-prev .agenda-day[data-selected=true] { animation: waypoint-flick-prev .18s ease-out; }
+@media print { .insert-here { display: none !important; } }

@@ -11,7 +11,7 @@ test('every day ends with an Add that carries its day and its stay\'s place; gue
     assert.equal(html.match(/class="add-here"/g).length, 5, 'one per day');
     assert.match(html, /data-add-date="2026-11-26" data-add-place="home">\+ Add<span class="add-here-day"> to Thursday 26<\/span>/);
     assert.ok(!board(publicTrip(t), { guest: true }).includes('add-here'));
-    assert.match(planner, /openEditor\(null, \{ date: b\.dataset\.addDate \|\| null, placeId: b\.dataset\.addPlace \|\| undefined \}\)/);
+    assert.match(planner, /openEditor\(null, \{ date: b\.dataset\.addDate \|\| null, placeId: b\.dataset\.addPlace \|\| undefined, beforeId: b\.dataset\.before \|\| '' \}\)/);
     assert.match(planner, /date: 'date' in preset \? preset\.date : state\.day/, 'the ideas Add opens with no day; the global Add keeps the selected day');
     assert.match(planner, /data-add-date="">\+ Add an idea/);
 });

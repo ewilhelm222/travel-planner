@@ -1,6 +1,6 @@
 (async () => {
     'use strict';
-    const { escape, dateLabel, days, preferredDay, board, dayChooser, isExample, ideaCards, timingOf, TIMINGS, TIMING_LABELS, PHONE_QUERY, dayInView, pressDay, fitColumns, areaId, orderedPlaces } = await import('/board.mjs');
+    const { escape, dateLabel, days, preferredDay, board, dayChooser, isExample, ideaCards, timingOf, TIMINGS, TIMING_LABELS, PHONE_QUERY, dayInView, pressDay, fitColumns, areaId, orderedPlaces, swipeStep } = await import('/board.mjs');
     const { usefulFilterChoices, matchesSelection, defaultParticipants, includesPerson, peopleOf, isWholeTripGroup, participantRecord, participantReferences, referenceSummary } = await import('/participants.mjs');
     const { fieldChanges } = await import('/history.mjs');
     const { baseFor, recordKey } = await import('/revisions.mjs');
@@ -106,7 +106,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v36');
+            const cache = await caches.open('waypoint-shell-v37');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -326,6 +326,27 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
         refreshMaps();
         document.querySelector(`#itinerary .agenda-day[data-date="${date}"]`)?.scrollIntoView({ block: 'start' });
     }
+    // One-day phone view: flick left or right on the day to go to the next or previous day.
+    let flick = null;
+    document.addEventListener('touchstart', event => {
+        const t = event.touches[0];
+        flick = event.touches.length === 1 && phone() && !state.allDays && state.snapshot && !document.querySelector('dialog[open]') && event.target.closest?.('#itinerary') ? { x: t.clientX, y: t.clientY, at: Date.now() } : null;
+    }, { passive: true });
+    document.addEventListener('touchend', event => {
+        const start = flick, t = event.changedTouches[0];
+        flick = null;
+        if (!start || !t || document.body.classList.contains('is-dragging') || document.querySelector('dialog[open]'))
+            return;
+        const step = swipeStep({ dx: t.clientX - start.x, dy: t.clientY - start.y, ms: Date.now() - start.at, startX: start.x, width: window.innerWidth });
+        const dates = days(state.snapshot.trip), next = dates[dates.indexOf(state.day) + step];
+        if (step && next) {
+            state.day = next;
+            persist();
+            render();
+            $('#itinerary')?.classList.add(step > 0 ? 'flick-next' : 'flick-prev');
+        }
+    }, { passive: true });
+    document.addEventListener('touchcancel', () => { flick = null; }, { passive: true });
     let spying = 0;
     window.addEventListener('scroll', () => {
         if (spying || !allDaysView() || !state.snapshot || document.body.classList.contains('is-dragging'))
@@ -877,7 +898,7 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
 <div id="some-panel" ${kind === 'some' ? '' : 'hidden'}><label class="check-label"><input type="checkbox" name="optional" ${a.optional ? 'checked' : ''} ${off}> Optional · offered as a choice, not a commitment</label><div id="attendance-slot">${attendanceFields(a, t, disabled, 'Who', true)}</div></div>
 <details class="more-details" id="more-details" ${hasMore || state.moreOpen ? 'open' : ''}><summary>More details <small>place, meeting point, notes, links</small></summary><label>Place<select name="placeId" ${off}><option value="">Location to confirm</option>${orderedPlaces(t).map(p => `<option value="${escape(p.id)}" ${a.placeId === p.id ? 'selected' : ''}>${escape(placeChoice(p))}</option>`).join('')}${disabled ? '' : '<option value="__new">＋ Add new place…</option>'}</select></label><fieldset class="inline-place" id="place-inline" hidden><legend>New place</legend>${placeFields({}, 'newPlace', '')}${insideField(t, {}, 'newPlace', '')}<p id="place-inline-message" role="alert"></p><button type="button" class="secondary" id="place-inline-save">Add this place</button><p class="form-hint">Adds the place to the trip straight away. Your activity is saved separately with the Save button below.</p></fieldset><label>Guest meeting point<input name="guestLocation" maxlength="500" value="${escape(a.guestLocation)}" ${off}><small>Shown on the card as “Meet · …”, and on the guest link.</small></label><label>Guest description<textarea name="guestNotes" rows="3" maxlength="4000" ${off}>${escape(a.guestNotes)}</textarea><small>Visible if you enable this event's guest link.</small></label><label>Address <small>(private)</small><input name="address" maxlength="500" value="${escape(a.address || '')}" ${off}><small>For this activity only. Never shown on the guest link; use Guest meeting point for that.</small></label><label>Private planning notes<textarea name="notes" rows="4" maxlength="4000" ${off}>${escape(a.notes)}</textarea><small>Excluded from the guest link.</small></label>${(a.links || []).length ? `<ul class="link-list" aria-label="Saved links">${a.links.map(l => `<li><a href="${escape(l.url)}" target="_blank" rel="noopener noreferrer">${escape(l.label || l.url)} ↗</a></li>`).join('')}</ul>` : ''}<label>Links <small>(private, optional)</small><textarea name="links" rows="2" maxlength="6000" spellcheck="false" placeholder="Tickets https://example.com/…" ${off}>${escape(formatLinks(a.links))}</textarea><small>One per line: an optional label, then the web address. Excluded from the guest link.</small></label></details>`;
     }
-    function openEditor(id, preset = {}) { const a = state.snapshot.trip.activities.find(a => a.id === id) || { id: crypto.randomUUID(), date: 'date' in preset ? preset.date : state.day, time: '', title: '', placeId: preset.placeId || state.snapshot.trip.places[0]?.id || null, participants: defaultParticipants(state.snapshot.trip), notes: '', guestNotes: '', guestLocation: '', fixed: false, optional: state.snapshot.trip.kind === 'event', order: state.snapshot.trip.activities.length, sourceKind: 'entered' }; const form = $('#edit-form'); form.dataset.id = a.id; form.dataset.new = String(!id); form.dataset.lastPlace = a.placeId || ''; form.dataset.kind = kindOf(a, state.snapshot.trip); form.dataset.wasSet = String(!!id && a.fixed === true); form.dataset.timingTouched = ''; form.dataset.timingBefore = ''; form.dataset.timingSuggested = ''; form.dataset.highlight = String(a.highlight === true); form.dataset.base = JSON.stringify(id ? base(recordKey('activity', a.id)) : {}); $('#editor-fields').innerHTML = formData(a); $('#delete').hidden = !id || !writable(); $('#save').disabled = !writable(); $('#copy-draft').hidden = true; $('#reload-after-conflict').hidden = true; $('#edit-message').textContent = !writable() ? 'Downloaded reading copy. Connect and refresh before editing.' : a.sourceKind === 'tentative' ? 'Tentative source plan. Times, hosts, and bookings need review.' : a.sourceKind === 'synthetic' ? 'This is an example, not a real plan. Edit it to make it yours, or delete it.' : ''; lockTiming(); updateAttendance(); $('#editor').showModal(); }
+    function openEditor(id, preset = {}) { const a = state.snapshot.trip.activities.find(a => a.id === id) || { id: crypto.randomUUID(), date: 'date' in preset ? preset.date : state.day, time: '', title: '', placeId: preset.placeId || state.snapshot.trip.places[0]?.id || null, participants: defaultParticipants(state.snapshot.trip), notes: '', guestNotes: '', guestLocation: '', fixed: false, optional: state.snapshot.trip.kind === 'event', order: state.snapshot.trip.activities.length, sourceKind: 'entered' }; const form = $('#edit-form'); form.dataset.id = a.id; form.dataset.new = String(!id); form.dataset.lastPlace = a.placeId || ''; form.dataset.before = !id && preset.beforeId ? preset.beforeId : ''; form.dataset.beforeDate = preset.date || ''; form.dataset.kind = kindOf(a, state.snapshot.trip); form.dataset.wasSet = String(!!id && a.fixed === true); form.dataset.timingTouched = ''; form.dataset.timingBefore = ''; form.dataset.timingSuggested = ''; form.dataset.highlight = String(a.highlight === true); form.dataset.base = JSON.stringify(id ? base(recordKey('activity', a.id)) : {}); $('#editor-fields').innerHTML = formData(a); $('#delete').hidden = !id || !writable(); $('#save').disabled = !writable(); $('#copy-draft').hidden = true; $('#reload-after-conflict').hidden = true; $('#edit-message').textContent = !writable() ? 'Downloaded reading copy. Connect and refresh before editing.' : a.sourceKind === 'tentative' ? 'Tentative source plan. Times, hosts, and bookings need review.' : a.sourceKind === 'synthetic' ? 'This is an example, not a real plan. Edit it to make it yours, or delete it.' : ''; lockTiming(); updateAttendance(); $('#editor').showModal(); }
     // Timing level and the fields it governs. No day means "any day" (it lives in Ideas). A plan saved with a set
     // time keeps its day and time locked until another level is chosen, which is what the server enforces too.
     const CLOCK = /\b\d{1,2}[:.]\d{2}\b|\b\d{1,2}\s?(am|pm)\b/i;
@@ -956,7 +977,7 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
                 openEditor();
             // Add where you are: the day (and its stay's place) or the ideas list is already filled in.
             if (b.dataset.addDate !== undefined)
-                openEditor(null, { date: b.dataset.addDate || null, placeId: b.dataset.addPlace || undefined });
+                openEditor(null, { date: b.dataset.addDate || null, placeId: b.dataset.addPlace || undefined, beforeId: b.dataset.before || '' });
             if (b.dataset.stayView)
                 openStayView(b.dataset.stayView);
             if (b.id === 'refresh')
@@ -1257,7 +1278,7 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
                 return;
             }
             const fresh = f.dataset.new === 'true';
-            await saveChange(fresh ? { action: 'add', base: {}, activity: { ...p, id: f.dataset.id, order: state.snapshot.trip.activities.length, sourceKind: 'entered' } } : { action: 'edit', base: formBase(f), activityId: f.dataset.id, patch: p });
+            await saveChange(fresh ? { action: 'add', base: {}, ...(f.dataset.before && p.date === f.dataset.beforeDate ? { beforeId: f.dataset.before } : {}), activity: { ...p, id: f.dataset.id, order: state.snapshot.trip.activities.length, sourceKind: 'entered' } } : { action: 'edit', base: formBase(f), activityId: f.dataset.id, patch: p });
         }
         else {
             const fields = Object.fromEntries(new FormData(f));

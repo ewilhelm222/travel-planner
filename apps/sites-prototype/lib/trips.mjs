@@ -212,6 +212,13 @@ export function applyTripChange(trip, change) {
         if (!id(change.activity?.id) || next.activities.some(a => a.id === change.activity.id))
             throw new Error("Choose a new activity identifier.");
         next.activities.push(change.activity);
+        // "Add here": place the new activity before a named card of the same day; otherwise it goes last.
+        if (typeof change.beforeId === "string" && change.activity.date) {
+            // Start it at the end of its day, so placing it always renumbers the day and never leaves a tie.
+            next.activities.at(-1).order = 1000;
+            const added = normalizeTrip(next, trip.id);
+            return normalizeTrip(moveActivity(added, { activityId: change.activity.id, date: added.activities.find(a => a.id === change.activity.id).date, beforeId: change.beforeId }).trip, trip.id);
+        }
     }
     else {
         const a = next.activities.find(a => a.id === change.activityId);
