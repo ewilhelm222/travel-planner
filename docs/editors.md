@@ -23,8 +23,10 @@ person's sign-in email and choose **Add editor**. **Remove** takes them off.
 | Add, change, move and delete activities and ideas | Choose which traveler names guests see |
 | Update travelers, groups and trip details | See, add or remove editors |
 | Save an offline copy or JSON of the trip | Create or import trips |
+| Read History, undo ordinary edits, remove travelers and groups | Delete or restore a trip; download the full backup |
 
-There is no delete-trip feature for anyone. Editors do not see the **Guest link**,
+Only the organizer can delete (archive) or restore a trip; see
+[safety-net.md](safety-net.md). Editors do not see the **Guest link**,
 **Editors**, **New trip or event**, **Paste JSON** or **Import JSON** controls, and
 the server refuses those requests from them regardless of what the page shows.
 

@@ -1,4 +1,4 @@
-import { isWholeTripGroup } from "../public/participants.mjs";
+import { isWholeTripGroup, participantReferences, referenceSummary } from "../public/participants.mjs";
 import { moveActivity } from "../public/move.mjs";
 const text = (v, max = 4000) => typeof v === "string" ? v.trim().slice(0, max) : "";
 export const validDate = v => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
@@ -97,6 +97,30 @@ export function applyTripChange(trip, change) {
         else
             next.families[index] = { ...family, allTravelers: isWholeTripGroup(next.families[index]) };
     }
+    else if (change.action === "traveler-remove" || change.action === "family-remove") {
+        // Removing someone never silently rewrites plans: the caller must see what refers
+        // to them and then repeat the request with `unassign: true`.
+        const group = change.action === "family-remove", target = group ? change.familyId : change.personId;
+        const record = (group ? next.families : next.people || []).find(r => r.id === target);
+        if (!record)
+            throw new Error(group ? "Group not found. It may already have been removed." : "Traveler not found. They may already have been removed.");
+        if (group && isWholeTripGroup(record))
+            throw new Error("The whole-trip group always includes everyone and cannot be removed.");
+        const references = participantReferences(next, target);
+        if (references.total && change.unassign !== true)
+            throw Object.assign(new Error(`“${record.name}” is still used by ${referenceSummary(references)}. Confirm removing them from those plans, or reassign the plans first.`), { references });
+        for (const key of ["activities", "stays", "legs"])
+            for (const row of next[key])
+                row.participants = row.participants.filter(x => x !== target);
+        if (group) {
+            next.families = next.families.filter(g => g.id !== target);
+            for (const person of next.people || [])
+                if (person.familyId === target)
+                    person.familyId = null;
+        }
+        else
+            next.people = next.people.filter(p => p.id !== target);
+    }
     else if (change.action === "metadata") {
         for (const key of ["title", "subtitle", "start", "end", "timezone", "kind"])
             if (key in (change.patch || {}))
@@ -164,6 +188,11 @@ export function editorRestriction(trip, change) {
             return "Only the organizer chooses whether a traveler's name shows on the guest link.";
     }
     return null;
+}
+// The same rule for a whole before/after pair, used where there is no single request to inspect (undo).
+export function editorDiffRestriction(before, after) {
+    const shown = trip => JSON.stringify((trip.people || []).filter(p => p.showOnGuest === true).map(p => p.id).sort());
+    return shown(before) === shown(after) ? null : "Only the organizer chooses whether a traveler's name shows on the guest link.";
 }
 export function publicTrip(trip) {
     // Roster display names are opt-in. Private-person references become generic labels,

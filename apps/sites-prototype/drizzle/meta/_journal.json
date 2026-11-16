@@ -15,6 +15,13 @@
       "when": 1794414078390,
       "tag": "0001_certain_serpent_society",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794793187568,
+      "tag": "0002_change_log_and_archive",
+      "breakpoints": true
     }
   ]
 }

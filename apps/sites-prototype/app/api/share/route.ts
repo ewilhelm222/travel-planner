@@ -1,4 +1,4 @@
-import { access, body, db, response, snapshot, failed, conflict } from "../../../lib/trip-store";
+import { access, body, commit, response, snapshot, failed, conflict } from "../../../lib/trip-store";
 import { publicTrip, newShareToken, tokenHash } from "../../../lib/trips.mjs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) { try {
@@ -26,9 +26,8 @@ export async function POST(request: Request) { try {
     const token = input.action === "rotate" ? newShareToken() : null;
     const hash = token ? await tokenHash(token) : null;
     const now = new Date().toISOString();
-    const r = await db().prepare("UPDATE planner_trips SET share_token_hash=?,shared_at=?,revision=revision+1,updated_at=? WHERE id=? AND revision=? RETURNING revision").bind(hash, token ? now : null, now, a.row!.id, input.revision).first<{
-        revision: number;
-    }>();
+    // Logged without the token or its hash: History only records that the link changed.
+    const r = await commit({ id: a.row!.id, expected: input.revision, user: a.user!, action: "share", summary: token ? "Enabled or replaced the guest link" : "Disabled the guest link", set: { share_token_hash: hash, shared_at: token ? now : null } });
     if (!r)
         return conflict();
     return response({ enabled: !!token, url: token ? `${new URL(request.url).origin}/view#${token}` : null, revision: r.revision });

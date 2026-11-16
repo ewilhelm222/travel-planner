@@ -95,3 +95,33 @@ assert.equal((await edie(trip, 'PATCH', { action: 'add', revision: 7, activity: 
 assert.equal(await listed(edie), undefined);
 assert.equal((await json(await seedy(trip))).snapshot.revision, 7, 'nothing changed after removal');
 console.log('PASS: editors add/edit/move/delete through revisioned saves; non-members and removed editors are refused; sharing, the editor list, guest-name visibility and trip creation stay organizer-only; stale revisions conflict.');
+// Safety net: editors may read history and undo ordinary edits; deleting and restoring a trip stay with the organizer.
+{
+    const made = await json(await seedy('/api/trips', 'POST', { template: 'thanksgiving' })), tid = made.snapshot.trip.id;
+    const t = `/api/trip?id=${tid}`, h = `/api/history?id=${tid}`, ar = `/api/archive?id=${tid}`;
+    assert.equal((await edie(h)).status, 403, 'a non-member cannot read history');
+    await seedy(`/api/editors?id=${tid}`, 'POST', { action: 'add', email: 'edie@sites.test' });
+    assert.equal((await seedy(t, 'PATCH', { action: 'edit', revision: 1, activityId: 'option-2', patch: { time: '10:00' } })).status, 200);
+    const changes = (await json(await edie(h))).changes;
+    assert.equal(changes[0].actor, 'Seedy');
+    assert.ok(!JSON.stringify(changes).includes('sites.test'), 'history shows display names, never emails');
+    assert.equal((await otto(h)).status, 403);
+    assert.equal((await otto(h, 'POST', { action: 'undo', changeId: changes[0].id })).status, 403, 'a non-member cannot undo');
+    const undo = await edie(h, 'POST', { action: 'undo', changeId: changes[0].id });
+    assert.equal(undo.status, 200, 'an editor can undo an ordinary edit');
+    let rev = (await json(undo)).snapshot.revision;
+    // The organizer publishes a name; an editor cannot reverse that choice through undo.
+    rev = (await json(await seedy(t, 'PATCH', { action: 'traveler', revision: rev, person: { id: 'undo-person', name: 'Synthetic traveler' } }))).snapshot.revision;
+    rev = (await json(await seedy(t, 'PATCH', { action: 'traveler', revision: rev, person: { id: 'undo-person', name: 'Synthetic traveler', showOnGuest: true } }))).snapshot.revision;
+    const publish = (await json(await edie(h))).changes[0];
+    assert.equal((await edie(h, 'POST', { action: 'undo', changeId: publish.id })).status, 403, 'guest-name visibility stays with the organizer');
+    assert.equal((await edie(ar, 'POST', { action: 'archive', revision: rev })).status, 403, 'an editor cannot delete a trip');
+    assert.equal((await otto(ar, 'POST', { action: 'archive', revision: rev })).status, 403);
+    assert.equal((await seedy(ar, 'POST', { action: 'archive', revision: rev })).status, 200);
+    assert.equal((await edie(t)).status, 403, 'an archived trip is closed to its editors');
+    assert.equal((await edie(ar, 'POST', { action: 'restore' })).status, 403, 'an editor cannot restore a trip');
+    assert.equal((await json(await edie('/api/trips'))).archived.length, 0, 'editors do not see the organizer\'s archive');
+    assert.equal((await seedy(ar, 'POST', { action: 'restore' })).status, 200);
+    assert.equal((await edie(t)).status, 200, 'restoring keeps the editor list');
+    console.log('PASS: history and undo follow trip membership and the guest-name rule; delete and restore are organizer-only.');
+}

@@ -413,3 +413,21 @@ dialog input, dialog textarea, dialog select { border-color: #cfc3e3; }
 #roster-dialog{max-width:960px}#roster-dialog h3{font:800 21px/1.2 var(--font-display);margin:24px 0 16px}.roster-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px}.roster-grid section{min-width:0}.roster-list{list-style:none;padding:0;margin:16px 0 24px}.roster-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--orchid);overflow-wrap:anywhere}.roster-list li>span{min-width:0}.roster-list .secondary{min-width:64px;padding-inline:12px}.roster-list small{display:block;margin-top:6px;color:var(--muted);font-size:13px}.form-hint{font-size:14px;line-height:1.5;color:var(--muted)}fieldset h3{font-size:16px}fieldset .check-label{min-height:44px}#roster-message{padding:16px 0;margin:0}#roster-dialog .dialog-actions{margin-top:16px}
 @media(max-width:760px){.roster-grid{grid-template-columns:minmax(0,1fr);gap:8px}#roster-dialog{max-width:none}.roster-list li{align-items:flex-start}.roster-list small{font-size:14px}}
 /* Drag-and-drop states live in drag.mjs so the script and its styles always ship together. */
+/* Safety net: history, undo, remove and archive controls. */
+.danger, dialog .text-button.danger { color: var(--ember-ink); text-decoration-color: var(--ember-ink); }
+.row-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+#history-dialog { max-width: 760px; }
+.history-list { list-style: none; margin: 16px 0 0; padding: 0; }
+.history-entry { padding: 14px 0; border-top: 1px solid #e6dcf2; }
+.history-line { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.history-line > span:first-child { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.history-line small, .history-records { color: var(--muted); font-size: 14px; }
+.history-tag { flex-shrink: 0; font: 600 12px/1.4 var(--font-mono); color: var(--muted); border: 1px solid #cfc3e3; border-radius: var(--radius-pill); padding: 6px 10px; max-width: 45%; text-align: center; }
+.history-entry details { margin-top: 6px; }
+.history-entry summary { cursor: pointer; font-size: 14px; min-height: 32px; color: var(--family-birch-ink); }
+.history-records { padding-left: 18px; margin: 6px 0 0; overflow-wrap: anywhere; }
+.history-records ul { padding-left: 18px; margin: 2px 0 8px; }
+.history-records .was { text-decoration: line-through; }
+.history-records .now { color: var(--ink); font-weight: 600; }
+#history-message:not(:empty), #archived-message:not(:empty) { border-left: 6px solid var(--magenta); background: #ffe3f0; padding: 10px 14px; border-radius: 0 12px 12px 0; }
+@media (max-width: 760px) { .history-line { flex-direction: column; } .history-tag { max-width: none; } .row-actions { flex-direction: column; align-items: stretch; } }

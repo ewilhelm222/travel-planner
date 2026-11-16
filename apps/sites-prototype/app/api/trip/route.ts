@@ -1,4 +1,5 @@
-import { access, body, db, response, snapshot, userView, failed, conflict } from "../../../lib/trip-store";
+import { access, body, commit, response, snapshot, userView, failed, conflict } from "../../../lib/trip-store";
+import { diffTrips, summarize } from "../../../public/history.mjs";
 import { applyTripChange, editorRestriction } from "../../../lib/trips.mjs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) { try {
@@ -25,20 +26,20 @@ export async function PATCH(request: Request) { try {
     const restricted = a.isOwner ? null : editorRestriction(snapshot(a.row!).trip, input);
     if (restricted)
         return response({ error: restricted }, 400);
+    const before = snapshot(a.row!).trip;
     let trip;
     try {
-        trip = applyTripChange(snapshot(a.row!).trip, input);
+        trip = applyTripChange(before, input);
     }
     catch (e) {
-        return response({ error: (e as Error).message }, 400);
+        return response({ error: (e as Error).message, references: (e as { references?: unknown }).references }, 400);
     }
-    const now = new Date().toISOString();
-    const r = await db().prepare("UPDATE planner_trips SET document=?,revision=revision+1,updated_at=?,updated_by=? WHERE id=? AND revision=? RETURNING revision").bind(JSON.stringify(trip), now, a.user!.displayName, a.row!.id, input.revision).first<{
-        revision: number;
-    }>();
-    if (!r)
+    // The change-log row and the document update are one batch; see commit().
+    const records = diffTrips(before, trip);
+    const saved = await commit({ id: a.row!.id, expected: input.revision, user: a.user!, action: typeof input.action === "string" ? input.action.slice(0, 40) : "edit", summary: summarize(input, records), records, set: { document: JSON.stringify(trip) } });
+    if (!saved)
         return conflict();
-    return response({ user: userView(a.user!), isOwner: a.isOwner, role: a.role, snapshot: { trip, revision: r.revision, updatedAt: now, updatedBy: a.user!.displayName } });
+    return response({ user: userView(a.user!), isOwner: a.isOwner, role: a.role, snapshot: { trip, revision: saved.revision, updatedAt: saved.now, updatedBy: a.user!.displayName } });
 }
 catch (e) {
     return failed(e);

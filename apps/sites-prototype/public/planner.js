@@ -1,14 +1,16 @@
 (async () => {
     'use strict';
     const { escape, dateLabel, days, preferredDay, board, card, dayChooser } = await import('/board.mjs');
-    const { filterChoices, matchesSelection, defaultParticipants, includesPerson, peopleOf, isWholeTripGroup, participantRecord } = await import('/participants.mjs');
+    const { filterChoices, matchesSelection, defaultParticipants, includesPerson, peopleOf, isWholeTripGroup, participantRecord, participantReferences, referenceSummary } = await import('/participants.mjs');
+    const { fieldChanges } = await import('/history.mjs');
+    const { isSnapshot, restoreFromSnapshot } = await import('/backup.mjs');
     const { responsePolicy } = await import('/reading-copy.mjs');
     const { buildOfflineHtml } = await import('/offline-export.mjs');
     const { moveActivity, stepTarget } = await import('/move.mjs');
     const { enableDrag } = await import('/drag.mjs');
     const KEY = 'waypoint-library-v2', OLD_KEY = 'waypoint-downloaded-trip-v1';
     const app = document.querySelector('#app');
-    const state = { user: null, snapshot: null, library: [], copies: {}, canCreate: false, isOwner: false, selected: new URLSearchParams(location.search).get('trip'), filter: 'all', day: null, compact: true, online: navigator.onLine, busy: false, message: '', downloadedAt: null, offlineReady: false, needsSignIn: false };
+    const state = { user: null, snapshot: null, library: [], archived: [], copies: {}, canCreate: false, isOwner: false, selected: new URLSearchParams(location.search).get('trip'), filter: 'all', day: null, compact: true, online: navigator.onLine, busy: false, message: '', downloadedAt: null, offlineReady: false, needsSignIn: false };
     const $ = s => document.querySelector(s);
     const writable = () => state.online && !state.needsSignIn && !state.busy;
     function restore() {
@@ -95,8 +97,8 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v15');
-            state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
+            const cache = await caches.open('waypoint-shell-v16');
+            state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/history.mjs', '/backup.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
         catch { }
@@ -122,6 +124,7 @@
             }
             state.user = library.user;
             state.library = library.trips;
+            state.archived = library.archived || [];
             state.canCreate = library.canCreate;
             state.selected = state.library.some(t => t.id === state.selected) ? state.selected : state.library[0]?.id;
             state.online = true;
@@ -157,7 +160,7 @@
         if ($('#state-flag'))
             $('#state-flag').textContent = state.needsSignIn ? 'Sign-in expired · reading only' : !state.online ? 'Offline · reading copy' : '';
         $('#message').textContent = state.message;
-        for (const id of ['new-trip', 'add', 'settings', 'share', 'editors', 'editor-add', 'travelers', 'roster-save', 'family-save', 'import', 'paste-import', 'example', 'recover']) {
+        for (const id of ['new-trip', 'add', 'settings', 'history', 'archived-open', 'trip-delete', 'share', 'editors', 'editor-add', 'travelers', 'roster-save', 'family-save', 'import', 'paste-import', 'example', 'recover']) {
             const control = $('#' + id);
             if (control)
                 control.disabled = !writable();
@@ -185,23 +188,23 @@
 <div id="message" role="alert"></div>
 ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-board">${board(t, { filter: state.filter, day: state.day, compact: state.compact })}</div><section class="ideas" id="ideas"><h2>Not on the itinerary. Yet.</h2><div class="idea-cards">${ideas(t)}</div></section>` : `<section class="welcome" id="itinerary" tabindex="-1"><h2>Start with something to explore.</h2><p>Keep separate trips and gatherings here. Each has its own activities, saved revision, and optional guest link.</p>${state.canCreate ? '<button class="primary" id="example">Add a synthetic gathering example</button><button class="secondary" id="recover">Recover the Japan prototype</button>' : '<p>Sign in with an organizer or invited editor account to plan.</p>'}</section>`}
 <section class="manage" id="manage" aria-labelledby="manage-title"><h2 id="manage-title">Plan &amp; manage</h2>${t ? `<p class="manage-trip">${escape(t.title)} · ${escape(t.start)} – ${escape(t.end)} · ${escape(t.timezone)}</p>
-<div class="manage-group"><h3>This plan</h3><div class="tools"><button class="primary wide" id="add" ${off}>Add activity</button><button class="secondary" id="travelers" ${off}>Manage travelers</button><button class="secondary" id="settings" ${off}>Trip details</button>${state.isOwner ? `<button class="secondary" id="share" ${off}>Guest link</button><button class="secondary" id="editors" ${off}>Editors</button>` : ''}</div>${roleNote}<p id="drag-hint" class="drag-hint"></p><p id="filter-status" role="status" aria-live="polite">${state.filter === 'all' ? 'Everyone · shared plans appear once' : 'Selected group · all shared attendee labels remain visible'}</p></div>
+<div class="manage-group"><h3>This plan</h3><div class="tools"><button class="primary wide" id="add" ${off}>Add activity</button><button class="secondary" id="travelers" ${off}>Manage travelers</button><button class="secondary" id="settings" ${off}>Trip details</button><button class="secondary" id="history" ${off}>History</button>${state.isOwner ? `<button class="secondary" id="share" ${off}>Guest link</button><button class="secondary" id="editors" ${off}>Editors</button>` : ''}</div>${roleNote}<p id="drag-hint" class="drag-hint"></p><p id="filter-status" role="status" aria-live="polite">${state.filter === 'all' ? 'Everyone · shared plans appear once' : 'Selected group · all shared attendee labels remain visible'}</p></div>
 <div class="manage-group"><h3>Copies &amp; updates</h3><div class="tools"><button class="secondary" id="offline-file">Save offline trip</button><button class="secondary" id="export">Download JSON</button><button class="secondary wide" id="refresh">Refresh</button></div><div id="status" role="status" aria-live="polite"></div></div>` : '<div id="status" role="status" aria-live="polite"></div>'}
-${state.canCreate ? `<div class="manage-group"><h3>Trips &amp; events</h3><div class="tools"><button class="secondary wide" id="new-trip" ${off}>New trip or event</button><button class="secondary" id="paste-import" ${off}>Paste JSON</button><label class="secondary file-label">Import JSON<input id="import" type="file" accept="application/json,.json" ${off}></label></div></div>` : ''}
+${state.canCreate ? `<div class="manage-group"><h3>Trips &amp; events</h3><div class="tools"><button class="secondary wide" id="new-trip" ${off}>New trip or event</button><button class="secondary" id="paste-import" ${off}>Paste JSON</button><label class="secondary file-label">Import JSON<input id="import" type="file" accept="application/json,.json" ${off}></label></div></div>` : ''}${archivedButton(off, true)}
 <div class="manage-group"><h3>Account</h3><p class="manage-account">${state.user ? `<span class="account-name">${escape(state.user.name)}</span><span class="private-label">● Private planning</span><button class="text-button" id="sign-out">Sign out</button>` : '<a href="/signin-with-chatgpt?return_to=%2F" target="_top">Sign in</a>'}</p></div>
 <a class="jump-link back-top" href="#top">↑ Back to the schedule</a></section>
 <footer><span>Waypoint <span class="title-dot">×</span> Make plans. Take detours.</span><span>Guest links are optional and read-only.</span></footer></main>
 `;
         app.innerHTML = `${phoneLayout ? phonePage() : `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar"><a class="brand" href="/">Waypoint<span class="brand-dot">↗</span></a><span class="private-label">● Private planning</span><div class="account">${state.user ? `<span class="account-name">${escape(state.user.name)}</span><button class="text-button" id="sign-out">Sign out</button>` : '<a href="/signin-with-chatgpt?return_to=%2F" target="_top">Sign in</a>'}${state.needsSignIn ? '<a href="/signin-with-chatgpt?return_to=%2F" target="_top">Sign in to update</a>' : ''}</div></header><main class="${state.compact ? 'compact' : ''}">
-<section class="library-bar"><label>Trips & events<select id="trip-select" ${!state.library.length ? 'disabled' : ''}>${state.library.map(x => `<option value="${escape(x.id)}" ${x.id === state.selected ? 'selected' : ''}>${escape(x.title)}</option>`).join('')}</select></label>${state.canCreate ? `<button class="secondary" id="new-trip" ${!writable() ? 'disabled' : ''}>New trip or event</button><button class="secondary" id="paste-import" ${!writable() ? "disabled" : ""}>Paste JSON</button><label class="secondary file-label">Import JSON<input id="import" type="file" accept="application/json,.json" ${!writable() ? 'disabled' : ''}></label>` : ''}</section>
+<section class="library-bar"><label>Trips & events<select id="trip-select" ${!state.library.length ? 'disabled' : ''}>${state.library.map(x => `<option value="${escape(x.id)}" ${x.id === state.selected ? 'selected' : ''}>${escape(x.title)}</option>`).join('')}</select></label>${state.canCreate ? `<button class="secondary" id="new-trip" ${!writable() ? 'disabled' : ''}>New trip or event</button><button class="secondary" id="paste-import" ${!writable() ? "disabled" : ""}>Paste JSON</button><label class="secondary file-label">Import JSON<input id="import" type="file" accept="application/json,.json" ${!writable() ? 'disabled' : ''}></label>` : ''}${archivedButton(off, false)}</section>
 <header class="trip-header"><div><button class="story-toggle" id="story-toggle">${state.compact ? "Open the poster" : "Focus on the plan"}</button><span class="eyebrow">${t?.kind === 'event' ? 'TIME TOGETHER' : 'Lose each other all day. Find each other at night.'}</span><h1>${escape(t?.title || 'A plan for every gathering')}<span class="title-dot">.</span></h1><p class="trip-subtitle">${escape(t?.subtitle || 'Choose a trip, bring an idea, and leave a little room to wander.')}</p>${t ? `<div class="trip-facts"><span>${escape(t.start)} – ${escape(t.end)}</span><span>${escape(t.timezone)}</span><span>${t.families.length} ${t.families.length === 1 ? "group" : "groups"}</span></div>` : ''}</div><aside class="story-art" aria-label="Decorative crossing routes"><svg viewBox="0 0 520 420" aria-hidden="true"><circle cx="268" cy="214" r="150" fill="none" stroke="#6b3df5" stroke-width="1.5"/><circle cx="268" cy="214" r="196" fill="none" stroke="#6b3df5" stroke-width="1.5" stroke-dasharray="3 12"/><path d="M40 330 C120 300 150 180 268 214 S420 150 480 60" fill="none" stroke="#3ee6c9" stroke-width="22" stroke-linecap="round"/><path d="M60 70 C150 90 170 240 268 214 S400 330 470 360" fill="none" stroke="#cdb8ff" stroke-width="22" stroke-linecap="round"/><circle cx="268" cy="214" r="30" fill="#ff3d9a"/><circle cx="268" cy="214" r="11" fill="#2d1480"/><circle cx="40" cy="330" r="14" fill="#2d1480" stroke="#3ee6c9" stroke-width="6"/><circle cx="60" cy="70" r="14" fill="#2d1480" stroke="#cdb8ff" stroke-width="6"/><circle cx="480" cy="60" r="14" fill="#2d1480" stroke="#3ee6c9" stroke-width="6"/><circle cx="470" cy="360" r="14" fill="#2d1480" stroke="#cdb8ff" stroke-width="6"/></svg><p>Split up. Meet up.</p></aside></header>
-${t ? `<div class="toolbar"><span class="view-title">Daily plans</span><label class="traveler-select">Travelers<select id="family"><option value="all">Everyone</option>${filterChoices(t).map(f => `<option value="${escape(f.id)}" ${state.filter === f.id ? 'selected' : ''}>${escape(f.name)}</option>`).join('')}</select></label><div class="tools"><button class="secondary" id="add" ${!writable() ? 'disabled' : ''}>Add activity</button><button class="secondary" id="travelers" ${!writable() ? "disabled" : ""}>Manage travelers</button><button class="secondary" id="settings" ${!writable() ? 'disabled' : ''}>Trip details</button>${state.isOwner ? `<button class="secondary" id="share" ${!writable() ? 'disabled' : ''}>Guest link</button><button class="secondary" id="editors" ${!writable() ? 'disabled' : ''}>Editors</button>` : ''}<button class="secondary" id="offline-file">Save offline trip</button><button class="secondary" id="export">JSON</button><button class="secondary" id="refresh">Refresh</button></div></div>` : ''}
+${t ? `<div class="toolbar"><span class="view-title">Daily plans</span><label class="traveler-select">Travelers<select id="family"><option value="all">Everyone</option>${filterChoices(t).map(f => `<option value="${escape(f.id)}" ${state.filter === f.id ? 'selected' : ''}>${escape(f.name)}</option>`).join('')}</select></label><div class="tools"><button class="secondary" id="add" ${!writable() ? 'disabled' : ''}>Add activity</button><button class="secondary" id="travelers" ${!writable() ? "disabled" : ""}>Manage travelers</button><button class="secondary" id="settings" ${!writable() ? 'disabled' : ''}>Trip details</button><button class="secondary" id="history" ${off}>History</button>${state.isOwner ? `<button class="secondary" id="share" ${!writable() ? 'disabled' : ''}>Guest link</button><button class="secondary" id="editors" ${!writable() ? 'disabled' : ''}>Editors</button>` : ''}<button class="secondary" id="offline-file">Save offline trip</button><button class="secondary" id="export">JSON</button><button class="secondary" id="refresh">Refresh</button></div></div>` : ''}
 <div id="status" role="status" aria-live="polite"></div><p id="drag-hint" class="drag-hint"></p><p id="filter-status" role="status" aria-live="polite">${t ? (state.filter === 'all' ? 'Everyone · shared plans appear once' : 'Selected group · all shared attendee labels remain visible') : ''}</p>${roleNote}<div id="message" role="alert"></div>
 ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-board">${board(t, { filter: state.filter, day: state.day, compact: state.compact })}</div><section class="ideas"><h2>Not on the itinerary. Yet.</h2><div class="idea-cards">${t.activities.filter(a => !a.date && matchesSelection(a, state.filter, t)).map(a => card(a, t)).join('') || '<p>No unscheduled ideas yet.</p>'}</div></section>` : `<section class="welcome" id="itinerary" tabindex="-1"><h2>Start with something to explore.</h2><p>Keep separate trips and gatherings here. Each has its own activities, saved revision, and optional guest link.</p>${state.canCreate ? '<button class="primary" id="example">Add a synthetic gathering example</button><button class="secondary" id="recover">Recover the Japan prototype</button>' : '<p>Sign in with an organizer or invited editor account to plan.</p>'}</section>`}
 <footer><span>Waypoint <span class="title-dot">×</span> Make plans. Take detours.</span><span>Guest links are optional and read-only.</span></footer></main>
 `}<dialog id="editor" aria-labelledby="edit-title"><form id="edit-form"><div class="dialog-heading"><span class="eyebrow">THE PLAN, UP CLOSE</span><button type="button" class="icon-button" id="close-editor" aria-label="Close activity">×</button></div><h2 id="edit-title">Activity details</h2><div id="editor-fields"></div><p id="edit-message" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button" id="copy-draft" hidden>Copy my draft</button><button type="button" class="secondary" id="reload-after-conflict" hidden>Load latest plan</button><button type="button" class="text-button" id="delete">Delete activity</button><button type="submit" class="primary" id="save">Save changes</button></div></form></dialog>
-<dialog id="roster-dialog" aria-labelledby="roster-title"></dialog><dialog id="editors-dialog" aria-labelledby="editors-title"></dialog><dialog id="create-dialog" aria-labelledby="create-title"><form id="create-form"><h2 id="create-title">New trip or event</h2><label>Name<input name="title" required maxlength="160"></label><div class="field-row"><label>First day<input type="date" name="start" required></label><label>Last day<input type="date" name="end" required></label></div><label>Time zone<input name="timezone" value="America/Los_Angeles" required></label><label>Kind<select name="kind"><option value="event">Gathering / event</option><option value="trip">Trip</option></select></label><p id="create-error" role="alert"></p><div class="dialog-actions"><button type="button" class="secondary" data-close="create-dialog">Cancel</button><button class="primary">Create</button></div></form></dialog>
-<dialog id="import-dialog" aria-labelledby="import-title"><form id="import-form"><h2 id="import-title">Import a trip or event</h2><label>Trip JSON<textarea id="import-json" rows="14" required maxlength="250000" spellcheck="false"></textarea></label><p>Creates a separate private trip. Guest sharing starts disabled.</p><p id="import-error" role="alert"></p><div class="dialog-actions"><button type="button" class="secondary" data-close="import-dialog">Cancel</button><button class="primary">Import trip</button></div></form></dialog><dialog id="share-dialog" aria-labelledby="share-title"><h2 id="share-title">A link for your guests</h2><p>Anyone holding this link can browse the dated activities, group names, opted-in traveler display names, guest descriptions, and meeting points. They cannot edit.</p><p>Private planning notes, lodging details, unscheduled ideas, journey notes, source links, and editor identities are excluded. Downloaded copies cannot be recalled.</p><div id="share-body"></div><p id="share-error" role="alert"></p><div class="dialog-actions"><button class="secondary" data-close="share-dialog">Close</button></div></dialog>`;
+<dialog id="roster-dialog" aria-labelledby="roster-title"></dialog><dialog id="history-dialog" aria-labelledby="history-title"></dialog><dialog id="archived-dialog" aria-labelledby="archived-title"></dialog><dialog id="editors-dialog" aria-labelledby="editors-title"></dialog><dialog id="create-dialog" aria-labelledby="create-title"><form id="create-form"><h2 id="create-title">New trip or event</h2><label>Name<input name="title" required maxlength="160"></label><div class="field-row"><label>First day<input type="date" name="start" required></label><label>Last day<input type="date" name="end" required></label></div><label>Time zone<input name="timezone" value="America/Los_Angeles" required></label><label>Kind<select name="kind"><option value="event">Gathering / event</option><option value="trip">Trip</option></select></label><p id="create-error" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button danger" id="trip-delete" hidden>Delete this trip…</button><button type="button" class="secondary" data-close="create-dialog">Cancel</button><button class="primary">Create</button></div></form></dialog>
+<dialog id="import-dialog" aria-labelledby="import-title"><form id="import-form"><h2 id="import-title">Import a trip or event</h2><label>Trip JSON<textarea id="import-json" rows="14" required maxlength="250000" spellcheck="false"></textarea></label><p>Creates a separate private trip. Guest sharing starts disabled. A full backup file is checked for damage first.</p><p id="import-error" role="alert"></p><div class="dialog-actions"><button type="button" class="secondary" data-close="import-dialog">Cancel</button><button class="primary">Import trip</button></div></form></dialog><dialog id="share-dialog" aria-labelledby="share-title"><h2 id="share-title">A link for your guests</h2><p>Anyone holding this link can browse the dated activities, group names, opted-in traveler display names, guest descriptions, and meeting points. They cannot edit.</p><p>Private planning notes, lodging details, unscheduled ideas, journey notes, source links, and editor identities are excluded. Downloaded copies cannot be recalled.</p><div id="share-body"></div><p id="share-error" role="alert"></p><div class="dialog-actions"><button class="secondary" data-close="share-dialog">Close</button></div></dialog>`;
         status();
         if (t) {
             const selected = document.querySelector(`[data-date="${state.day}"]`);
@@ -374,7 +377,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
     }
     function openRoster(defaultFamily = '') {
         const t = state.snapshot.trip;
-        $('#roster-dialog').innerHTML = `<div class="dialog-heading"><span class="eyebrow">People on this trip</span><button type="button" class="icon-button" data-close="roster-dialog" aria-label="Close travelers">×</button></div><h2 id="roster-title">Travelers & groups</h2><p>Plan for people by display name. Adding a traveler does not invite them or grant editing access.</p><button type="button" class="secondary" id="roster-backup">Save JSON backup</button><div class="roster-grid"><section><h3>Travelers (${peopleOf(t).length})</h3><ul class="roster-list">${peopleOf(t).map(p => `<li><span><strong>${escape(p.name)}</strong><small>${escape(t.families.find(g => g.id === p.familyId)?.name || 'No family group')} · ${p.showOnGuest ? 'Name shown to guests' : 'Name private'}</small></span><button type="button" class="secondary" data-person="${escape(p.id)}" aria-label="Edit traveler ${escape(p.name)}">Edit</button></li>`).join('') || '<li>No individual travelers yet. Existing group assignments still work.</li>'}</ul><form id="traveler-form" data-revision="${state.snapshot.revision}"><h3 id="traveler-form-title">Add traveler</h3><label>Display name<input name="name" required maxlength="80" autocomplete="off"></label><label>Family / group<select name="familyId"><option value="">No family group</option>${t.families.filter(g => !isWholeTripGroup(g)).map(g => `<option value="${escape(g.id)}">${escape(g.name)}</option>`).join('')}</select></label><label class="check-label"><input name="showOnGuest" type="checkbox" ${state.isOwner ? '' : 'disabled'}>Show display name on guest link</label>${state.isOwner ? '' : '<p class="form-hint">Only the organizer changes this setting.</p>'}<p class="form-hint">Private by default. This controls the guest filter and participant labels. Activity titles and guest descriptions are still shared as written.</p><p class="form-hint">Changing a family/group changes which group-based plans include this traveler. Everyone always includes the whole trip.</p><div class="dialog-actions"><button type="button" class="secondary" id="roster-new">New traveler</button><button class="primary" id="roster-save">Save traveler</button></div></form></section><section><h3>Families / groups</h3><ul class="roster-list">${t.families.map(g => `<li><span><strong>${escape(g.name)}</strong><small>${isWholeTripGroup(g) ? 'Automatically includes every traveler' : `${peopleOf(t).filter(p => p.familyId === g.id).length} travelers`}</small></span><button type="button" class="secondary" data-family-edit="${escape(g.id)}" aria-label="Edit group ${escape(g.name)}">Edit</button></li>`).join('')}</ul><form id="family-form" data-revision="${state.snapshot.revision}"><h3 id="family-form-title">Add family / group</h3><label>Group name<input name="name" required maxlength="80"></label><label>Accent<select name="color"><option value="green">Lagoon</option><option value="orange">Ember</option><option value="blue">Orchid</option></select></label><p class="form-hint">Group names appear in an enabled guest view. Create a group, then assign travelers to it above.</p><div class="dialog-actions"><button type="button" class="secondary" id="family-new">New group</button><button class="primary" id="family-save">Save group</button></div></form></section></div><p id="roster-message" role="status" aria-live="polite"></p><div class="dialog-actions"><button type="button" class="secondary" id="roster-copy" hidden>Copy roster draft</button><button type="button" class="secondary" id="roster-reload" hidden>Load latest plan</button><button type="button" class="secondary" data-close="roster-dialog">Done</button></div>`;
+        $('#roster-dialog').innerHTML = `<div class="dialog-heading"><span class="eyebrow">People on this trip</span><button type="button" class="icon-button" data-close="roster-dialog" aria-label="Close travelers">×</button></div><h2 id="roster-title">Travelers & groups</h2><p>Plan for people by display name. Adding a traveler does not invite them or grant editing access.</p><button type="button" class="secondary" id="roster-backup">Save JSON backup</button><div class="roster-grid"><section><h3>Travelers (${peopleOf(t).length})</h3><ul class="roster-list">${peopleOf(t).map(p => `<li><span><strong>${escape(p.name)}</strong><small>${escape(t.families.find(g => g.id === p.familyId)?.name || 'No family group')} · ${p.showOnGuest ? 'Name shown to guests' : 'Name private'}</small></span><span class="row-actions"><button type="button" class="secondary" data-person="${escape(p.id)}" aria-label="Edit traveler ${escape(p.name)}">Edit</button><button type="button" class="text-button danger" data-remove-person="${escape(p.id)}" aria-label="Remove traveler ${escape(p.name)}">Remove</button></span></li>`).join('') || '<li>No individual travelers yet. Existing group assignments still work.</li>'}</ul><form id="traveler-form" data-revision="${state.snapshot.revision}"><h3 id="traveler-form-title">Add traveler</h3><label>Display name<input name="name" required maxlength="80" autocomplete="off"></label><label>Family / group<select name="familyId"><option value="">No family group</option>${t.families.filter(g => !isWholeTripGroup(g)).map(g => `<option value="${escape(g.id)}">${escape(g.name)}</option>`).join('')}</select></label><label class="check-label"><input name="showOnGuest" type="checkbox" ${state.isOwner ? '' : 'disabled'}>Show display name on guest link</label>${state.isOwner ? '' : '<p class="form-hint">Only the organizer changes this setting.</p>'}<p class="form-hint">Private by default. This controls the guest filter and participant labels. Activity titles and guest descriptions are still shared as written.</p><p class="form-hint">Changing a family/group changes which group-based plans include this traveler. Everyone always includes the whole trip.</p><div class="dialog-actions"><button type="button" class="secondary" id="roster-new">New traveler</button><button class="primary" id="roster-save">Save traveler</button></div></form></section><section><h3>Families / groups</h3><ul class="roster-list">${t.families.map(g => `<li><span><strong>${escape(g.name)}</strong><small>${isWholeTripGroup(g) ? 'Automatically includes every traveler' : `${peopleOf(t).filter(p => p.familyId === g.id).length} travelers`}</small></span><span class="row-actions"><button type="button" class="secondary" data-family-edit="${escape(g.id)}" aria-label="Edit group ${escape(g.name)}">Edit</button>${isWholeTripGroup(g) ? '' : `<button type="button" class="text-button danger" data-remove-family="${escape(g.id)}" aria-label="Remove group ${escape(g.name)}">Remove</button>`}</span></li>`).join('')}</ul><form id="family-form" data-revision="${state.snapshot.revision}"><h3 id="family-form-title">Add family / group</h3><label>Group name<input name="name" required maxlength="80"></label><label>Accent<select name="color"><option value="green">Lagoon</option><option value="orange">Ember</option><option value="blue">Orchid</option></select></label><p class="form-hint">Group names appear in an enabled guest view. Create a group, then assign travelers to it above.</p><div class="dialog-actions"><button type="button" class="secondary" id="family-new">New group</button><button class="primary" id="family-save">Save group</button></div></form></section></div><p id="roster-message" role="status" aria-live="polite"></p><div class="dialog-actions"><button type="button" class="secondary" id="roster-copy" hidden>Copy roster draft</button><button type="button" class="secondary" id="roster-reload" hidden>Load latest plan</button><button type="button" class="secondary" data-close="roster-dialog">Done</button></div>`;
         $('#traveler-form').elements.familyId.value = defaultFamily;
         $('#roster-dialog').showModal();
         status();
@@ -382,7 +385,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
     // Organizer only: who else may edit this trip. Adding an address never sends anything.
     function showEditors(data, message = '') {
         const dialog = $('#editors-dialog');
-        dialog.innerHTML = `<div class="dialog-heading"><span class="eyebrow">Who can edit</span><button type="button" class="icon-button" data-close="editors-dialog" aria-label="Close editors">×</button></div><h2 id="editors-title">Editors for this trip</h2><p><strong>Editors can</strong> open this trip in the planner and add, change, move and delete activities and ideas. They can also update travelers and trip details.</p><p><strong>Editors cannot</strong> manage the guest link, choose which traveler names guests see, see or change this list, or create, import or delete trips. Those stay with you as organizer.</p><h3>Current editors (${data.editors.length})</h3><ul class="roster-list">${data.editors.map(email => `<li><span><strong>${escape(email)}</strong><small>Can edit this trip</small></span><button type="button" class="secondary" data-remove-editor="${escape(email)}" aria-label="Remove editor ${escape(email)}">Remove</button></li>`).join('') || '<li>No editors yet. Only you can change this trip.</li>'}</ul><form id="editor-form"><label>Editor's sign-in email<input name="email" type="email" required maxlength="254" autocomplete="off" autocapitalize="none" spellcheck="false"></label><p class="form-hint">No invitation or email is sent. Tell the person yourself: they open the planner and sign in with exactly this email address, and this trip appears in their trip list. Up to ${data.max} editors.</p><p class="form-hint">Removing someone ends their access the next time their planner contacts the server. A copy they already saved or downloaded cannot be recalled.</p><p id="editors-message" role="status" aria-live="polite">${escape(message)}</p><div class="dialog-actions"><button type="button" class="secondary" data-close="editors-dialog">Done</button><button class="primary" id="editor-add">Add editor</button></div></form>`;
+        dialog.innerHTML = `<div class="dialog-heading"><span class="eyebrow">Who can edit</span><button type="button" class="icon-button" data-close="editors-dialog" aria-label="Close editors">×</button></div><h2 id="editors-title">Editors for this trip</h2><p><strong>Editors can</strong> open this trip in the planner and add, change, move and delete activities and ideas. They can also update travelers and trip details.</p><p><strong>Editors cannot</strong> manage the guest link, choose which traveler names guests see, see or change this list, or create, import, delete or restore trips. Those stay with you as organizer.</p><h3>Current editors (${data.editors.length})</h3><ul class="roster-list">${data.editors.map(email => `<li><span><strong>${escape(email)}</strong><small>Can edit this trip</small></span><button type="button" class="secondary" data-remove-editor="${escape(email)}" aria-label="Remove editor ${escape(email)}">Remove</button></li>`).join('') || '<li>No editors yet. Only you can change this trip.</li>'}</ul><form id="editor-form"><label>Editor's sign-in email<input name="email" type="email" required maxlength="254" autocomplete="off" autocapitalize="none" spellcheck="false"></label><p class="form-hint">No invitation or email is sent. Tell the person yourself: they open the planner and sign in with exactly this email address, and this trip appears in their trip list. Up to ${data.max} editors.</p><p class="form-hint">Removing someone ends their access the next time their planner contacts the server. A copy they already saved or downloaded cannot be recalled.</p><p id="editors-message" role="status" aria-live="polite">${escape(message)}</p><div class="dialog-actions"><button type="button" class="secondary" data-close="editors-dialog">Done</button><button class="primary" id="editor-add">Add editor</button></div></form>`;
         if (!dialog.open)
             dialog.showModal();
         status();
@@ -398,6 +401,134 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
             else
                 throw e;
         }
+    }
+    // ---- Safety net: history with conditional undo, removing travelers/groups, deleting (archiving) a trip ----
+    const archivedButton = (off, phoneLayout) => !state.archived.length ? '' : phoneLayout ? `<div class="manage-group"><h3>Deleted trips</h3><div class="tools"><button class="secondary wide" id="archived-open" ${off}>Archived trips (${state.archived.length})</button></div></div>` : `<button class="secondary" id="archived-open" ${off}>Archived trips (${state.archived.length})</button>`;
+    const FIELD_LABELS = { title: 'Title', name: 'Name', subtitle: 'Subtitle', date: 'Day', time: 'Time', placeId: 'Place', order: 'Position in the day', fixed: 'Fixed booking', optional: 'Optional', highlight: 'Shared-moment highlight', participants: 'Participants', notes: 'Private notes', guestNotes: 'Guest description', guestLocation: 'Guest meeting point', address: 'Address', start: 'Start', end: 'End', timezone: 'Time zone', kind: 'Kind', familyId: 'Family / group', showOnGuest: 'Name shown to guests', color: 'Accent', lodging: 'Lodging', note: 'Note', mode: 'Mode', from: 'From', to: 'To', arrivalDate: 'Arrival day', arrivalTime: 'Arrival time', localName: 'Local name', localAddress: 'Local address', sourceKind: 'Source', allTravelers: 'Whole-trip group', links: 'Links' };
+    function historyValue(field, value) {
+        const t = state.snapshot.trip, name = id => participantRecord(t, id)?.name || 'someone since removed';
+        if (value === null || value === undefined || value === '')
+            return '—';
+        if (typeof value === 'boolean')
+            return value ? 'Yes' : 'No';
+        if (field === 'participants' && Array.isArray(value))
+            return value.map(name).join(', ') || 'No one';
+        if (field === 'familyId')
+            return name(value);
+        if (['placeId', 'from', 'to'].includes(field))
+            return t.places.find(p => p.id === value)?.name || 'a place since removed';
+        const text = typeof value === 'string' ? value : JSON.stringify(value);
+        return text.length > 140 ? `${text.slice(0, 140)}…` : text;
+    }
+    function historyEntry(c) {
+        const details = c.records.map(r => {
+            const label = (r.after || r.before)?.title || (r.after || r.before)?.name || '';
+            const what = `${r.kind === 'trip' ? 'Trip details' : `${r.kind[0].toUpperCase()}${r.kind.slice(1)}`}${label && r.kind !== 'trip' ? ` “${escape(label)}”` : ''}`;
+            if (!r.before || !r.after)
+                return `<li><strong>${what}</strong> ${r.after ? 'added' : 'removed'}</li>`;
+            return `<li><strong>${what}</strong><ul>${fieldChanges(r).map(f => `<li>${escape(FIELD_LABELS[f.field] || f.field)}: <span class="was">${escape(historyValue(f.field, f.before))}</span> → <span class="now">${escape(historyValue(f.field, f.after))}</span></li>`).join('')}</ul></li>`;
+        }).join('');
+        const state_ = c.wasUndone ? '<span class="history-tag">Undone</span>' : !c.records.length ? '' : c.canUndo ? `<button type="button" class="secondary" data-undo="${c.id}" aria-label="Undo: ${escape(c.summary)}">Undo</button>` : '<span class="history-tag" title="A record this change touched has been edited again since.">Changed since · can’t undo</span>';
+        return `<li class="history-entry"><div class="history-line"><span><strong>${escape(c.summary)}</strong><small>${escape(c.actor)} · ${escape(new Date(c.at).toLocaleString())} · revision ${c.revision}</small></span>${state_}</div>${details ? `<details><summary>What changed (${c.records.length})</summary><ul class="history-records">${details}</ul></details>` : ''}</li>`;
+    }
+    async function openHistory(message = '') {
+        const data = await request(endpoint('/api/history'));
+        const dialog = $('#history-dialog');
+        dialog.innerHTML = `<div class="dialog-heading"><span class="eyebrow">Safety net</span><button type="button" class="icon-button" data-close="history-dialog" aria-label="Close history">×</button></div><h2 id="history-title">History</h2><p>Every saved change, newest first. <strong>Undo</strong> puts back just the records that one change touched, and only while they are still exactly as that change left them. If someone has edited them again since, nothing is changed and you are told.</p><p id="history-message" role="alert">${escape(message)}</p>${data.revision !== state.snapshot.revision ? '<p class="form-hint">This trip has newer saved changes than the plan on your screen. Close this and choose Refresh to see them.</p>' : ''}<ol class="history-list">${data.changes.map(historyEntry).join('') || '<li>No changes recorded yet. History starts with the first change saved after this feature was installed.</li>'}</ol><div class="dialog-actions">${state.isOwner ? '<button type="button" class="secondary" id="full-backup">Download full backup</button>' : ''}<button type="button" class="secondary" data-close="history-dialog">Done</button></div>`;
+        if (!dialog.open)
+            dialog.showModal();
+    }
+    async function undo(changeId) {
+        state.busy = true;
+        status();
+        try {
+            const result = await request(endpoint('/api/history'), 'POST', { action: 'undo', changeId });
+            state.snapshot = result.snapshot;
+            remember();
+            state.busy = false;
+            state.message = `${result.summary}. Saved for everyone viewing this trip.`;
+            render();
+            await openHistory(`${result.summary}.`);
+        }
+        catch (e) {
+            state.busy = false;
+            if (e.status === 409) {
+                // Show the latest plan behind the dialog so the conflict can be looked at.
+                await load();
+                await openHistory(e.message);
+            }
+            else if ($('#history-message'))
+                $('#history-message').textContent = e.message;
+            else
+                throw e;
+        }
+        finally {
+            state.busy = false;
+            status();
+        }
+    }
+    async function removeFromRoster(kind, id) {
+        const t = state.snapshot.trip, group = kind === 'family';
+        const record = (group ? t.families : peopleOf(t)).find(r => r.id === id);
+        if (!record)
+            return;
+        const refs = participantReferences(t, id);
+        const question = refs.total
+            ? `“${record.name}” is used by ${referenceSummary(refs)}.\n\nRemove “${record.name}” and take them off those plans? The plans themselves stay${group ? ', and travelers in this group stay on the trip without a group' : ''}. You can undo this from History.`
+            : `Remove “${record.name}” from this trip? Nothing else refers to them. You can undo this from History.`;
+        if (!confirm(question))
+            return;
+        state.busy = true;
+        status();
+        try {
+            const result = await request(endpoint('/api/trip'), 'PATCH', { action: group ? 'family-remove' : 'traveler-remove', revision: state.snapshot.revision, [group ? 'familyId' : 'personId']: id, unassign: refs.total > 0 });
+            state.snapshot = result.snapshot;
+            if (state.filter === id)
+                state.filter = 'all';
+            remember();
+            state.busy = false;
+            render();
+            openRoster();
+            $('#roster-message').textContent = `Removed “${record.name}”. Undo is available in History.`;
+        }
+        catch (e) {
+            $('#roster-message').textContent = e.message;
+            $('#roster-reload').hidden = false;
+        }
+        finally {
+            state.busy = false;
+            status();
+        }
+    }
+    function openArchived(message = '') {
+        const dialog = $('#archived-dialog');
+        dialog.innerHTML = `<div class="dialog-heading"><span class="eyebrow">Deleted trips</span><button type="button" class="icon-button" data-close="archived-dialog" aria-label="Close archived trips">×</button></div><h2 id="archived-title">Archived trips</h2><p>Deleting a trip only archives it. Its plan, history and editor list are kept, and only you can see or restore it. Its guest link was switched off and stays off after a restore until you enable a new one.</p><ul class="roster-list">${state.archived.map(x => `<li><span><strong>${escape(x.title)}</strong><small>Deleted ${escape(new Date(x.archivedAt).toLocaleString())}</small></span><button type="button" class="secondary" data-restore-trip="${escape(x.id)}" aria-label="Restore ${escape(x.title)}">Restore</button></li>`).join('') || '<li>No archived trips.</li>'}</ul><p id="archived-message" role="status" aria-live="polite">${escape(message)}</p><div class="dialog-actions"><button type="button" class="secondary" data-close="archived-dialog">Done</button></div>`;
+        if (!dialog.open)
+            dialog.showModal();
+    }
+    async function archiveTrip() {
+        const t = state.snapshot.trip;
+        if (!confirm(`Delete “${t.title}”?\n\nIt disappears for you and every editor, and its guest link stops working. Nothing is erased: you can restore it from “Archived trips”.`))
+            return;
+        await request(endpoint('/api/archive'), 'POST', { action: 'archive', revision: state.snapshot.revision });
+        $('#create-dialog').close();
+        delete state.copies[state.selected];
+        state.selected = null;
+        state.snapshot = null;
+        history.replaceState(null, '', '/');
+        await load();
+        state.message = `“${t.title}” was deleted. Restore it any time from “Archived trips”.`;
+        status();
+    }
+    async function restoreTrip(id) {
+        await request(`/api/archive?id=${encodeURIComponent(id)}`, 'POST', { action: 'restore' });
+        state.selected = id;
+        state.filter = 'all';
+        state.day = null;
+        history.replaceState(null, '', `/?trip=${id}`);
+        await load();
+        state.message = 'Trip restored. Its guest link stays off until you enable a new one.';
+        status();
     }
     function editPerson(id) {
         const form = $('#traveler-form');
@@ -464,6 +595,8 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
     }
     function draft() { const f = $('#edit-form'); return { title: f.elements.title.value, date: f.elements.date.value || null, time: f.elements.time.value, placeId: f.elements.placeId.value || null, notes: f.elements.notes.value, guestNotes: f.elements.guestNotes.value, guestLocation: f.elements.guestLocation.value, fixed: f.elements.fixed.checked, optional: f.elements.optional.checked, highlight: f.elements.highlight.checked, participants: [...f.querySelectorAll('[name=participants]:checked')].filter(x => !x.disabled).map(x => x.value) }; }
     async function createTrip(data) { const r = await request('/api/trips', 'POST', data); state.selected = r.snapshot.trip.id; state.filter = 'all'; state.day = null; history.replaceState(null, '', `/?trip=${state.selected}`); await load(); }
+    // A full backup is checked against its checksum first; then it restores as a separate new trip.
+    async function importable(parsed) { return isSnapshot(parsed) ? restoreFromSnapshot(parsed) : parsed.trip || parsed; }
     function download(contents, mime, filename) { const url = URL.createObjectURL(new Blob([contents], { type: mime })); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
     async function sharing() { const data = await request(endpoint('/api/share')); $('#share-body').innerHTML = `<p>${data.enabled ? 'A guest link is enabled. Replacing it disables the previous link.' : 'No guest link is enabled.'}</p><button class="primary" id="share-rotate">${data.enabled ? 'Replace guest link' : 'Enable guest link'}</button>${data.enabled ? '<button class="secondary" id="share-revoke">Disable guest link</button>' : ''}<details><summary>Preview exactly what guests will see</summary><div class="guest-preview">${board(data.preview, { day: state.day, guest: true })}</div></details>`; $('#share-error').textContent = ''; $('#share-dialog').showModal(); }
     document.addEventListener('click', async (event) => {
@@ -500,6 +633,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
             if (b.id === 'new-trip') {
                 $('#create-form').reset();
                 $('#create-form').dataset.edit = '';
+                $('#trip-delete').hidden = true;
                 $('#create-title').textContent = 'New trip or event';
                 $('#create-dialog').showModal();
             }
@@ -531,9 +665,29 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
                 for (const k of ['title', 'start', 'end', 'timezone', 'kind'])
                     f.elements[k].value = t[k];
                 f.dataset.edit = 'true';
+                $('#trip-delete').hidden = !state.isOwner;
                 $('#create-title').textContent = 'Trip details';
                 $('#create-dialog').showModal();
             }
+            if (b.id === 'history')
+                await openHistory();
+            if (b.id === 'full-backup') {
+                const backup = await request(endpoint('/api/backup'));
+                download(JSON.stringify(backup, null, 2), 'application/json', `waypoint-backup-${backup.takenAt.slice(0, 10)}-rev${backup.revision}.json`);
+                $('#history-message').textContent = `Full backup saved: revision ${backup.revision} with ${backup.changes.length} history entries. Keep it somewhere private. To restore, use Import JSON; it becomes a separate new trip.`;
+            }
+            if (b.dataset.undo)
+                await undo(Number(b.dataset.undo));
+            if (b.dataset.removePerson)
+                await removeFromRoster('person', b.dataset.removePerson);
+            if (b.dataset.removeFamily)
+                await removeFromRoster('family', b.dataset.removeFamily);
+            if (b.id === 'archived-open')
+                openArchived();
+            if (b.dataset.restoreTrip)
+                await restoreTrip(b.dataset.restoreTrip);
+            if (b.id === 'trip-delete')
+                await archiveTrip();
             if (b.id === 'share')
                 await sharing();
             if (b.id === 'editors')
@@ -633,8 +787,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
             const button = f.querySelector('button.primary');
             button.disabled = true;
             try {
-                const parsed = JSON.parse($('#import-json').value);
-                await createTrip({ trip: parsed.trip || parsed });
+                await createTrip({ trip: await importable(JSON.parse($('#import-json').value)) });
             }
             catch (e) {
                 $('#import-error').textContent = e.message;
@@ -702,10 +855,9 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
             if (el.name === 'fixed')
                 lockTiming();
             if (el.id === 'import' && el.files[0]) {
-                if (el.files[0].size > 250000)
-                    throw new Error('Import must be under 250 KB.');
-                const parsed = JSON.parse(await el.files[0].text());
-                await createTrip({ trip: parsed.trip || parsed });
+                if (el.files[0].size > 5000000)
+                    throw new Error('Import must be under 5 MB.');
+                await createTrip({ trip: await importable(JSON.parse(await el.files[0].text())) });
             }
         }
         catch (e) {

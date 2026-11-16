@@ -77,8 +77,11 @@ email; see [editors.md](editors.md) (branch, not yet deployed). No invitation is
 `planner_trips` holds one versioned JSON document per trip, its owner, optional
 editor-email membership, and guest-token hash. Migration
 `0001_certain_serpent_society.sql` adds it without changing the legacy table.
-Every document update uses an atomic revision comparison. Per-record revisions,
-conditional undo, move-stay warnings, and independent backups remain future work.
+Every document update uses an atomic revision comparison and appends a row to
+the `planner_changes` log in the same batch; History, conditional undo, trip
+archive and a manual full backup are described in [safety-net.md](safety-net.md).
+Per-record revisions, move-stay warnings, and an automatic independent backup
+([proposal](backup-proposal.md), not enabled) remain future work.
 
 Set `PLANNER_CREATOR_EMAILS` in Sites runtime configuration to the organizer's
 authenticated email(s); there is no permissive production default. Local preview
