@@ -46,6 +46,29 @@ a thin title bar and its read-only sentence; its first card starts at 301 px.
 Press-and-hold drag was tried in landscape with simulated touch: a card moved
 to another day and saved. The drop panel takes 162 px of the 390 px height.
 
+## Correction, November 16: sideways phones are narrower than they look
+
+The first version of this layout switched on at 761 px wide. On a real phone
+the organizer still saw one day when the phone was turned. The cause: a phone's
+browser reports less than the screen's width when sideways (Safari keeps the
+notch areas out of the page, so an 844 px wide iPhone reports about 750 px; a
+small iPhone reports 667 px). The simulated test used the full 844 px and
+missed it.
+
+Now the one-day phone layout is used only when the screen is narrower than
+560 px, or narrower than 761 px **and upright**. Anything in landscape from
+560 px wide gets the days side by side. The rule is written once for scripts
+(`PHONE_QUERY` in `public/board.mjs`) and the same condition is used by every
+style block. Day columns may be as narrow as 190 px so two fit beside Ideas on
+the smallest phones. The offline shell cache is `waypoint-shell-v28`.
+
+Checked in headless Chromium at 750 × 342, 724 × 327, 667 × 375 and 780 × 360
+(sideways phones as their browsers report them): the wide layout with cards on
+the first screen. At 390 × 664, at 390 × 300 (upright with the keyboard open)
+and at 700 × 1000 (small tablet upright): still the one-day layout. Rotating a
+loaded page switches both ways. Desktop is unchanged. Still not checked on a
+physical phone.
+
 ## Checks
 
 - `npm test`: 120 pass (2 new in `tests/landscape-menu.test.mjs`). Type check

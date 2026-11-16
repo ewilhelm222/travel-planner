@@ -1,4 +1,6 @@
 import { matchesSelection, participantRecord } from "./participants.mjs";
+// One day at a time (phone, upright) or days side by side. Must match the media queries in planner.css.
+export const PHONE_QUERY = '(max-width: 559px), (max-width: 760px) and (orientation: portrait)';
 export const escape = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 export const dateLabel = (date, options = { month: "short", day: "numeric" }) => new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", ...options });
 export function days(trip) {

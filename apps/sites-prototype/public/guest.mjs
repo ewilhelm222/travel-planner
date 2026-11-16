@@ -1,10 +1,10 @@
 import { usefulFilterChoices, participantRecord } from "./participants.mjs";
-import { escape, preferredDay, board, dayChooser, dateLabel, ideaCards } from './board.mjs';
+import { escape, preferredDay, board, dayChooser, dateLabel, ideaCards, PHONE_QUERY } from './board.mjs';
 import { matchesSelection } from './participants.mjs';
 import { buildOfflineHtml } from './offline-export.mjs';
 const app = document.querySelector('#guest-app'), token = location.hash.slice(1);
 let trip, revision, updatedAt, day, filter = 'all';
-const phone = () => window.matchMedia?.('(max-width:760px)').matches;
+const phone = () => window.matchMedia?.(PHONE_QUERY).matches;
 let layout;
 function render() {
     layout = phone();
@@ -31,7 +31,7 @@ function render() {
     if (chosen)
         rail.scrollLeft = chosen.offsetLeft - rail.offsetLeft - (rail.clientWidth - chosen.offsetWidth) / 2;
 }
-window.matchMedia?.('(max-width:760px)').addEventListener?.('change', () => { if (trip && layout !== phone() && !document.querySelector('dialog[open]')) render(); });
+window.matchMedia?.(PHONE_QUERY).addEventListener?.('change', () => { if (trip && layout !== phone() && !document.querySelector('dialog[open]')) render(); });
 async function load() { try {
     const r = await fetch('/api/shared', { headers: { Authorization: `Share ${token}` }, cache: 'no-store', credentials: 'omit' });
     const data = await r.json();

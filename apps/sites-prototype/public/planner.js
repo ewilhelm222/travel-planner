@@ -1,6 +1,6 @@
 (async () => {
     'use strict';
-    const { escape, dateLabel, days, preferredDay, board, dayChooser, isExample, ideaCards } = await import('/board.mjs');
+    const { escape, dateLabel, days, preferredDay, board, dayChooser, isExample, ideaCards, PHONE_QUERY } = await import('/board.mjs');
     const { usefulFilterChoices, matchesSelection, defaultParticipants, includesPerson, peopleOf, isWholeTripGroup, participantRecord, participantReferences, referenceSummary } = await import('/participants.mjs');
     const { fieldChanges } = await import('/history.mjs');
     const { baseFor, recordKey } = await import('/revisions.mjs');
@@ -106,7 +106,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v27');
+            const cache = await caches.open('waypoint-shell-v28');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -296,7 +296,7 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
     const ideasToggleLabel = t => state.ideasClosed ? `Ideas · ${ideaList(t).length}` : 'Hide';
     const ideasSection = t => `<section class="ideas" id="ideas"><button type="button" class="ideas-toggle" id="ideas-toggle" aria-expanded="${!state.ideasClosed}" aria-controls="idea-cards">${ideasToggleLabel(t)}</button><h2>Ideas <span>· not scheduled yet</span></h2><div class="idea-cards" id="idea-cards">${ideas(t)}</div><button type="button" class="add-here" data-add-date="">+ Add an idea</button></section>`;
     // ---- Drag-and-drop and keyboard moves (one shared record, same revision-checked save) ----
-    const phone = () => window.matchMedia?.('(max-width:760px)').matches;
+    const phone = () => window.matchMedia?.(PHONE_QUERY).matches;
     const dayName = date => date ? dateLabel(date, { weekday: 'short', month: 'short', day: 'numeric' }) : 'Unscheduled ideas';
     const groupNames = a => a.participants.map(id => participantRecord(state.snapshot.trip, id)?.name || id).join(', ');
     function showDay(date) {
@@ -1222,7 +1222,7 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
     });
     if ('serviceWorker' in navigator)
         navigator.serviceWorker.addEventListener('controllerchange', readiness);
-    window.matchMedia?.('(max-width:760px)').addEventListener?.('change', relayout);
+    window.matchMedia?.(PHONE_QUERY).addEventListener?.('change', relayout);
     document.addEventListener('close', () => { if (state.layoutStale) relayout(); }, true);
     restore();
     state.online = navigator.onLine;
