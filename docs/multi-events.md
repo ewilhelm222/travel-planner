@@ -140,6 +140,77 @@ no live write was made during the hosted checks.
 
 ## Release provenance
 
+### November 16, 2026 release (America/Los_Angeles)
+
+Deployed at 07:09 PST on November 16 (2026-11-16T15:09:11Z). This release
+deploys the six interface changes in [getting-in.md](getting-in.md),
+[plain-words.md](plain-words.md), [dark-forms.md](dark-forms.md),
+[within-reach.md](within-reach.md), [ideas-column.md](ideas-column.md), and
+[landscape-and-menu.md](landscape-and-menu.md).
+
+| Item | Provenance |
+| --- | --- |
+| GitHub source | `73a1adb40bf7ae039ca95c9e1402550212b5d077`, app at `apps/sites-prototype` |
+| Sites source | `fd2986bc62f5bc597c5e8cefcdcd5d76ecb381a8` |
+| Matching content tree | GitHub app subtree and Sites root tree both `8b8d1d23bdc222a61ad02762d82ef01d35b2c25b`; 179 tracked files |
+| Saved version | **13**, `appgprj_6af3ef55c4f48191940aa66a59771eb3~appgver_11f00386f47881919c87cb68817e03e8` |
+| Deployment | `appgdep_6afb1c8ff4048191bc02f146539f0cc0`, succeeded |
+| Runtime / offline shell | Environment revision 1; `waypoint-shell-v27` |
+| Rollback version retained | **12**, `appgprj_6af3ef55c4f48191940aa66a59771eb3~appgver_0317b417c0548191a990228181ecc16c` |
+
+The source was obtained anew from the pinned GitHub revision, using the
+organizer's authenticated Chrome session to download its ZIP because command-line
+GitHub authentication was unavailable. Every file produced the expected full
+repository tree. GitHub's signed commit object was verified against the exact
+commit ID, and a fresh shallow clone was made from those newly downloaded Git
+objects. No older checkout supplied source files.
+
+Before synchronization there were **no Sites-only files**. The six GitHub-only
+files were the tests for these six interface changes. After synchronization and
+push, the Sites root tree matched the expected app subtree exactly.
+
+**No database migration:** `drizzle/` is byte-for-byte unchanged from version
+12 and still ends at `0003`. No migration was added, no stored trip was
+rewritten as part of deployment, and no database backup, migration rehearsal,
+or database rollback was prepared, as instructed. The only live data writes
+during verification were adding and deleting the disposable test activity.
+
+**Checks run before deployment:** locked dependencies installed through the
+Sites installer with Node 24.22.1; `npm test` **120 passed, 0 failed**;
+`npm run typecheck` passed; production build through the Sites build helper
+passed. Source was clean after the build. API/access integration suites were
+not rerun for this interface release.
+
+**Live verification:**
+
+| Requested check | Result |
+| --- | --- |
+| Organizer header shows “Editing as” and the sign-in address | **Passed**; actual address checked in the browser, not recorded here |
+| Desktop toolbar contains trip selector, Show plans for, Add activity, Manage and week-view switch; other tools are in Manage | **Passed** |
+| Manage contains Manage travelers, History, Guest link, Editors, Refresh, and the other management/import/export controls | **Passed** |
+| Ideas column is left of the days; Hide folds it and the choice survives reload | **Passed**; expanded again after checking |
+| Every day ends with + Add; dark form opens with that day selected; cancel without saving | **Passed**; six day buttons checked, Sunday preselection and dark fill checked, then closed without saving |
+| Stay line opens cream Stay details with Edit stay; last stay day says Check-out day | **Passed** |
+| Cards omit Flexible; whole-group card is cream with a pink top band and Whole-group activity words | **Passed**; inspected on the live desktop board |
+| History opens and is cream | **Passed** |
+| Signed-in 390 px: one day, Ideas first in the rail, + Add to the day below cards, no sideways page overflow | **Passed**; 390 px viewport, 375 px content width with scrollbar |
+| Signed-in 844 × 390: activity cards visible without scrolling | **Passed**; three cards intersected the first viewport |
+| Camp Earnest guest link in a browser with no organizer session loads without sign-in; read-only sentence and planner sign-in link | **Passed** in a fresh Chrome Incognito window |
+| Guest page has no inputs, Add controls or stay lines; no Example cards | **Passed** |
+| Guest page lists unscheduled ideas | **Not checked with a nonempty list**; Camp Earnest had no unscheduled ideas during verification |
+| Cookie-free /api/trips returns 401 | **Passed** in Incognito and by a direct cookie-free HTTP request (HTTP 401) |
+| Add disposable activity from a day's + Add, confirm it appears, delete it, confirm both History entries | **Passed**; activity absent afterward, add and delete at revisions 43 and 44 |
+
+No requested live check failed. Physical phones, real China connectivity,
+200% zoom, tablets, and a second real account were **not checked**. No guest
+token, editor membership, Sites access policy, runtime configuration, invitation,
+email or schedule was changed. No trip was created, imported or deleted.
+The daily snapshot proposal remains disabled.
+
+If this release needs rollback, redeploy retained saved version **12**, then
+stop. No database rollback is part of this release.
+
+
 ### November 15, 2026 release (America/Los_Angeles)
 
 Deployed at 19:45 PST on November 15 (2026-11-16T03:45:48Z).
