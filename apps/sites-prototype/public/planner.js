@@ -1,6 +1,6 @@
 (async () => {
     'use strict';
-    const { escape, dateLabel, days, preferredDay, board, card, dayChooser, isExample } = await import('/board.mjs');
+    const { escape, dateLabel, days, preferredDay, board, card, dayChooser, isExample, ideaCards } = await import('/board.mjs');
     const { usefulFilterChoices, matchesSelection, defaultParticipants, includesPerson, peopleOf, isWholeTripGroup, participantRecord, participantReferences, referenceSummary } = await import('/participants.mjs');
     const { fieldChanges } = await import('/history.mjs');
     const { baseFor, recordKey } = await import('/revisions.mjs');
@@ -56,7 +56,7 @@
     }
     function persist() {
         try {
-            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, hideExamples: state.hideExamples }));
+            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, hideExamples: state.hideExamples, ideasClosed: state.ideasClosed }));
         }
         catch { }
     }
@@ -64,7 +64,7 @@
         state.downloadedAt = new Date().toISOString();
         state.copies[state.selected] = { snapshot: state.snapshot, downloadedAt: state.downloadedAt, isOwner: state.isOwner };
         try {
-            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, hideExamples: state.hideExamples }));
+            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, hideExamples: state.hideExamples, ideasClosed: state.ideasClosed }));
         }
         catch {
             state.message = 'This browser could not keep a reading copy. Save an offline HTML file.';
@@ -106,7 +106,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v25');
+            const cache = await caches.open('waypoint-shell-v26');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -198,9 +198,9 @@
         if (t)
             state.day = preferredDay(t, state.day);
         // The poster is collapsed once a trip has activities, so the schedule is on the first screen;
-        // long trips start in the denser week view. Either can be switched, and the choice is remembered.
+        // trips longer than four days start in the denser week view. Either can be switched, and the choice is remembered.
         state.compact = typeof state.compactChoice === 'boolean' ? state.compactChoice : !!t?.activities.length;
-        state.dense = !!t && (typeof state.denseChoice === 'boolean' ? state.denseChoice : dates.length >= 10);
+        state.dense = !!t && (typeof state.denseChoice === 'boolean' ? state.denseChoice : dates.length > 4);
         const phoneLayout = phone();
         state.layout = phoneLayout;
         // Only filter choices that change what is shown are offered; with none, the filter is left out.
@@ -231,7 +231,7 @@ ${state.canCreate ? `<div class="manage-group"><h3>Trips &amp; events</h3><div c
 <header class="trip-header"><div><button class="story-toggle" id="story-toggle">${state.compact ? "Open the poster" : "Focus on the plan"}</button><span class="eyebrow">${t?.kind === 'event' ? 'TIME TOGETHER' : 'Lose each other all day. Find each other at night.'}</span><h1>${escape(t?.title || 'A plan for every gathering')}<span class="title-dot">.</span></h1><p class="trip-subtitle">${escape(t?.subtitle || 'Choose a trip, bring an idea, and leave a little room to wander.')}</p>${t ? `<div class="trip-facts"><span>${escape(t.start)} – ${escape(t.end)}</span><span>${escape(t.timezone)}</span><span>${t.families.length} ${t.families.length === 1 ? "group" : "groups"}</span></div>` : ''}</div><aside class="story-art" aria-label="Decorative crossing routes"><svg viewBox="0 0 520 420" aria-hidden="true"><circle cx="268" cy="214" r="150" fill="none" stroke="#6b3df5" stroke-width="1.5"/><circle cx="268" cy="214" r="196" fill="none" stroke="#6b3df5" stroke-width="1.5" stroke-dasharray="3 12"/><path d="M40 330 C120 300 150 180 268 214 S420 150 480 60" fill="none" stroke="#3ee6c9" stroke-width="22" stroke-linecap="round"/><path d="M60 70 C150 90 170 240 268 214 S400 330 470 360" fill="none" stroke="#cdb8ff" stroke-width="22" stroke-linecap="round"/><circle cx="268" cy="214" r="30" fill="#ff3d9a"/><circle cx="268" cy="214" r="11" fill="#2d1480"/><circle cx="40" cy="330" r="14" fill="#2d1480" stroke="#3ee6c9" stroke-width="6"/><circle cx="60" cy="70" r="14" fill="#2d1480" stroke="#cdb8ff" stroke-width="6"/><circle cx="480" cy="60" r="14" fill="#2d1480" stroke="#3ee6c9" stroke-width="6"/><circle cx="470" cy="360" r="14" fill="#2d1480" stroke="#cdb8ff" stroke-width="6"/></svg><p>Split up. Meet up.</p></aside></header>
 ${t ? `<div class="toolbar"><span class="view-title">Daily plans</span>${filterSelect ? `<label class="traveler-select">Show plans for${filterSelect}</label>` : ''}<div class="tools"><button class="secondary" id="add" ${!writable() ? 'disabled' : ''}>Add activity</button><button class="secondary" id="travelers" ${!writable() ? "disabled" : ""}>Manage travelers</button><button class="secondary" id="structure" ${off}>Places, stays &amp; journeys</button>${state.isOwner ? `<button class="secondary" id="settings" ${off}>Trip details</button>` : ''}<button class="secondary" id="history" ${off}>History</button>${state.isOwner ? `<button class="secondary" id="share" ${!writable() ? 'disabled' : ''}>Guest link</button><button class="secondary" id="editors" ${!writable() ? 'disabled' : ''}>Editors</button>` : ''}<button class="secondary" id="offline-file">Save offline trip</button><button class="secondary" id="export">JSON</button><button class="secondary" id="refresh">Refresh</button><button class="secondary" id="density" aria-pressed="${state.dense}" title="${state.dense ? 'Show three larger day columns' : 'Show seven narrower day columns'}">${state.dense ? 'Larger cards' : 'Fit a week'}</button></div></div>` : ''}
 <div id="status" role="status" aria-live="polite"></div><div id="message" role="alert"></div>
-${t ? `${rail(t, state.day)}<div id="itinerary" tabindex="-1" class="date-board">${board(t, { filter: state.filter, day: state.day, compact: state.compact, hideExamples: state.hideExamples })}</div><div class="board-notes"><p id="drag-hint" class="drag-hint"></p><p id="filter-status" role="status" aria-live="polite">${state.filter === 'all' ? 'Everyone · shared plans appear once' : 'Selected group · all shared attendee labels remain visible'}</p>${examplesToggle}${roleNote}</div>${ideasSection(t)}${mapsSection(t)}` : welcome()}
+${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-closed' : ''}">${ideasSection(t)}<div id="itinerary" tabindex="-1" class="date-board">${board(t, { filter: state.filter, day: state.day, compact: state.compact, hideExamples: state.hideExamples })}</div></div><div class="board-notes"><p id="drag-hint" class="drag-hint"></p><p id="filter-status" role="status" aria-live="polite">${state.filter === 'all' ? 'Everyone · shared plans appear once' : 'Selected group · all shared attendee labels remain visible'}</p>${examplesToggle}${roleNote}</div>${mapsSection(t)}` : welcome()}
 <footer><span>Waypoint <span class="title-dot">×</span> Make plans. Take detours.</span><span>Guest links are optional and read-only.</span></footer></main>
 `}<dialog id="editor" class="form-dialog" aria-labelledby="edit-title"><form id="edit-form"><div class="dialog-heading"><span class="eyebrow"></span><button type="button" class="icon-button" id="close-editor" aria-label="Close activity">×</button></div><h2 id="edit-title">Activity</h2><div id="editor-fields"></div><p id="edit-message" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button" id="copy-draft" hidden>Copy my draft</button><button type="button" class="secondary" id="reload-after-conflict" hidden>Load latest plan</button><button type="button" class="text-button" id="delete">Delete activity</button><button type="submit" class="primary" id="save">Save changes</button></div></form></dialog>
 <dialog id="roster-dialog" class="form-dialog" aria-labelledby="roster-title"></dialog><dialog id="history-dialog" aria-labelledby="history-title"></dialog><dialog id="stay-view" aria-labelledby="stay-view-title"></dialog><dialog id="structure-dialog" class="form-dialog" aria-labelledby="structure-title"></dialog><dialog id="archived-dialog" aria-labelledby="archived-title"></dialog><dialog id="editors-dialog" class="form-dialog" aria-labelledby="editors-title"></dialog><dialog id="create-dialog" class="form-dialog" aria-labelledby="create-title"><form id="create-form"><h2 id="create-title">New trip or event</h2><label>Name<input name="title" required maxlength="160"></label><label>Subtitle <small>(optional; shown under the name, and to guests)</small><input name="subtitle" maxlength="500"></label><div class="field-row"><label>First day<input type="date" name="start" required></label><label>Last day<input type="date" name="end" required></label></div><label>Time zone<input name="timezone" value="America/Los_Angeles" required></label><label>Kind<select name="kind"><option value="event">Gathering / event</option><option value="trip">Trip</option></select></label><p id="create-error" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button danger" id="trip-delete" hidden>Delete this trip…</button><button type="button" class="secondary" data-close="create-dialog">Cancel</button><button class="primary" id="create-submit">Create</button></div></form></dialog>
@@ -284,9 +284,11 @@ ${t ? `${rail(t, state.day)}<div id="itinerary" tabindex="-1" class="date-board"
             $('#maps-body').innerHTML = mapsBody(state.snapshot.trip);
     }
     const ideaList = t => t.activities.filter(a => !a.date && matchesSelection(a, state.filter, t) && !(state.hideExamples && isExample(a)));
-    function ideas(t) { return ideaList(t).map(a => card(a, t)).join('') || '<p>No unscheduled ideas yet.</p>'; }
+    function ideas(t) { return ideaCards(ideaList(t), t) || '<p>No unscheduled ideas yet.</p>'; }
     const rail = (t, day) => dayChooser(t, day, { ideas: ideaList(t).length });
-    const ideasSection = t => `<section class="ideas" id="ideas"><h2>Ideas · not scheduled yet</h2><div class="idea-cards">${ideas(t)}</div><button type="button" class="add-here" data-add-date="">+ Add an idea</button></section>`;
+    // Beside the days on wide screens (and it can be folded to a narrow tab there); below the selected day on a phone.
+    const ideasToggleLabel = t => state.ideasClosed ? `Ideas · ${ideaList(t).length}` : 'Hide';
+    const ideasSection = t => `<section class="ideas" id="ideas"><button type="button" class="ideas-toggle" id="ideas-toggle" aria-expanded="${!state.ideasClosed}" aria-controls="idea-cards">${ideasToggleLabel(t)}</button><h2>Ideas <span>· not scheduled yet</span></h2><div class="idea-cards" id="idea-cards">${ideas(t)}</div><button type="button" class="add-here" data-add-date="">+ Add an idea</button></section>`;
     // ---- Drag-and-drop and keyboard moves (one shared record, same revision-checked save) ----
     const phone = () => window.matchMedia?.('(max-width:760px)').matches;
     const dayName = date => date ? dateLabel(date, { weekday: 'short', month: 'short', day: 'numeric' }) : 'Unscheduled ideas';
@@ -315,6 +317,8 @@ ${t ? `${rail(t, state.day)}<div id="itinerary" tabindex="-1" class="date-board"
         it.scrollTop = top;
         if ($('.idea-cards'))
             $('.idea-cards').innerHTML = ideas(t);
+        if ($('#ideas-toggle'))
+            $('#ideas-toggle').textContent = ideasToggleLabel(t);
         refreshMaps();
         if ($('#day'))
             $('#day').value = state.day;
@@ -805,7 +809,7 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
     // A full backup is checked against its checksum first; then it restores as a separate new trip.
     async function importable(parsed) { return isSnapshot(parsed) ? restoreFromSnapshot(parsed) : parsed.trip || parsed; }
     function download(contents, mime, filename) { const url = URL.createObjectURL(new Blob([contents], { type: mime })); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
-    async function sharing() { const data = await request(endpoint('/api/share')); state.shareRevision = data.shareRevision; $('#share-body').innerHTML = `<p>${data.enabled ? 'A guest link is enabled. Replacing it disables the previous link.' : 'No guest link is enabled.'}</p><button class="primary" id="share-rotate">${data.enabled ? 'Replace guest link' : 'Enable guest link'}</button>${data.enabled ? '<button class="secondary" id="share-revoke">Disable guest link</button>' : ''}<details><summary>Preview exactly what guests will see</summary><div class="guest-preview">${board(data.preview, { day: state.day, guest: true })}<h3>Ideas · not scheduled yet</h3>${data.preview.activities.filter(a => !a.date).map(a => card(a, data.preview, true)).join('') || '<p>No ideas to show.</p>'}</div></details>`; $('#share-error').textContent = ''; $('#share-dialog').showModal(); }
+    async function sharing() { const data = await request(endpoint('/api/share')); state.shareRevision = data.shareRevision; $('#share-body').innerHTML = `<p>${data.enabled ? 'A guest link is enabled. Replacing it disables the previous link.' : 'No guest link is enabled.'}</p><button class="primary" id="share-rotate">${data.enabled ? 'Replace guest link' : 'Enable guest link'}</button>${data.enabled ? '<button class="secondary" id="share-revoke">Disable guest link</button>' : ''}<details><summary>Preview exactly what guests will see</summary><div class="guest-preview">${board(data.preview, { day: state.day, guest: true })}<h3>Ideas · not scheduled yet</h3>${ideaCards(data.preview.activities.filter(a => !a.date), data.preview, true) || '<p>No ideas to show.</p>'}</div></details>`; $('#share-error').textContent = ''; $('#share-dialog').showModal(); }
     document.addEventListener('click', async (event) => {
         const b = event.target.closest('button');
         if (!b)
@@ -836,6 +840,13 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
                 persist();
                 $('#maps').outerHTML = mapsSection(state.snapshot.trip);
                 document.querySelector(`[data-map-view="${state.mapView}"]`)?.focus();
+            }
+            if (b.id === 'ideas-toggle') {
+                state.ideasClosed = !state.ideasClosed;
+                persist();
+                $('.board-wrap')?.classList.toggle('ideas-closed', state.ideasClosed);
+                b.setAttribute('aria-expanded', String(!state.ideasClosed));
+                b.textContent = ideasToggleLabel(state.snapshot.trip);
             }
             if (b.id === 'density') {
                 state.denseChoice = !state.dense;

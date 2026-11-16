@@ -1,5 +1,5 @@
 import { usefulFilterChoices, participantRecord } from "./participants.mjs";
-import { escape, preferredDay, board, card, dayChooser, dateLabel } from './board.mjs';
+import { escape, preferredDay, board, dayChooser, dateLabel, ideaCards } from './board.mjs';
 import { matchesSelection } from './participants.mjs';
 import { buildOfflineHtml } from './offline-export.mjs';
 const app = document.querySelector('#guest-app'), token = location.hash.slice(1);
@@ -16,9 +16,9 @@ function render() {
     const banner = '<p class="guest-banner" role="note"><strong>You are viewing a read-only copy.</strong> To add or change plans, ask the organizer to add you, then <a href="/" target="_top" rel="noreferrer">sign in to the planner</a>.</p>';
     const guide = 'Browse the options. Optional activities are choices, not sign-ups. No changes can be made from this view.';
     const meta = `Revision ${revision} · Last updated ${escape(new Date(updatedAt).toLocaleString())}. Refresh to check for changes.`;
-    const ideaCards = trip.activities.filter(a => !a.date && matchesSelection(a, filter, trip));
-    const ideas = ideaCards.length ? `<section class="ideas" id="ideas"><h2>Ideas · not scheduled yet</h2><div class="idea-cards">${ideaCards.map(a => card(a, trip, true)).join('')}</div></section>` : '';
-    const schedule = `${dayChooser(trip, day, ideaCards.length ? { ideas: ideaCards.length } : {})}<div class="date-board" id="itinerary" tabindex="-1">${board(trip, { filter, day, guest: true })}</div>${ideas}`;
+    const ideaList = trip.activities.filter(a => !a.date && matchesSelection(a, filter, trip));
+    const ideas = ideaList.length ? `<section class="ideas" id="ideas"><h2>Ideas <span>· not scheduled yet</span></h2><div class="idea-cards">${ideaCards(ideaList, trip, true)}</div></section>` : '';
+    const schedule = `${dayChooser(trip, day, ideaList.length ? { ideas: ideaList.length } : {})}<div class="board-wrap">${ideas}<div class="date-board" id="itinerary" tabindex="-1">${board(trip, { filter, day, guest: true })}</div></div>`;
     const dialog = `<dialog id="detail" aria-labelledby="detail-title"><button class="icon-button" id="close" aria-label="Close details">×</button><h2 id="detail-title"></h2><div id="detail-body"></div></dialog>`;
     // Phone: the schedule comes first, matching the signed-in planner; reading-copy and refresh controls follow it.
     app.innerHTML = layout

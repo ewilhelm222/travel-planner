@@ -610,3 +610,39 @@ button.lodging { padding-left: 8px; }
 }
 @media (min-width: 1000px) { .dense .add-here { min-height: 36px; padding: 4px 8px; font-size: 13px; } .dense .add-here-day { display: none; } }
 @media print { .add-here, .ideas-stop { display: none !important; } }
+
+/* Ideas beside the days (feedback plan PR 5). One markup: a column on wide screens, a section under the
+   selected day on a phone. */
+.ideas-toggle { display: none; }
+.idea-place { font: 800 14px/1.3 var(--font-display); color: var(--orchid); margin: 14px 0 8px; }
+.idea-place:first-child { margin-top: 0; }
+.idea-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (max-width: 760px) {
+  .board-wrap { display: flex; flex-direction: column; }
+  .board-wrap > .ideas { order: 2; }
+  .idea-cards { gap: 8px; }
+}
+@media (min-width: 761px) {
+  .board-wrap { display: flex; gap: 24px; align-items: flex-start; }
+  .board-wrap > .date-board { flex: 1 1 0; min-width: 0; }
+  .board-wrap > .ideas { flex: 0 0 280px; min-width: 0; margin: 0 0 24px; padding: 16px; }
+  .board-wrap > .ideas h2 { font-size: 22px; margin: 0 0 12px; }
+  .board-wrap > .ideas h2 span { display: block; font: 12px/1.6 var(--font-mono); letter-spacing: 0; color: var(--orchid); }
+  .board-wrap > .ideas h2::before { content: none; }
+  .board-wrap .ideas-toggle { display: block; float: right; min-height: 32px; padding: 4px 10px; background: none; border: 1px solid var(--orchid); border-radius: var(--radius-pill); color: var(--orchid); font: 600 12px/1 var(--font-mono); cursor: pointer; }
+  .board-wrap .ideas-toggle:hover, .board-wrap .ideas-toggle:focus-visible { color: var(--lagoon); border-color: var(--lagoon); }
+  .board-wrap.ideas-closed > .ideas { flex-basis: 56px; padding: 8px 6px; }
+  .board-wrap.ideas-closed > .ideas > :not(.ideas-toggle) { display: none; }
+  .board-wrap.ideas-closed .ideas-toggle { float: none; width: 100%; min-height: 160px; padding: 10px 0; writing-mode: vertical-rl; border: 0; font-size: 13px; }
+  .board-wrap > .ideas .activity { padding: 14px 16px; border-radius: 18px; }
+  .board-wrap > .ideas .activity strong { font-size: 18px; }
+}
+@media (min-width: 1000px) {
+  .dense .board-wrap { gap: 10px; }
+  .dense .board-wrap > .ideas { flex-basis: 200px; padding: 12px 10px; border-radius: 18px; }
+  .dense .board-wrap.ideas-closed > .ideas { flex-basis: 48px; padding: 6px 4px; }
+  .dense .board-wrap > .ideas .activity { padding: 10px 12px; border-radius: 14px; }
+  .dense .board-wrap > .ideas .activity strong { font-size: 15px; }
+  .dense .idea-cards { gap: 8px; }
+}
+@media print { .board-wrap { display: block; } .ideas-toggle { display: none !important; } }

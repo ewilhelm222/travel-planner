@@ -48,7 +48,7 @@ test('wording in the planner, guest page and share dialog', () => {
     for (const gone of ['Highlight a shared moment', 'THE PLAN, UP CLOSE', 'Not on the itinerary. Yet.', 'Synthetic detail for testing'])
         assert.ok(!planner.includes(gone), gone);
     assert.match(planner, /Whole-group activity · everyone together/);
-    assert.match(planner, /Ideas · not scheduled yet/);
+    assert.match(planner, /<h2>Ideas <span>· not scheduled yet<\/span><\/h2>/);
     assert.match(planner, /So is anything marked “Example · not a real plan”/);
     assert.match(planner, /Show plans for/);
     assert.ok(!guest.includes('available to join') && guest.includes('Whole-group activity'));

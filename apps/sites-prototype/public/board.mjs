@@ -37,3 +37,11 @@ export function board(trip, { filter = 'all', day, guest = false, hideExamples =
 }
 // `ideas` (a count) adds a first stop that jumps to the unscheduled ideas; phones show it, wider screens have the ideas beside the days.
 export function dayChooser(trip, day, { ideas } = {}) { const marked = new Set(trip.activities.filter(a => a.highlight).map(a => a.date)); return `<nav class="day-rail" aria-label="Choose a day"><label class="day-chooser">Choose a day<select id="day">${days(trip).map(d => `<option value="${d}" ${d === day ? 'selected' : ''}>${dateLabel(d, { weekday: 'short', month: 'short', day: 'numeric' })}</option>`).join('')}</select></label><div class="medallions">${ideas === undefined ? '' : `<a class="medallion ideas-stop" href="#ideas" aria-label="Ideas, not scheduled yet: ${ideas}"><span class="medallion-day">Ideas</span><span class="medallion-num">${ideas}</span></a>`}${days(trip).map(d => `<button type="button" class="medallion" data-day="${d}" aria-pressed="${d === day}" aria-label="${dateLabel(d, { weekday: 'long', month: 'long', day: 'numeric' })}"><span class="medallion-day">${dateLabel(d, { weekday: 'short' })}</span><span class="medallion-num">${dateLabel(d, { day: 'numeric' })}</span>${marked.has(d) ? '<span class="medallion-mark" aria-hidden="true">●</span>' : ''}</button>`).join('')}</div></nav>`; }
+// Ideas as cards, under a heading per place when they belong to more than one place.
+export function ideaCards(list, trip, guest = false) {
+    const keys = [...new Set(list.map(a => a.placeId || ''))];
+    if (keys.length < 2)
+        return list.map(a => card(a, trip, guest)).join('');
+    const order = [...(trip.places || []).map(p => p.id), ''].filter(k => keys.includes(k));
+    return order.map(k => `<h3 class="idea-place">${escape(k ? trip.places.find(p => p.id === k)?.name || 'Location to confirm' : 'Anywhere')}</h3>${list.filter(a => (a.placeId || '') === k).map(a => card(a, trip, guest)).join('')}`).join('');
+}

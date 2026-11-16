@@ -36,7 +36,7 @@ test('guests see ideas with guest fields only, and never examples', () => {
     assert.deepEqual(shown.activities.map(a => a.id), ['idea-1']);
     assert.ok(!text.includes('PRIVATE') && !text.includes('Invented idea'));
     assert.ok(card(shown.activities[0], shown, true).includes('No day yet'));
-    assert.match(guest, /Ideas · not scheduled yet/);
+    assert.match(guest, /Ideas <span>· not scheduled yet<\/span>/);
     assert.match(guest, /An idea · no day yet/);
     assert.match(planner, /browse the dated activities and the unscheduled ideas/);
     assert.ok(!/lodging details, unscheduled ideas/.test(planner), 'the share dialog no longer says ideas are excluded');

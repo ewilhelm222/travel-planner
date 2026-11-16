@@ -85,7 +85,7 @@ const log = (...a) => console.log(...a);
   await page.evaluate(() => document.querySelector('.ideas').scrollIntoView({ block: 'center' }));
   await page.mouse.move(s9.x + 55, s9.y + 65);
   const ideas = await box('.ideas');
-  await page.mouse.move(ideas.x + 200, ideas.y + 30, { steps: 8 });
+  await page.mouse.move(ideas.x + 60, ideas.y + 60, { steps: 8 });
   await page.screenshot({ path: SHOTS + '/desktop-4-to-ideas.png' });
   await page.mouse.up();
   await page.waitForFunction(() => /to Unscheduled ideas.*Saved/.test(document.querySelector('#message').textContent));
