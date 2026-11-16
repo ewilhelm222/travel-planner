@@ -18,7 +18,8 @@ export async function GET() { const user = await getChatGPTUser(); if (!user)
         document: string;
         archived_at: string;
     }>();
-    return response({ user: userView(user), canCreate: isCreator(user), archived: archived.results.map(r => ({ id: r.id, title: JSON.parse(r.document).title, archivedAt: r.archived_at })), trips: rows.results.map(r => { const t = JSON.parse(r.document); return { id: r.id, title: t.title, subtitle: t.subtitle, kind: t.kind, start: t.start, end: t.end, revision: r.revision, role: r.owner_id === user.userId ? "organizer" : "editor" }; }) });
+    // The caller's own sign-in address, so the page can say which address the organizer must add.
+    return response({ user: { ...userView(user), email: user.email }, canCreate: isCreator(user), archived: archived.results.map(r => ({ id: r.id, title: JSON.parse(r.document).title, archivedAt: r.archived_at })), trips: rows.results.map(r => { const t = JSON.parse(r.document); return { id: r.id, title: t.title, subtitle: t.subtitle, kind: t.kind, start: t.start, end: t.end, revision: r.revision, role: r.owner_id === user.userId ? "organizer" : "editor" }; }) });
 }
 catch (e) {
     return failed(e);

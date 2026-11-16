@@ -537,3 +537,13 @@ button.lodging:hover, button.journeys:hover, button.lodging:focus-visible, butto
   .dense .empty-day span { display: none; }
   .dense .journeys { padding: 10px 12px; border-radius: 14px; margin-top: 10px; }
 }
+
+/* Getting in: who is signed in, read-only said plainly, and the not-on-a-trip-yet screen. */
+.edit-state { text-transform: none; letter-spacing: 0; font: 600 13px/1.4 var(--font-ui); color: var(--lagoon); overflow-wrap: anywhere; }
+p.edit-state { margin: 0 0 8px; }
+p.edit-state:empty { display: none; }
+.account-email { color: var(--cream); overflow-wrap: anywhere; }
+.guest-banner { margin: 12px 0; padding: 12px 16px; border: 2px solid var(--lagoon); border-radius: 16px; background: var(--dusk); color: var(--cream); font: 15px/1.5 var(--font-ui); }
+.guest-banner a { color: var(--lagoon); font-weight: 700; }
+@media (max-width: 760px) { .guest-banner { margin: 8px 0 10px; padding: 10px 14px; font-size: 14px; } }
+@media print { .guest-banner, .edit-state { display: none; } }
