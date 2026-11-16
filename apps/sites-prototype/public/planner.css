@@ -431,3 +431,18 @@ dialog input, dialog textarea, dialog select { border-color: #cfc3e3; }
 .history-records .now { color: var(--ink); font-weight: 600; }
 #history-message:not(:empty), #archived-message:not(:empty) { border-left: 6px solid var(--magenta); background: #ffe3f0; padding: 10px 14px; border-radius: 0 12px 12px 0; }
 @media (max-width: 760px) { .history-line { flex-direction: column; } .history-tag { max-width: none; } .row-actions { flex-direction: column; align-items: stretch; } }
+/* Trip structure: stays and journeys open from the board; places, stays and journeys are managed in one dialog. */
+button.lodging { width: 100%; background: none; border: 0; border-radius: 10px; text-align: left; cursor: pointer; padding: 6px 8px 6px 0; margin-bottom: 8px; min-height: 32px; }
+button.journeys { width: 100%; background: none; text-align: left; cursor: pointer; font-family: inherit; }
+button.lodging:hover, button.journeys:hover, button.lodging:focus-visible, button.journeys:focus-visible { background: var(--dusk); }
+.journey-line { display: block; margin: 4px 0; color: var(--orchid); overflow-wrap: anywhere; }
+.edit-hint { margin-left: auto; font: 600 11px/1 var(--font-mono); letter-spacing: 1px; text-transform: uppercase; color: var(--lagoon); border: 1px solid currentColor; border-radius: var(--radius-pill); padding: 4px 8px; }
+.journeys .edit-hint { display: inline-block; margin-top: 8px; }
+#structure-dialog { max-width: 760px; }
+#structure-dialog h3 { font: 800 19px/1.2 var(--font-display); margin: 24px 0 4px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+#structure-message:not(:empty), #place-inline-message:not(:empty) { border-left: 6px solid var(--magenta); background: #ffe3f0; padding: 10px 14px; border-radius: 0 12px 12px 0; }
+.inline-place { border: 2px dashed #cfc3e3; border-radius: 16px; padding: 4px 16px 16px; margin: 0 0 16px; }
+.inline-place legend { font-weight: 700; padding: 0 6px; }
+.link-list { list-style: none; padding: 0; margin: 4px 0 8px; display: grid; gap: 4px; overflow-wrap: anywhere; }
+.reassign { border-left: 6px solid var(--ember); background: #fff0e6; padding: 12px 14px; border-radius: 0 12px 12px 0; margin-top: 16px; }
+@media print { button.lodging, button.journeys { color: black; } .edit-hint { display: none; } }

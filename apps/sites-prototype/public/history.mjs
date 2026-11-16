@@ -4,7 +4,11 @@
 /** Record collections kept in a trip document, with the singular kind used in the log. */
 export const COLLECTIONS = [["activities", "activity"], ["stays", "stay"], ["legs", "journey"], ["places", "place"], ["people", "traveler"], ["families", "group"]];
 const TRIP_FIELDS = ["title", "subtitle", "kind", "start", "end", "timezone"];
-const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+// Empty values and absent fields compare equal, so adding an optional field to the
+// trip format never makes old records look edited (in the log or to undo).
+const blank = v => v === null || v === undefined || v === "" || v === false || (Array.isArray(v) && !v.length);
+const tidy = v => v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().filter(k => !blank(v[k])).map(k => [k, v[k]])) : v;
+const same = (a, b) => JSON.stringify(tidy(a)) === JSON.stringify(tidy(b));
 const tripFields = trip => Object.fromEntries(TRIP_FIELDS.map(k => [k, trip[k] ?? null]));
 
 /**

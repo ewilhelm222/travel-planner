@@ -151,3 +151,30 @@ assert.ok(copy.activities.some(x => x.id === 'option-5'), 'the activity deleted 
 backup.trip.activities[0].title = 'tampered';
 await assert.rejects(restoreFromSnapshot(backup), /damaged or was edited/);
 console.log('PASS: organizer full backup download and a verified restore into a separate trip.');
+// Trip structure: places, stays and journeys save through the same revision check and are logged.
+{
+    const made = await (await req('/api/trips', 'POST', { template: 'thanksgiving' })).json(), sp = `/api/trip?id=${made.snapshot.trip.id}`;
+    const step = async (change, expect = 200) => { const r = await req(sp, 'PATCH', change); assert.equal(r.status, expect, await r.clone().text()); return r.json(); };
+    let rev = (await step({ action: 'place-add', revision: 1, place: { id: 'api-place', name: 'Synthetic lookout', localName: '示例' } })).snapshot.revision;
+    assert.equal((await req(sp, 'PATCH', { action: 'stay-add', revision: 1, stay: { id: 'late', placeId: 'api-place', start: '2026-11-26', end: '2026-11-27', participants: ['cedar'] } })).status, 409, 'a stale structure save is a conflict');
+    rev = (await step({ action: 'stay-add', revision: rev, stay: { id: 'api-stay', placeId: 'api-place', start: '2026-11-26', end: '2026-11-27', lodging: 'Synthetic hut', participants: ['cedar'] } })).snapshot.revision;
+    rev = (await step({ action: 'leg-add', revision: rev, leg: { id: 'api-leg', title: 'Synthetic drive', date: '2026-11-26', mode: 'Car', from: 'home', to: 'api-place', participants: ['cedar'] } })).snapshot.revision;
+    rev = (await step({ action: 'edit', revision: rev, activityId: 'option-2', patch: { placeId: 'api-place', address: 'PRIVATE ADDRESS', links: [{ label: 'Trail', url: 'https://example.com/PRIVATE-LINK' }] } })).snapshot.revision;
+    const refusedDelete = await step({ action: 'place-delete', revision: rev, placeId: 'api-place' }, 400);
+    assert.equal(refusedDelete.references.total, 3);
+    assert.equal((await req(sp, 'PATCH', { action: 'edit', revision: rev, activityId: 'option-2', patch: { links: [{ url: 'javascript:alert(1)' }] } })).status, 400);
+    const link2 = await (await req(`/api/share?id=${made.snapshot.trip.id}`, 'POST', { action: 'rotate', revision: rev })).json();
+    const guestView = JSON.stringify(await (await anon('/api/shared', { headers: { Authorization: `Share ${new URL(link2.url).hash.slice(1)}` } })).json());
+    assert.ok(!/PRIVATE|Synthetic hut|Synthetic drive|"links"/.test(guestView), 'address, links, lodging and journeys stay out of the guest view');
+    const moved = await step({ action: 'place-delete', revision: link2.revision, placeId: 'api-place', reassignTo: 'home' });
+    assert.ok(!moved.snapshot.trip.places.some(p => p.id === 'api-place'));
+    assert.equal(moved.snapshot.trip.activities.find(x => x.id === 'option-2').placeId, 'home');
+    assert.equal(moved.snapshot.trip.stays.find(x => x.id === 'api-stay').placeId, 'home');
+    const entries = (await (await req(`/api/history?id=${made.snapshot.trip.id}`)).json()).changes;
+    assert.equal(entries[0].records.length, 4, 'the place, the activity, the stay and the journey are all logged');
+    const back = await req(`/api/history?id=${made.snapshot.trip.id}`, 'POST', { action: 'undo', changeId: entries[0].id });
+    assert.equal(back.status, 200);
+    assert.equal((await back.json()).snapshot.trip.activities.find(x => x.id === 'option-2').placeId, 'api-place', 'undo restores the place and every reference');
+    assert.equal((await anon(sp, { method: 'PATCH', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'place-add', revision: 1, place: { id: 'x', name: 'x' } }) })).status, 401);
+    console.log('PASS: place, stay and journey edits with revision checks, explicit place reassignment, private address/links, and undo of a place delete.');
+}
