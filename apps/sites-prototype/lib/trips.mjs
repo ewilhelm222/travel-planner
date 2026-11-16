@@ -79,7 +79,7 @@ export function normalizeTrip(input, tripId) {
             throw new Error("Every activity needs a title.");
         if (a.date !== null && (!validDate(a.date) || a.date < input.start || a.date > input.end))
             throw new Error("Choose an activity day within this trip, or leave it unscheduled.");
-        return { id: a.id, title: text(a.title, 160), date: a.date, placeId: place(a.placeId), time: text(a.time, 80), order: Number.isSafeInteger(a.order) ? Math.max(0, Math.min(1000, a.order)) : 0, fixed: timingOf(a) === "set", timing: timingOf(a), optional: a.optional === true, highlight: a.highlight === true, participants: participants(a.participants), notes: text(a.notes), address: text(a.address, 500), guestNotes: text(a.guestNotes), guestLocation: text(a.guestLocation, 500), links: normalizeLinks(a.links), sourceKind: ["tentative", "synthetic", "entered"].includes(a.sourceKind) ? a.sourceKind : "entered" };
+        return { id: a.id, title: text(a.title, 160), date: a.date, placeId: place(a.placeId), time: text(a.time, 80), order: Number.isSafeInteger(a.order) ? Math.max(0, Math.min(1000, a.order)) : 0, fixed: timingOf(a) === "set", timing: timingOf(a), optional: a.optional === true, highlight: a.highlight === true, participants: participants(a.participants), notes: text(a.notes), address: text(a.address, 500), guestNotes: text(a.guestNotes), guestLocation: text(a.guestLocation, 500), links: normalizeLinks(a.links), imageId: id(a.imageId) ? a.imageId : "", sourceKind: ["tentative", "synthetic", "entered"].includes(a.sourceKind) ? a.sourceKind : "entered" };
     }));
     const legs = unique(list(input.legs || [], 200).map(l => {
         if (!validDate(l.date) || l.date < input.start || l.date > input.end)
@@ -229,7 +229,7 @@ export function applyTripChange(trip, change) {
         }
         else {
             const p = change.patch && typeof change.patch === "object" && !Array.isArray(change.patch) ? { ...change.patch } : change.patch;
-            const allowed = ["title", "notes", "address", "links", "guestNotes", "guestLocation", "time", "date", "order", "placeId", "fixed", "timing", "optional", "highlight", "participants"];
+            const allowed = ["title", "notes", "address", "links", "guestNotes", "guestLocation", "time", "date", "order", "placeId", "fixed", "timing", "optional", "highlight", "participants", "imageId"];
             if (!p || typeof p !== "object" || Array.isArray(p) || !Object.keys(p).length || Object.keys(p).some(k => !allowed.includes(k)))
                 throw new Error("Unsupported edit.");
             // A timing level, when sent, decides `fixed`. A page from before timing levels sends only `fixed`.

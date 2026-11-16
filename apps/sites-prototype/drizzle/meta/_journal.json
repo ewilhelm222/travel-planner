@@ -29,6 +29,13 @@
       "when": 1794794124689,
       "tag": "0003_record_revisions",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794873225474,
+      "tag": "0004_card_pictures",
+      "breakpoints": true
     }
   ]
 }

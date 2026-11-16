@@ -111,6 +111,11 @@ Sharing starts disabled. Existing export wrappers with a `trip` property are
 accepted. File import through the Chrome extension requires file-URL access;
 Paste JSON provides a working alternative.
 
+Card pictures (November 17, not yet deployed) live in their own table,
+`planner_images`, added by migration `0004_card_pictures.sql`; see
+[pictures.md](pictures.md). They are not part of the trip document, the change
+log, the exports or the guest view.
+
 ## Verification and remaining work
 
 The original multi-event release passed eighteen Node tests; the traveler release
