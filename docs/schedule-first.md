@@ -1,7 +1,8 @@
 # Schedule-first phone layout
 
-Status: November 13, 2026. Built and checked locally with synthetic data; not yet
-deployed to the Site.
+Status: November 13, 2026; merged into `main` on November 15. Built and checked
+locally with synthetic data. Whether it is live on the Site is not recorded in
+this repository; see [release provenance](multi-events.md#release-provenance).
 
 Most phone visits are to check what is happening, so on a phone (760 px wide or
 less) the signed-in planner and the guest link now lead with the schedule.

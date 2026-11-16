@@ -4,13 +4,26 @@ A private, collaborative travel planner for trips with family and friends. Plan 
 
 ## Status
 
-The planner now supports multiple trips and events, independent dated activities,
-unscheduled ideas, optional activity choices, participant filters, a phone agenda,
-JSON import/export, offline reading, organizer-managed guest links, and a traveler
+The planner supports multiple trips and events, independent dated activities,
+unscheduled ideas, optional activity choices, participant filters, JSON
+import/export, offline reading, organizer-managed guest links, and a traveler
 roster with family/group and individual activity assignments. The adopted visual
 system, also used by the published interface, is **Night Market**.
 
-[Open the planner](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site) · [Current implementation and access status](docs/multi-events.md) · [Managing travelers](docs/travelers.md) · [Schedule-first phone layout](docs/schedule-first.md) · [Editors](docs/editors.md) · [Source](apps/sites-prototype)
+Merged into `main` (November 12–15, 2026): **drag-and-drop** moves on desktop
+and phone, the **schedule-first** phone layout, and **editors** the organizer
+can add by sign-in email.
+
+Opened as pull requests on November 16, 2026, in this order and not yet
+deployed: [the safety net](docs/safety-net.md) (History, undo, remove, delete
+and restore a trip, full backup), [editing places, stays and
+journeys](docs/structure.md), [per-record
+revisions](docs/per-record-revisions.md), [moving a stay with a
+preview](docs/stay-move.md), [schematic maps](docs/maps.md), and [layout
+changes](docs/layout.md). A daily automatic backup is
+[proposed](docs/backup-proposal.md) and not enabled.
+
+[Open the planner](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site) · [Current implementation and access status](docs/multi-events.md) · [What is deployed](docs/multi-events.md#release-provenance) · [Managing travelers](docs/travelers.md) · [Drag-and-drop](docs/drag-drop.md) · [Schedule-first phone layout](docs/schedule-first.md) · [Editors and what they may change](docs/editors.md) · [Source](apps/sites-prototype)
 
 The tentative China draft and Camp Earnest event are stored in the private app,
 with synthetic additions labeled. Real itinerary datasets and guest-link tokens
@@ -24,4 +37,4 @@ See [Waypoint — Night Market: current design direction and visual references](
 
 See [the product brief, architecture, and implementation plan](docs/plan.md) for confirmed requirements, proposed behavior, open decisions, and acceptance criteria.
 
-The first release gate is deciding the China-use mode and testing the actual travel connections. A saved-file/phone trial and external-user check remain required. Review the parallel-stay board before extending full trip editing and maps.
+The first release gate is still deciding the China-use mode and testing the actual travel connections. A saved-file/phone trial, an external-user check and a backup-restore trial on the hosted Site remain required. None of the work above changes that, and nothing here claims China readiness.
