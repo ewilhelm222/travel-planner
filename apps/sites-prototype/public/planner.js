@@ -1,6 +1,6 @@
 (async () => {
     'use strict';
-    const { escape, dateLabel, days, preferredDay, board, dayChooser, isExample, ideaCards, timingOf, TIMINGS, TIMING_LABELS, PHONE_QUERY, dayInView, pressDay } = await import('/board.mjs');
+    const { escape, dateLabel, days, preferredDay, board, dayChooser, isExample, ideaCards, timingOf, TIMINGS, TIMING_LABELS, PHONE_QUERY, dayInView, pressDay, fitColumns } = await import('/board.mjs');
     const { usefulFilterChoices, matchesSelection, defaultParticipants, includesPerson, peopleOf, isWholeTripGroup, participantRecord, participantReferences, referenceSummary } = await import('/participants.mjs');
     const { fieldChanges } = await import('/history.mjs');
     const { baseFor, recordKey } = await import('/revisions.mjs');
@@ -106,7 +106,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v33');
+            const cache = await caches.open('waypoint-shell-v34');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -243,6 +243,7 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
 <dialog id="roster-dialog" class="form-dialog" aria-labelledby="roster-title"></dialog><dialog id="history-dialog" aria-labelledby="history-title"></dialog><dialog id="stay-view" aria-labelledby="stay-view-title"></dialog><dialog id="structure-dialog" class="form-dialog" aria-labelledby="structure-title"></dialog><dialog id="archived-dialog" aria-labelledby="archived-title"></dialog><dialog id="editors-dialog" class="form-dialog" aria-labelledby="editors-title"></dialog><dialog id="create-dialog" class="form-dialog" aria-labelledby="create-title"><form id="create-form"><h2 id="create-title">New trip or event</h2><label>Name<input name="title" required maxlength="160"></label><label>Subtitle <small>(optional; shown under the name, and to guests)</small><input name="subtitle" maxlength="500"></label><div class="field-row"><label>First day<input type="date" name="start" required></label><label>Last day<input type="date" name="end" required></label></div><label>Time zone<input name="timezone" value="America/Los_Angeles" required></label><label>Kind<select name="kind"><option value="event">Gathering / event</option><option value="trip">Trip</option></select></label><p id="create-error" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button danger" id="trip-delete" hidden>Delete this trip…</button><button type="button" class="secondary" data-close="create-dialog">Cancel</button><button class="primary" id="create-submit">Create</button></div></form></dialog>
 <dialog id="import-dialog" class="form-dialog" aria-labelledby="import-title"><form id="import-form"><h2 id="import-title">Import a trip or event</h2><label>Trip JSON<textarea id="import-json" rows="14" required maxlength="250000" spellcheck="false"></textarea></label><p>Creates a separate private trip. Guest sharing starts disabled. A full backup file is checked for damage first.</p><p id="import-error" role="alert"></p><div class="dialog-actions"><button type="button" class="secondary" data-close="import-dialog">Cancel</button><button class="primary">Import trip</button></div></form></dialog><dialog id="share-dialog" aria-labelledby="share-title"><h2 id="share-title">A link for your guests</h2><p>Anyone holding this link can browse the dated activities and the unscheduled ideas, with group names, opted-in traveler display names, guest descriptions, and meeting points. They cannot edit.</p><p>Private planning notes, lodging details, journey notes, source links, and editor identities are excluded. So is anything marked “Example · not a real plan”. Downloaded copies cannot be recalled.</p><div id="share-body"></div><p id="share-error" role="alert"></p><div class="dialog-actions"><button class="secondary" data-close="share-dialog">Close</button></div></dialog>`;
         status();
+        fitColumns($('#itinerary'));
         if (t) {
             const selected = document.querySelector(`[data-date="${state.day}"]`);
             if (selected)
@@ -970,6 +971,7 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
                 $('.board-wrap')?.classList.toggle('ideas-closed', state.ideasClosed);
                 b.setAttribute('aria-expanded', String(!state.ideasClosed));
                 b.textContent = ideasToggleLabel(state.snapshot.trip);
+                fitColumns($('#itinerary'));
             }
             if (b.id === 'density') {
                 state.denseChoice = !state.dense;
@@ -1362,6 +1364,7 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
     if ('serviceWorker' in navigator)
         navigator.serviceWorker.addEventListener('controllerchange', readiness);
     window.matchMedia?.(PHONE_QUERY).addEventListener?.('change', relayout);
+    window.addEventListener('resize', () => fitColumns($('#itinerary')));
     document.addEventListener('close', () => { if (state.layoutStale) relayout(); }, true);
     restore();
     state.online = navigator.onLine;
