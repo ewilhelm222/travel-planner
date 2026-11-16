@@ -1,9 +1,10 @@
 # Travel planner guidance
 
-Read `docs/design.md` before visual or interaction changes. The organizer
-adopted **Waypoint — Departure Board** on November 11, 2026. Use
-`docs/design/departure/tokens.css` and its references for ongoing implementation.
-The earlier Field Atlas study remains archived in `docs/design-field-atlas.md`.
+Read `docs/design-night-market.md` before visual or interaction changes. The
+organizer adopted **Waypoint — Night Market** on November 11, 2026 and it is
+applied to the app. Use `docs/design/night-market/tokens.css` and its references
+for ongoing implementation. The superseded Departure Board study remains in
+`docs/design.md` and the earlier Field Atlas study in `docs/design-field-atlas.md`.
 
 `docs/plan.md` governs confirmed requirements and data behavior. Design studies
 illustrate proposals; they do not establish completed features or approved

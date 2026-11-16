@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Waypoint Night Market: an interactive visual design reference with a fictional itinerary.">
+  <title>Waypoint — Night Market design reference</title>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="reference.css">
+</head>
+<body>
+  <a class="skip" href="#itinerary">Skip to itinerary</a>
+  <div class="study-bar"><span>NIGHT MARKET <span class="study-separator">○</span> DESIGN REFERENCE · FICTIONAL TRIP</span><button id="offline-demo" aria-pressed="false">Preview offline state</button></div>
+  <div class="workspace">
+    <header class="topbar">
+      <a class="wordmark" href="reference.html" aria-label="Waypoint design reference"><span class="wordmark-ring" aria-hidden="true"></span>Waypoint</a>
+      <span class="edition">Lose each other all day. Find each other at night.</span>
+      <div class="account"><button id="focus-plan" class="text-action" aria-pressed="false">Focus on the plan</button><span class="private">● Private trip</span><span class="avatar" aria-label="Sample organizer">C</span></div>
+    </header>
+    <main>
+      <section class="poster" aria-labelledby="trip-title">
+        <div class="poster-copy">
+          <p class="eyebrow">Japan · 12—14 June 2027 · three families</p>
+          <h1 id="trip-title">Split up.<br><em>Meet up.</em></h1>
+          <p class="subtitle">Kyoto <span class="x">×</span> Osaka <span class="local">京都 × 大阪</span></p>
+          <ul class="trip-facts"><li>3 nights</li><li>2 cities</li><li>1 table, everyone</li></ul>
+        </div>
+        <figure class="crossing" aria-hidden="true">
+          <svg viewBox="0 0 520 420">
+            <defs>
+              <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="14"/></filter>
+            </defs>
+            <circle cx="268" cy="214" r="150" fill="none" stroke="#6b3df5" stroke-width="1.5"/>
+            <circle cx="268" cy="214" r="196" fill="none" stroke="#6b3df5" stroke-width="1.5" stroke-dasharray="3 12"/>
+            <!-- Cedar + Maple ribbon: Kyoto, looping out and back -->
+            <path d="M40 330 C120 300 150 180 268 214 S420 150 480 60" fill="none" stroke="#3ee6c9" stroke-width="22" stroke-linecap="round"/>
+            <!-- Birch ribbon: Osaka, crossing to the dinner -->
+            <path d="M60 70 C150 90 170 240 268 214 S400 330 470 360" fill="none" stroke="#cdb8ff" stroke-width="22" stroke-linecap="round"/>
+            <circle cx="268" cy="214" r="54" fill="#ff3d9a" filter="url(#soft)" opacity=".8"/>
+            <circle cx="268" cy="214" r="30" fill="#ff3d9a"/>
+            <circle cx="268" cy="214" r="11" fill="#2d1480"/>
+            <circle cx="40" cy="330" r="14" fill="#2d1480" stroke="#3ee6c9" stroke-width="6"/>
+            <circle cx="60" cy="70" r="14" fill="#2d1480" stroke="#cdb8ff" stroke-width="6"/>
+            <circle cx="480" cy="60" r="14" fill="#2d1480" stroke="#3ee6c9" stroke-width="6"/>
+            <circle cx="470" cy="360" r="14" fill="#2d1480" stroke="#cdb8ff" stroke-width="6"/>
+            <text x="84" y="376" class="art-label">KYOTO</text>
+            <text x="92" y="56" class="art-label">OSAKA</text>
+            <text x="150" y="300" class="art-label art-label-magenta">THE RENDEZVOUS · 18:30</text>
+          </svg>
+          <figcaption>Paths cross once a day. That’s the plan.</figcaption>
+        </figure>
+      </section>
+
+      <section class="stays" aria-label="Parallel family stays">
+        <p class="stay"><span class="family-name cedar">Cedar + Maple</span><span class="ribbon cedar-ribbon"></span><strong>Kyoto</strong><span class="stay-dates">12–14 Jun</span></p>
+        <p class="stay"><span class="family-name birch">Birch</span><span class="ribbon birch-ribbon"></span><strong>Osaka</strong><span class="stay-dates">12–14 Jun</span></p>
+        <button class="pill ghost online-action" id="move-preview">Preview a stay move</button>
+      </section>
+
+      <div class="toolbar">
+        <nav class="views" aria-label="Itinerary view"><button id="board-tab" aria-pressed="true">Itinerary</button><button id="route-tab" aria-pressed="false">Route sketch</button></nav>
+        <div class="filter">
+          <label class="filter-label" for="family-filter">Travelers <select id="family-filter"><option value="all">Everyone</option><option value="cedar">Cedar family</option><option value="maple">Maple family</option><option value="birch">Birch family</option></select></label>
+          <div class="family-pills" role="group" aria-label="Quick traveler filter"><button data-family="all" aria-pressed="true">Everyone</button><button data-family="cedar" aria-pressed="false"><i class="dot cedar-dot"></i>Cedar</button><button data-family="maple" aria-pressed="false"><i class="dot maple-dot"></i>Maple</button><button data-family="birch" aria-pressed="false"><i class="dot birch-dot"></i>Birch</button></div>
+        </div>
+        <button class="pill primary online-action" id="save-info">↓ Reading copy</button>
+      </div>
+      <div id="offline-banner" class="offline-banner" hidden><strong>Offline · reading copy</strong><span>Illustrative download: 11 Nov 2026, 9:40 pm PST · revision 12. Connect to make changes.</span></div>
+      <div class="board-caption"><p id="filter-status" role="status">All three families · shared plans appear once</p><span>Times are local to each activity</span></div>
+
+      <nav class="day-rail" aria-label="Choose a day">
+        <label class="sr-only" for="day-filter">Day</label>
+        <select id="day-filter" class="sr-only-select"><option value="12">Saturday 12 June</option><option value="13">Sunday 13 June</option><option value="14">Monday 14 June</option></select>
+        <button class="medallion" data-day="12" aria-pressed="false"><span class="medallion-day">Sat</span><span class="medallion-num">12</span></button>
+        <button class="medallion" data-day="13" aria-pressed="true"><span class="medallion-day">Sun</span><span class="medallion-num">13</span><span class="medallion-mark" aria-label="Shared dinner">●</span></button>
+        <button class="medallion" data-day="14" aria-pressed="false"><span class="medallion-day">Mon</span><span class="medallion-num">14</span></button>
+        <span class="rail-hint">Phones show one day · desktops scroll a date window</span>
+      </nav>
+
+      <section id="itinerary" class="board" aria-label="Fictional itinerary by date">
+        <section class="day" data-day="12">
+          <header class="day-header"><span class="day-num">12</span><div><p class="day-name">Saturday</p><p class="day-note">Arrive & settle in</p></div></header>
+          <section class="city-lane" data-families="cedar maple"><div class="city-heading"><h3>Kyoto <span class="local">京都</span></h3><span class="lodging">Cedar + Maple sleep here</span></div>
+            <button class="activity" data-families="cedar maple" data-detail="market"><span class="card-meta"><span class="when">Afternoon</span><span class="state flexible">○ Flexible</span></span><strong>Eat your way through Kyoto</strong><span class="card-description">Wander the market. Follow whatever smells good.</span><span class="card-bottom"><span class="participants"><span class="chip cedar">Cedar</span><span class="chip maple">Maple</span></span><span class="card-arrow">→</span></span></button>
+          </section>
+          <section class="city-lane" data-families="birch"><div class="city-heading"><h3>Osaka <span class="local">大阪</span></h3><span class="lodging">Birch sleeps here</span></div>
+            <button class="activity" data-families="birch" data-detail="arrival"><span class="card-meta"><span class="when">16:00</span><span class="state flexible">○ Flexible</span></span><strong>Touch down. Head out.</strong><span class="card-description">An easy evening near the hotel.</span><span class="card-bottom"><span class="participants"><span class="chip birch">Birch</span></span><span class="card-arrow">→</span></span></button>
+          </section>
+        </section>
+        <section class="day" data-day="13">
+          <header class="day-header"><span class="day-num">13</span><div><p class="day-name">Sunday</p><p class="day-note">Apart by day, together at night</p></div></header>
+          <section class="city-lane" data-families="cedar maple birch"><div class="city-heading"><h3>Kyoto <span class="local">京都</span></h3><span class="lodging">Cedar + Maple sleep here</span></div>
+            <button class="activity" data-families="cedar" data-detail="walk"><span class="card-meta"><span class="when">Morning</span><span class="state flexible">○ Flexible</span></span><strong>Take the scenic route</strong><span class="card-description">A garden walk, with time to get a little lost.</span><span class="card-bottom"><span class="participants"><span class="chip cedar">Cedar</span></span><span class="card-arrow">→</span></span></button>
+            <button class="activity shared fixed" data-families="cedar maple birch" data-detail="dinner"><span class="shared-label">● The rendezvous</span><span class="card-meta"><span class="when">18:30</span><span class="state booked">■ Fixed booking</span></span><strong>Everyone. One table.</strong><span class="card-description">One shared plan. Bring stories from your day.</span><span class="card-bottom"><span class="participants"><span class="chip cedar">Cedar</span><span class="chip maple">Maple</span><span class="chip birch">Birch</span></span><span class="card-arrow">→</span></span></button>
+            <button class="activity optional" data-families="cedar maple birch" data-detail="lights"><span class="card-meta"><span class="when">20:30</span><span class="state flexible">○ Optional · after dinner</span></span><strong>Walk into the light room</strong><span class="card-description">Whoever still has energy. Nobody has to.</span><span class="card-bottom"><span class="participants"><span class="chip cedar">Cedar</span><span class="chip maple">Maple</span><span class="chip birch">Birch</span></span><span class="card-arrow">→</span></span></button>
+          </section>
+          <section class="city-lane" data-families="birch"><div class="city-heading"><h3>Osaka <span class="local">大阪</span></h3><span class="lodging">Birch sleeps here</span></div>
+            <p class="journey"><span class="journey-icon" aria-hidden="true">⤭</span><span><strong>Osaka → Kyoto → Osaka</strong><br>Birch · join the Kyoto dinner; return to Osaka.<br><span class="muted">Times to confirm · travel plan</span></span></p>
+          </section>
+        </section>
+        <section class="day" data-day="14">
+          <header class="day-header"><span class="day-num">14</span><div><p class="day-name">Monday</p><p class="day-note">Leave some space</p></div></header>
+          <section class="city-lane" data-families="cedar maple"><div class="city-heading"><h3>Kyoto <span class="local">京都</span></h3><span class="lodging">Cedar + Maple sleep here</span></div>
+            <button class="activity fixed" data-families="maple" data-detail="museum"><span class="card-meta"><span class="when">10:00</span><span class="state booked">■ Fixed booking</span></span><strong>Make something.</strong><span class="card-description">A small craft workshop. Sample booking only.</span><span class="card-bottom"><span class="participants"><span class="chip maple">Maple</span></span><span class="card-arrow">→</span></span></button>
+            <div class="open-space" data-families="cedar"><span aria-hidden="true">○</span><p>A little unplanned time.</p><small>Cedar · an open afternoon</small></div>
+          </section>
+          <section class="city-lane" data-families="birch"><div class="city-heading"><h3>Osaka <span class="local">大阪</span></h3><span class="lodging">Birch sleeps here</span></div>
+            <button class="activity" data-families="birch" data-detail="water"><span class="card-meta"><span class="when">Afternoon</span><span class="state flexible">○ Flexible</span></span><strong>Follow the river</strong><span class="card-description">A riverside stroll and a long lunch.</span><span class="card-bottom"><span class="participants"><span class="chip birch">Birch</span></span><span class="card-arrow">→</span></span></button>
+          </section>
+        </section>
+      </section>
+
+      <section id="route-view" class="route-view" hidden aria-label="Schematic route, not navigation">
+        <p class="eyebrow">A sketch of the journey</p>
+        <h2>Two bases. One crossing.</h2>
+        <p class="muted-light">Planned connections · no route or journey-time estimates</p>
+        <svg viewBox="0 0 800 260" role="img" aria-label="Kyoto hosts Cedar and Maple. Birch stays in Osaka and visits Kyoto for the shared Sunday dinner.">
+          <path d="M120 120H680" stroke="#3ee6c9" stroke-width="10" stroke-linecap="round"/>
+          <path d="M680 140 Q400 290 120 140" stroke="#cdb8ff" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="2 14"/>
+          <circle cx="120" cy="120" r="18" fill="#140a2e" stroke="#3ee6c9" stroke-width="8"/>
+          <circle cx="680" cy="120" r="18" fill="#140a2e" stroke="#cdb8ff" stroke-width="8"/>
+          <circle cx="120" cy="120" r="34" fill="none" stroke="#ff3d9a" stroke-width="3"/>
+          <text x="80" y="70" class="diagram-city">Kyoto 京都</text>
+          <text x="640" y="70" class="diagram-city">Osaka 大阪</text>
+          <text x="300" y="104" class="diagram-small">← Birch joins dinner in Kyoto · 13 June 18:30</text>
+          <text x="300" y="236" class="diagram-small">→ Return to Osaka · times to confirm</text>
+        </svg>
+        <p id="route-filter-status"></p>
+        <p class="muted-light">Routes remain as trip context when travelers are filtered. The text above describes the selected family.</p>
+      </section>
+
+      <aside class="ideas">
+        <div class="ideas-copy"><span class="idea-mark" aria-hidden="true">○</span><div><h2>Not on the itinerary. Yet.</h2><p>Good trips need a few wild cards.</p></div></div>
+        <div class="idea-tags"><span>A late ramen counter</span><span>Night walk by the river</span><span>A bookshop detour</span></div>
+        <button class="pill ghost online-action" id="idea-info">Explore ideas</button>
+      </aside>
+
+      <footer><span>Waypoint <span class="x">×</span> Make plans. Take detours.</span><span>Design study · synthetic data · no live edits</span></footer>
+    </main>
+  </div>
+  <dialog id="detail" aria-labelledby="detail-title"><div class="drawer-top"><span class="eyebrow" id="detail-eyebrow">THE PLAN, UP CLOSE</span><button id="close-detail" aria-label="Close detail">×</button></div><h2 id="detail-title"></h2><div id="detail-body"></div><form method="dialog"><button class="pill primary">Back to the trip</button></form></dialog>
+  <script src="reference.js"></script>
+</body>
+</html>

@@ -7,8 +7,8 @@ A private, collaborative travel planner for trips with family and friends. Plan 
 The planner now supports multiple trips and events, independent dated activities,
 unscheduled ideas, optional activity choices, participant filters, a phone agenda,
 JSON import/export, offline reading, organizer-managed guest links, and a traveler
-roster with family/group and individual activity assignments. The published
-interface preserves the newer **Night Market** styling from the Site source.
+roster with family/group and individual activity assignments. The adopted visual
+system, also used by the published interface, is **Night Market**.
 
 [Open the planner](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site) · [Current implementation and access status](docs/multi-events.md) · [Managing travelers](docs/travelers.md) · [Schedule-first phone layout](docs/schedule-first.md) · [Editors](docs/editors.md) · [Source](apps/sites-prototype)
 
@@ -20,7 +20,7 @@ remain protected by the application's server-side authorization.
 
 ## Project plan
 
-See [Design studies and visual references](docs/design.md) for the photo-inspired visual system, responsive layouts, reusable tokens, and interaction guidance. Start there before changing the planner's design.
+See [Waypoint — Night Market: current design direction and visual references](docs/design-night-market.md) for the photo-inspired visual system, responsive layouts, reusable tokens, and interaction guidance. Start there before changing the planner's design. Two earlier studies are kept for comparison: [Departure Board](docs/design.md) and [Field Atlas](docs/design-field-atlas.md).
 
 See [the product brief, architecture, and implementation plan](docs/plan.md) for confirmed requirements, proposed behavior, open decisions, and acceptance criteria.
 
