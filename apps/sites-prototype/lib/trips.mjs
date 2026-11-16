@@ -1,5 +1,6 @@
 import { isWholeTripGroup, participantReferences, referenceSummary } from "../public/participants.mjs";
-import { moveActivity } from "../public/move.mjs";
+import { moveActivity, FIXED_MOVE_ERROR } from "../public/move.mjs";
+import { timingOf, TIMINGS } from "../public/board.mjs";
 import { normalizeLinks, placeReferences, placeReferenceSummary } from "../public/structure.mjs";
 import { applyStayMove } from "../public/stay-move.mjs";
 import { normalizePlaceGeo } from "../public/maps.mjs";
@@ -68,7 +69,7 @@ export function normalizeTrip(input, tripId) {
             throw new Error("Every activity needs a title.");
         if (a.date !== null && (!validDate(a.date) || a.date < input.start || a.date > input.end))
             throw new Error("Choose an activity day within this trip, or leave it unscheduled.");
-        return { id: a.id, title: text(a.title, 160), date: a.date, placeId: place(a.placeId), time: text(a.time, 80), order: Number.isSafeInteger(a.order) ? Math.max(0, Math.min(1000, a.order)) : 0, fixed: a.fixed === true, optional: a.optional === true, highlight: a.highlight === true, participants: participants(a.participants), notes: text(a.notes), address: text(a.address, 500), guestNotes: text(a.guestNotes), guestLocation: text(a.guestLocation, 500), links: normalizeLinks(a.links), sourceKind: ["tentative", "synthetic", "entered"].includes(a.sourceKind) ? a.sourceKind : "entered" };
+        return { id: a.id, title: text(a.title, 160), date: a.date, placeId: place(a.placeId), time: text(a.time, 80), order: Number.isSafeInteger(a.order) ? Math.max(0, Math.min(1000, a.order)) : 0, fixed: timingOf(a) === "set", timing: timingOf(a), optional: a.optional === true, highlight: a.highlight === true, participants: participants(a.participants), notes: text(a.notes), address: text(a.address, 500), guestNotes: text(a.guestNotes), guestLocation: text(a.guestLocation, 500), links: normalizeLinks(a.links), sourceKind: ["tentative", "synthetic", "entered"].includes(a.sourceKind) ? a.sourceKind : "entered" };
     }));
     const legs = unique(list(input.legs || [], 200).map(l => {
         if (!validDate(l.date) || l.date < input.start || l.date > input.end)
@@ -221,12 +222,18 @@ export function applyTripChange(trip, change) {
             next.activities = next.activities.filter(x => x.id !== a.id);
         }
         else {
-            const p = change.patch;
-            const allowed = ["title", "notes", "address", "links", "guestNotes", "guestLocation", "time", "date", "order", "placeId", "fixed", "optional", "highlight", "participants"];
+            const p = change.patch && typeof change.patch === "object" && !Array.isArray(change.patch) ? { ...change.patch } : change.patch;
+            const allowed = ["title", "notes", "address", "links", "guestNotes", "guestLocation", "time", "date", "order", "placeId", "fixed", "timing", "optional", "highlight", "participants"];
             if (!p || typeof p !== "object" || Array.isArray(p) || !Object.keys(p).length || Object.keys(p).some(k => !allowed.includes(k)))
                 throw new Error("Unsupported edit.");
+            // A timing level, when sent, decides `fixed`. A page from before timing levels sends only `fixed`.
+            if ("timing" in p) {
+                if (!TIMINGS.includes(p.timing))
+                    throw new Error("Choose how firm the timing is.");
+                p.fixed = p.timing === "set";
+            }
             if (a.fixed && p.fixed !== false && (("date" in p && p.date !== a.date) || ("time" in p && p.time !== a.time)))
-                throw new Error("Keep this fixed booking's date and time, or explicitly make it flexible first.");
+                throw new Error(FIXED_MOVE_ERROR);
             Object.assign(a, p);
         }
     }
@@ -323,7 +330,7 @@ export function publicTrip(trip) {
     }
     // Examples (invented items) are never sent to guests: an example must not be read as a plan.
     // Unscheduled ideas are shared too (decided November 16, 2026), with the same limited fields.
-    const activities = trip.activities.filter(a => a.sourceKind !== "synthetic").map(a => ({ id: a.id, title: a.title, date: a.date, placeId: a.placeId, time: a.time, order: a.order, fixed: a.fixed, optional: a.optional, highlight: a.highlight, participants: [...new Set(a.participants.map(guestId))], notes: a.guestNotes, address: a.guestLocation, sourceKind: a.sourceKind }));
+    const activities = trip.activities.filter(a => a.sourceKind !== "synthetic").map(a => ({ id: a.id, title: a.title, date: a.date, placeId: a.placeId, time: a.time, order: a.order, fixed: timingOf(a) === "set", timing: timingOf(a), optional: a.optional, highlight: a.highlight, participants: [...new Set(a.participants.map(guestId))], notes: a.guestNotes, address: a.guestLocation, sourceKind: a.sourceKind }));
     return { schemaVersion: 2, id: 'guest-view', title: trip.title, subtitle: trip.subtitle, kind: trip.kind, start: trip.start, end: trip.end, timezone: trip.timezone,
         families, people, places: trip.places.map(p => ({ id: p.id, name: p.name, localName: p.localName })), stays: [], legs: [], activities };
 }
@@ -350,4 +357,11 @@ export function thanksgivingExample() {
         ["2026-11-29", "Morning", "Breakfast & goodbyes", "Flexible departures after breakfast.", false]
     ];
     return normalizeTrip({ title: "Thanksgiving, together", subtitle: "Synthetic planning example · choose what sounds good each day", kind: "event", start: "2026-11-25", end: "2026-11-29", timezone: "America/Los_Angeles", families: participants.map((id, i) => ({ id, name: ["Cedar family", "Maple family", "Birch family"][i], color: ["green", "orange", "blue"][i] })), places: [{ id: "home", name: "Our shared base · location to confirm" }], stays: [{ id: "shared-base", name: "Everyone under one roof", placeId: "home", start: "2026-11-25", end: "2026-11-30", lodging: "Synthetic shared house · actual location to confirm", note: "All families stay together. Activities are choices, not attendance commitments.", participants }], legs: [], activities: rows.map(([date, time, title, description, optional], i) => ({ id: `option-${i + 1}`, date, time, title, placeId: "home", order: i, participants, fixed: false, optional, highlight: title === "Thanksgiving dinner", notes: "Synthetic example. Replace before the real gathering.", guestNotes: description, guestLocation: "Meeting point to confirm", sourceKind: "synthetic" })) }, "thanksgiving-example");
+}
+// A trip as stored before timing levels existed reads with each activity's level filled in, so the first
+// save after the upgrade logs only the record that was really changed.
+export function withTiming(trip) {
+    if (!Array.isArray(trip?.activities) || trip.activities.every(a => a.timing))
+        return trip;
+    return { ...trip, activities: trip.activities.map(a => a.timing ? a : { ...a, timing: timingOf(a) }) };
 }

@@ -1,6 +1,18 @@
 import { matchesSelection, participantRecord } from "./participants.mjs";
 // One day at a time (phone, upright) or days side by side. Must match the media queries in planner.css.
 export const PHONE_QUERY = '(max-width: 559px), (max-width: 760px) and (orientation: portrait)';
+// How firm an activity's timing is. "set": day and time are protected (stored as `fixed`). "day": on that day, time
+// loose. "anytime": any day of the stay, whether it sits in Ideas or is pencilled onto a day. `fixed` decides set or
+// not; `timing` only tells "day" from "anytime". Records saved before this existed read as "set" or "day".
+export const TIMINGS = ['set', 'day', 'anytime'];
+export const TIMING_LABELS = { set: 'Set time', day: 'That day', anytime: 'Any day of the stay' };
+export function timingOf(a) {
+    if (!a?.date)
+        return 'anytime';
+    if (a.fixed === true)
+        return 'set';
+    return a.timing === 'anytime' ? 'anytime' : 'day';
+}
 export const escape = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 export const dateLabel = (date, options = { month: "short", day: "numeric" }) => new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", ...options });
 export function days(trip) {
@@ -24,8 +36,8 @@ export function preferredDay(trip, previous) {
 // One card for planner and guest. State is always in words: a whole-group activity, an example that is
 // not a real plan, a fixed booking, optional. An ordinary planned activity carries no extra label.
 export function card(a, trip, guest = false) {
-    const where = guest ? a.address : a.guestLocation, example = a.sourceKind === 'synthetic';
-    return `<button class="activity ${a.participants.length > 1 ? 'shared' : ''} ${a.fixed ? 'reserved' : ''} ${a.highlight ? 'rendezvous' : ''} ${example ? 'example' : ''}" data-detail="${escape(a.id)}">${a.highlight ? '<span class="shared-label"><span class="shared-dot" aria-hidden="true">●</span> Whole-group activity</span>' : ''}${example ? '<span class="example-label">Example · not a real plan</span>' : a.sourceKind === 'tentative' ? '<span class="example-label">Tentative · to confirm</span>' : ''}<span class="card-meta"><span>${escape(a.time || (a.date ? 'Time to confirm' : 'No day yet'))}</span>${a.fixed ? '<span class="booking">■ Fixed booking</span>' : ''}</span><strong>${escape(a.title)}</strong>${where ? `<span class="card-where">Meet · ${escape(where)}</span>` : ''}<span class="card-note">${escape(guest ? a.notes : (a.guestNotes || a.notes))}</span><span class="card-bottom"><span class="people">${a.optional ? '<span class="optional-chip">Optional</span>' : ''}${a.participants.map(id => { const f = participantRecord(trip, id); return f ? `<span class="person ${escape(f.color)}">${escape(f.name)}</span>` : ''; }).join('')}</span><span class="open-card" aria-hidden="true">→</span></span></button>`;
+    const where = guest ? a.address : a.guestLocation, example = a.sourceKind === 'synthetic', timing = timingOf(a);
+    return `<button class="activity ${a.participants.length > 1 ? 'shared' : ''} ${a.fixed ? 'reserved' : ''} ${a.highlight ? 'rendezvous' : ''} ${example ? 'example' : ''}" data-detail="${escape(a.id)}">${a.highlight ? '<span class="shared-label"><span class="shared-dot" aria-hidden="true">●</span> Whole-group activity</span>' : ''}${example ? '<span class="example-label">Example · not a real plan</span>' : a.sourceKind === 'tentative' ? '<span class="example-label">Tentative · to confirm</span>' : ''}<span class="card-meta"><span>${escape(a.time || (!a.date ? 'No day yet' : timing === 'anytime' ? 'Any time' : 'Time to confirm'))}</span>${timing === 'set' ? '<span class="booking">■ Set time</span>' : timing === 'anytime' && a.date ? '<span class="anyday">Any day</span>' : ''}</span><strong>${escape(a.title)}</strong>${where ? `<span class="card-where">Meet · ${escape(where)}</span>` : ''}<span class="card-note">${escape(guest ? a.notes : (a.guestNotes || a.notes))}</span><span class="card-bottom"><span class="people">${a.optional ? '<span class="optional-chip">Optional</span>' : ''}${a.participants.map(id => { const f = participantRecord(trip, id); return f ? `<span class="person ${escape(f.color)}">${escape(f.name)}</span>` : ''; }).join('')}</span><span class="open-card" aria-hidden="true">→</span></span></button>`;
 }
 export const isExample = a => a.sourceKind === 'synthetic';
 export function board(trip, { filter = 'all', day, guest = false, hideExamples = false } = {}) {

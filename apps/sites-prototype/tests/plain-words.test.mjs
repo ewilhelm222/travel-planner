@@ -17,7 +17,7 @@ test('cards use functional words: no "Flexible", no "rendezvous", Optional as a 
     assert.ok(card(walk, t).includes('<span class="optional-chip">Optional</span>'));
     assert.ok(!card(supper, t).includes('optional-chip') && !card(supper, t).includes('example-label'));
     dinner.fixed = true;
-    assert.ok(card(dinner, t).includes('■ Fixed booking'), 'a fixed booking is still said in words');
+    assert.ok(card(dinner, t).includes('■ Set time'), 'a set time is still said in words');
 });
 
 test('an example is labelled in words on its card, can be hidden, and never reaches the guest link', () => {

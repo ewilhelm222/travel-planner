@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../app/chatgpt-auth";
-import { tripRole } from "./trips.mjs";
+import { tripRole, withTiming } from "./trips.mjs";
 import { staleRecords, staleMessage } from "../public/revisions.mjs";
 export const response = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "private, no-store", "Vary": "Cookie", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow" } });
 export const db = () => { if (!env.DB)
@@ -43,7 +43,7 @@ export function revisionMap(r: { record_revisions?: string | null }): Record<str
     }
 }
 // `revision` is the trip-wide version counter; `revisions` holds each record's own revision.
-export const snapshot = (r: Row) => ({ trip: JSON.parse(r.document), revision: r.revision, revisions: revisionMap(r), updatedAt: r.updated_at, updatedBy: r.updated_by });
+export const snapshot = (r: Row) => ({ trip: withTiming(JSON.parse(r.document)), revision: r.revision, revisions: revisionMap(r), updatedAt: r.updated_at, updatedBy: r.updated_by });
 // Archived (soft-deleted) trips are closed to everyone except the organizer's archive controls.
 export async function access(request: Request, options: { archived?: boolean } = {}) {
     const user = await getChatGPTUser();

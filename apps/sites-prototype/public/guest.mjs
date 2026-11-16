@@ -1,5 +1,5 @@
 import { usefulFilterChoices, participantRecord } from "./participants.mjs";
-import { escape, preferredDay, board, dayChooser, dateLabel, ideaCards, PHONE_QUERY } from './board.mjs';
+import { escape, preferredDay, board, dayChooser, dateLabel, ideaCards, timingOf, PHONE_QUERY } from './board.mjs';
 import { matchesSelection } from './participants.mjs';
 import { buildOfflineHtml } from './offline-export.mjs';
 const app = document.querySelector('#guest-app'), token = location.hash.slice(1);
@@ -71,7 +71,7 @@ document.addEventListener('click', async (e) => { if (e.target.closest('.skip-li
     document.querySelector('#detail').close(); if (b.dataset.detail) {
     const a = trip.activities.find(a => a.id === b.dataset.detail);
     document.querySelector('#detail-title').textContent = a.title;
-    document.querySelector('#detail-body').innerHTML = `<p>${a.date ? `${escape(dateLabel(a.date, { weekday: 'long', month: 'short', day: 'numeric' }))} · ${escape(a.time || 'Time to confirm')}` : `An idea · no day yet${a.time ? ` · ${escape(a.time)}` : ''}`}</p>${[a.highlight && 'Whole-group activity', a.optional && 'Optional', a.fixed && 'Fixed booking'].some(Boolean) ? `<p>${[a.highlight && 'Whole-group activity', a.optional && 'Optional', a.fixed && 'Fixed booking'].filter(Boolean).join(' · ')}</p>` : ''}<p class="guest-notes">${escape(a.notes)}</p><p>${escape(a.address || 'Meeting point to confirm')}</p><p>${a.participants.map(id => escape(participantRecord(trip,id)?.name||'Some travelers')).join(' · ')}</p>`;
+    document.querySelector('#detail-body').innerHTML = `<p>${a.date ? `${escape(dateLabel(a.date, { weekday: 'long', month: 'short', day: 'numeric' }))} · ${escape(a.time || 'Time to confirm')}` : `An idea · no day yet${a.time ? ` · ${escape(a.time)}` : ''}`}</p>${[a.highlight && 'Whole-group activity', a.optional && 'Optional', timingOf(a) === 'set' && 'Set time', timingOf(a) === 'anytime' && a.date && 'Any day of the stay'].some(Boolean) ? `<p>${[a.highlight && 'Whole-group activity', a.optional && 'Optional', timingOf(a) === 'set' && 'Set time', timingOf(a) === 'anytime' && a.date && 'Any day of the stay'].filter(Boolean).join(' · ')}</p>` : ''}<p class="guest-notes">${escape(a.notes)}</p><p>${escape(a.address || 'Meeting point to confirm')}</p><p>${a.participants.map(id => escape(participantRecord(trip,id)?.name||'Some travelers')).join(' · ')}</p>`;
     document.querySelector('#detail').showModal();
 } if (b.id === 'download') {
     const html = buildOfflineHtml({ trip, revision }, { downloadedAt: new Date().toISOString() });

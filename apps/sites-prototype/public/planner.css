@@ -720,3 +720,7 @@ button.lodging { padding-left: 8px; }
 
 /* Keep or remove examples (feedback plan PR 8). */
 #remove-examples { display: inline-block; margin: 4px 0 8px; color: var(--ember); text-decoration-color: var(--ember); }
+
+/* Timing levels (feedback plan PR 9). */
+.anyday { font: 12px var(--font-mono); color: var(--muted); border: 1px dashed var(--muted); border-radius: var(--radius-pill); padding: 1px 8px; }
+#timing-hint:empty { display: none; }
