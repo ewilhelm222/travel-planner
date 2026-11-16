@@ -22,8 +22,11 @@ revisions](docs/per-record-revisions.md), [moving a stay with a
 preview](docs/stay-move.md), [schematic maps](docs/maps.md), and [layout
 changes](docs/layout.md). Built on November 16 from the
 [family feedback plan](docs/feedback-2026-11-15-plan.md) and not yet deployed:
-[sign-in and read-only messages](docs/getting-in.md) and
-[plain wording](docs/plain-words.md). A daily automatic backup is
+[sign-in and read-only messages](docs/getting-in.md),
+[plain wording](docs/plain-words.md), [dark forms](docs/dark-forms.md),
+[Add and Ideas within reach](docs/within-reach.md), [Ideas beside the
+days](docs/ideas-column.md), and [one Manage menu and a sideways-phone
+layout](docs/landscape-and-menu.md). A daily automatic backup is
 [proposed](docs/backup-proposal.md) and not enabled.
 
 [Open the planner](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site) · [Current implementation and access status](docs/multi-events.md) · [What is deployed](docs/multi-events.md#release-provenance) · [Managing travelers](docs/travelers.md) · [Drag-and-drop](docs/drag-drop.md) · [Schedule-first phone layout](docs/schedule-first.md) · [Editors and what they may change](docs/editors.md) · [Source](apps/sites-prototype)

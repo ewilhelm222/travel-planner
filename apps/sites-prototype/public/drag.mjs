@@ -39,6 +39,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 @keyframes waypoint-landed{0%{box-shadow:0 0 0 6px var(--lagoon,#3ee6c9)}100%{box-shadow:0 0 0 0 transparent}}
 @keyframes waypoint-refused{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 @media(prefers-reduced-motion:reduce){.activity.just-moved,.activity.drop-refused{animation:none}.drop-dock li.drop-active{transform:none}}
+@media(max-height:520px){.drop-dock h2{display:none}.drop-dock.touch ol.grid{display:flex;overflow-x:auto}.drop-dock.touch .drop-cancel{min-height:44px;margin-top:6px}}
 `;
 
 /** The first card whose vertical midpoint is below `y`; null means "place last". */

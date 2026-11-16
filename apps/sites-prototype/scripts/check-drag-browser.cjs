@@ -93,7 +93,7 @@ const log = (...a) => console.log(...a);
   // Fixed booking: make dinner fixed via API, reload, drag to another day.
   let cur = await api();
   await api({ action: 'edit', revision: cur.json.snapshot.revision, activityId: 'option-5', patch: { fixed: true } });
-  await page.click('#refresh'); await page.waitForTimeout(800);
+  await page.evaluate(() => document.querySelector('#refresh').click()); await page.waitForTimeout(800);
   await toBoard();
   await drag('.activity[data-detail="option-5"]', '.agenda-day[data-date="2026-11-28"] .activity[data-detail]', 20, async () => {
     log('fixed hover class:', await page.$eval('.agenda-day[data-date="2026-11-28"]', e => e.className), '| dock:', await page.textContent('.drop-dock p'));

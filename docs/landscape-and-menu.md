@@ -1,0 +1,62 @@
+# One Manage menu, and a phone held sideways
+
+Status: November 16, 2026. Built and checked locally with synthetic data; not
+deployed. No data change. Step "PR 6" of the
+[feedback plan](feedback-2026-11-15-plan.md) (item L1, and "no more controls
+above the cards").
+
+## One Manage menu (screens wider than a phone)
+
+Above the board there are now only the trip selector, the **Show plans for**
+filter, **Add activity**, **Manage ▾** and the week-view switch. Everything
+else moved into the Manage menu, in the same three groups a phone already uses
+under Plan & manage:
+
+- *This plan*: Manage travelers; Places, stays & journeys; Trip details;
+  History; Guest link; Editors.
+- *Copies & updates*: Save offline trip; Download JSON; **Refresh**.
+- *Trips & events*: New trip or event; Paste JSON; Import JSON; Archived trips.
+
+Nothing was removed and no permission changed: organizer-only buttons are still
+shown only to the organizer. The menu closes after a choice, on a click
+elsewhere, and on Escape. At 1440 × 900 the board starts 52 px higher than
+before (442 px instead of 494 px).
+
+Worth knowing: **Refresh is now inside Manage** on a laptop.
+
+## A phone held sideways
+
+A phone on its side is wider than 760 px, so it gets the wide layout. Before,
+its first screen was all buttons and no activities. Now, on any wide screen
+shorter than 520 px:
+
+- the trip selector, filter, Add activity and Manage share one row;
+- the poster bar, the "Connected / Revision" line and the drag hint fold away
+  (an "Offline" or "Sign-in expired" notice still shows);
+- the day medallions are small;
+- the board shows **Ideas plus two days**, or **three days** with Ideas folded;
+- cards and day headings are tighter, and the stay line is one line;
+- the drop panel that appears while dragging is a single row.
+
+Measured at 844 × 390 with the synthetic six-day trip: the first card starts
+289 px from the top (before: none on the first screen), with the cards of two
+days and the ideas visible; three days with Ideas folded. The guest page keeps
+a thin title bar and its read-only sentence; its first card starts at 301 px.
+
+Press-and-hold drag was tried in landscape with simulated touch: a card moved
+to another day and saved. The drop panel takes 162 px of the 390 px height.
+
+## Checks
+
+- `npm test`: 120 pass (2 new in `tests/landscape-menu.test.mjs`). Type check
+  passes; lint has 0 errors.
+- `npm run test:api`, `npm run test:access` and
+  `scripts/check-drag-browser.cjs` pass locally (the drag script now reaches
+  Refresh through the menu).
+- Headless Chromium at 844 × 390, 1440 × 900 and 390 × 844: no script errors,
+  no sideways page overflow, no control shorter than 32 px, the menu stays on
+  screen, and the phone portrait layout is unchanged.
+
+Not verified, and this change needs it most: **a real phone turned sideways**
+(browser toolbars take more of the height than a simulated screen, and the
+notch side needs a look), tablets, the hosted Site, and 200% zoom.

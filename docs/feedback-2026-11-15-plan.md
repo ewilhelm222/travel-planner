@@ -37,6 +37,18 @@ The shared address was **not** on the editor list at the first sign-in. That
 confirms A1 as the cause of the "no itinerary" report: the account was signed
 in but not yet on any trip, and the page gave no hint of that.
 
+## Built so far
+
+Steps PR 1 to PR 6 below were built on November 16, 2026 and are not yet
+deployed. Each has its own note: [getting-in.md](getting-in.md),
+[plain-words.md](plain-words.md), [dark-forms.md](dark-forms.md),
+[within-reach.md](within-reach.md), [ideas-column.md](ideas-column.md) and
+[landscape-and-menu.md](landscape-and-menu.md). The rest of this document is
+the plan as written before they were built. Two things differ from it: no
+map-app search link was added beside addresses on the map (a rule in
+[maps.md](maps.md) allows only reviewed links there), and the phone "Ideas"
+stop jumps to the ideas list rather than replacing the day.
+
 ## The short version
 
 1. **Most of the feedback applies to the app as it is today.** The repository
