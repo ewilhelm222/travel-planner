@@ -4,7 +4,8 @@
 
 The multi-event planner with the Departure Board design is deployed. See
 [multiple trips, guest links, and current access status](multi-events.md) for the
-current implementation. The sections below preserve the initial feasibility
+current implementation and [the schedule-first phone layout](schedule-first.md)
+for the phone arrangement. The sections below preserve the initial feasibility
 proof and its verification history.
 
 ## Original feasibility result
