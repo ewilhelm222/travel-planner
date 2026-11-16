@@ -56,13 +56,13 @@ const log = (...a) => console.log(...a);
   log('message:', await page.textContent('#message'));
   log('Nov 26 after:', await dayCards('2026-11-26'));
   log('Nov 27 after:', await dayCards('2026-11-27'));
-  log('editor opened after drag?', await page.evaluate(() => document.querySelector('#editor').open));
+  log('view or editor opened after drag?', await page.evaluate(() => document.querySelector('#editor').open || document.querySelector('#activity-view').open));
   const server = await api();
   log('server rev', server.json.snapshot.revision, 'walk date', server.json.snapshot.trip.activities.find(a => a.id === 'option-2').date, 'copies', server.json.snapshot.trip.activities.filter(a => a.id === 'option-2').length);
-  // Click still opens editor
+  // A click still opens the activity: its read-only view, not the editor.
   await page.click('.activity[data-detail="option-3"]');
-  log('click opens editor:', await page.evaluate(() => document.querySelector('#editor').open));
-  await page.click('#close-editor');
+  log('click opens view:', await page.evaluate(() => document.querySelector('#activity-view').open), 'editor:', await page.evaluate(() => document.querySelector('#editor').open));
+  await page.keyboard.press('Escape');
   await toBoard();
   // Reorder within Nov 26: drag "Thanksgiving dinner" (option-5) to the top of the day.
   await drag('.activity[data-detail="option-4"]', '.agenda-day[data-date="2026-11-26"] .activity[data-detail]', 8);
@@ -166,12 +166,12 @@ const log = (...a) => console.log(...a);
   await touch('touchEnd');
   await p.waitForTimeout(400);
   log('swipe: scrolled by', (await p.evaluate(() => scrollY)) - y0, 'dock?', !!(await p.$('.drop-dock')), 'editor?', await p.evaluate(() => document.querySelector('#editor').open));
-  // Tap opens editor.
+  // Tap opens the read-only view.
   first = await p.locator('.agenda-day[data-selected="true"] .activity').first().boundingBox();
   await p.touchscreen.tap(first.x + 40, first.y + 30);
   await p.waitForTimeout(200);
-  log('tap opens editor:', await p.evaluate(() => document.querySelector('#editor').open));
-  await p.click('#close-editor');
+  log('tap opens view:', await p.evaluate(() => document.querySelector('#activity-view').open), 'editor:', await p.evaluate(() => document.querySelector('#editor').open));
+  await p.keyboard.press('Escape');
   // Long-press, drag to dock chip for Nov 28, hover (switches day), then drop on a card position.
   const cardSel = '.agenda-day[data-selected="true"] .activity[data-detail="option-4"]';
   await p.locator(cardSel).scrollIntoViewIfNeeded();
@@ -197,7 +197,7 @@ const log = (...a) => console.log(...a);
   await p.waitForFunction(() => /Saved for everyone/.test(document.querySelector('#message').textContent));
   log('phone msg:', await p.textContent('#message'));
   log('Nov 28 now:', await p.$$eval('.agenda-day[data-date="2026-11-28"] .activity strong', e => e.map(x => x.textContent)));
-  log('editor opened by drop?', await p.evaluate(() => document.querySelector('#editor').open));
+  log('view or editor opened by drop?', await p.evaluate(() => document.querySelector('#editor').open || document.querySelector('#activity-view').open));
   await p.locator('#message').scrollIntoViewIfNeeded(); await p.evaluate(() => window.scrollBy(0, -60));
   await p.screenshot({ path: SHOTS + '/phone-4-after.png' });
   log('h-overflow:', await p.evaluate(() => document.documentElement.scrollWidth - innerWidth));

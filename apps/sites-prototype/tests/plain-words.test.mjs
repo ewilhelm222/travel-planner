@@ -51,7 +51,8 @@ test('wording in the planner, guest page and share dialog', () => {
     assert.match(planner, /<h2>Ideas <span>· not scheduled yet<\/span><\/h2>/);
     assert.match(planner, /So is anything marked “Example · not a real plan”/);
     assert.match(planner, /Show plans for/);
-    assert.ok(!guest.includes('available to join') && guest.includes('Whole-group activity'));
+    const view = read('../public/activity-view.mjs');
+    assert.ok(!guest.includes('available to join') && !view.includes('available to join') && view.includes('Whole-group activity'), 'the activity view shared by guest page and planner');
     assert.ok(!/\.activity\.rendezvous \{[^}]*background: var\(--magenta\)/.test(css), 'the whole-group card is no longer solid magenta');
     assert.ok(!/\.activity\.rendezvous \{[^}]*var\(--glow\)/.test(css), 'and has no glow');
 });
