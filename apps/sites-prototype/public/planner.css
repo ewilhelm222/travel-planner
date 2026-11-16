@@ -757,3 +757,8 @@ button.lodging { padding-left: 8px; }
 }
 @media (max-width: 559px), (max-width: 760px) and (orientation: portrait) { .schedule-first .agenda-date { flex-wrap: wrap; } }
 @media print { .agenda-day { container-type: normal; } .agenda-date { flex-wrap: wrap; } .wd-short { display: none !important; } .wd-long { display: inline !important; } }
+
+/* Two-level places: the venue inside an area is named on the card. */
+.card-venue { display: block; font: 600 13px/1.35 var(--font-ui); color: var(--muted); margin: 0 0 6px; }
+@media (max-width: 559px), (max-width: 760px) and (orientation: portrait) { .schedule-first .activity .card-venue { order: 4; margin: 0; } }
+@media (min-width: 1000px) { .dense .card-venue { font-size: 12px; margin-bottom: 4px; } }

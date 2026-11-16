@@ -52,7 +52,17 @@ export function normalizeTrip(input, tripId) {
             throw new Error("Choose participants from this trip.");
         return p;
     };
-    const places = unique(list(input.places || [], 100).map(p => ({ id: p.id, name: text(p.name, 160), localName: text(p.localName, 160), address: text(p.address, 500), localAddress: text(p.localAddress, 500), ...normalizePlaceGeo(p) })));
+    const places = unique(list(input.places || [], 100).map(p => ({ id: p.id, name: text(p.name, 160), localName: text(p.localName, 160), address: text(p.address, 500), localAddress: text(p.localAddress, 500), parentId: typeof p.parentId === "string" && p.parentId ? p.parentId : null, ...normalizePlaceGeo(p) })));
+    // Two levels at most: an area (a city, a camp) and venues inside it.
+    for (const p of places) {
+        if (!p.parentId)
+            continue;
+        const parent = places.find(x => x.id === p.parentId);
+        if (!parent || parent.id === p.id)
+            throw new Error("Choose an area from this trip for this place to sit inside.");
+        if (parent.parentId)
+            throw new Error("A place can sit inside an area, but areas cannot be nested further. Move its venues out first.");
+    }
     const placeIds = new Set(places.map(p => p.id));
     const place = value => {
         if (value && !placeIds.has(value))
@@ -174,6 +184,11 @@ export function applyTripChange(trip, change) {
                             if (leg.to === target)
                                 leg.to = to;
                         }
+                        // Venues inside a deleted area move into the chosen area, or become areas themselves.
+                        const newArea = rows.find(r => r.id === to && !r.parentId);
+                        for (const p of rows)
+                            if (p.parentId === target)
+                                p.parentId = newArea && newArea.id !== p.id ? newArea.id : null;
                     }
                 }
                 rows.splice(index, 1);
@@ -223,7 +238,7 @@ export function applyTripChange(trip, change) {
     }
     return normalizeTrip(next, trip.id);
 }
-const PLACE_FIELDS = ["name", "localName", "address", "localAddress", "lat", "lng", "coordSystem", "coordSource", "amapUrl", "appleMapsUrl", "navReviewed"];
+const PLACE_FIELDS = ["name", "localName", "address", "localAddress", "parentId", "lat", "lng", "coordSystem", "coordSource", "amapUrl", "appleMapsUrl", "navReviewed"];
 const STAY_FIELDS = ["name", "placeId", "start", "end", "lodging", "note", "groupInfo", "checkOutTime", "showOnGuest", "participants"];
 const LEG_FIELDS = ["title", "date", "arrivalDate", "time", "arrivalTime", "mode", "participants", "notes", "from", "to"];
 const structure = (key, noun, fields) => Object.fromEntries(["add", "edit", "delete"].map(op => [`${noun}-${op}`, { key, noun, idField: `${noun}Id`, fields, op }]));
@@ -328,7 +343,7 @@ export function publicTrip(trip) {
     // Unscheduled ideas are shared too (decided November 16, 2026), with the same limited fields.
     const activities = trip.activities.filter(a => a.sourceKind !== "synthetic").map(a => ({ id: a.id, title: a.title, date: a.date, placeId: a.placeId, time: a.time, order: a.order, fixed: timingOf(a) === "set", timing: timingOf(a), optional: a.optional, highlight: a.highlight, participants: [...new Set(a.participants.map(guestId))], notes: a.guestNotes, address: a.guestLocation, sourceKind: a.sourceKind }));
     return { schemaVersion: 2, id: 'guest-view', title: trip.title, subtitle: trip.subtitle, kind: trip.kind, start: trip.start, end: trip.end, timezone: trip.timezone,
-        families, people, places: trip.places.map(p => ({ id: p.id, name: p.name, localName: p.localName })),
+        families, people, places: trip.places.map(p => ({ id: p.id, name: p.name, localName: p.localName, parentId: p.parentId || null })),
         // A stay is shared only when the organizer ticked it, and then without its private note.
         stays: (trip.stays || []).filter(s => s.showOnGuest === true).map(s => ({ id: s.id, name: s.name, placeId: s.placeId, start: s.start, end: s.end, lodging: s.lodging, groupInfo: s.groupInfo, checkOutTime: s.checkOutTime, showOnGuest: true, participants: [...new Set((s.participants || []).map(guestId))] })),
         legs: [], activities };

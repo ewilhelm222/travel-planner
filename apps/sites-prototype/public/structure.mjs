@@ -10,12 +10,14 @@ export function placeReferences(trip, placeId) {
     activities: pick((trip.activities || []).filter(a => a.placeId === placeId)),
     stays: pick((trip.stays || []).filter(s => s.placeId === placeId)),
     legs: pick((trip.legs || []).filter(l => l.from === placeId || l.to === placeId)),
+    // Venues that sit inside this place when it is used as an area.
+    venues: pick((trip.places || []).filter(p => p.parentId === placeId)),
   };
-  return { ...refs, total: refs.activities.length + refs.stays.length + refs.legs.length };
+  return { ...refs, total: refs.activities.length + refs.stays.length + refs.legs.length + refs.venues.length };
 }
 export function placeReferenceSummary(refs) {
   const part = (rows, one, many) => rows.length ? `${rows.length} ${rows.length === 1 ? one : many}` : "";
-  return [part(refs.activities, "activity", "activities"), part(refs.stays, "stay", "stays"), part(refs.legs, "journey", "journeys")].filter(Boolean).join(", ");
+  return [part(refs.activities, "activity", "activities"), part(refs.stays, "stay", "stays"), part(refs.legs, "journey", "journeys"), part(refs.venues || [], "venue inside it", "venues inside it")].filter(Boolean).join(", ");
 }
 
 const webUrl = value => {
