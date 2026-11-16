@@ -446,3 +446,13 @@ button.lodging:hover, button.journeys:hover, button.lodging:focus-visible, butto
 .link-list { list-style: none; padding: 0; margin: 4px 0 8px; display: grid; gap: 4px; overflow-wrap: anywhere; }
 .reassign { border-left: 6px solid var(--ember); background: #fff0e6; padding: 12px 14px; border-radius: 0 12px 12px 0; margin-top: 16px; }
 @media print { button.lodging, button.journeys { color: black; } .edit-hint { display: none; } }
+/* Stay move preview: explicit labels beside colour; nothing applies until confirmed. */
+.move-summary { line-height: 1.7; }
+.move-summary .was { color: var(--muted); }
+.move-notice { border-left: 6px solid var(--lagoon); background: #e3fbf6; padding: 12px 14px; border-radius: 0 12px 12px 0; }
+.move-group { border-top: 1px solid #e6dcf2; padding-top: 4px; }
+#structure-dialog .move-group h3 { margin-top: 16px; }
+.move-group.fixed h3 { color: var(--ember-ink); }
+.move-list { list-style: none; padding: 0; margin: 4px 0 12px; display: grid; gap: 8px; }
+.move-list small { display: block; color: var(--muted); font-size: 14px; }
+.move-flag { display: inline-block; font: 600 12px/1.4 var(--font-mono); color: var(--ember-ink); border: 1px solid currentColor; border-radius: var(--radius-pill); padding: 2px 8px; margin-top: 4px; }

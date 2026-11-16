@@ -63,7 +63,7 @@ toolbar.
 - `public/drag.mjs`: small pointer/touch controller. The board is plain JavaScript
   rendering HTML strings, so a React drag library (dnd-kit) does not fit, and the
   phone day-chip pattern needed custom behavior anyway.
-- The offline shell cache (`waypoint-shell-v18` as of per-record revisions) includes the traveler, move, and drag modules.
+- The offline shell cache (`waypoint-shell-v19` as of the stay move) includes the traveler, move, and drag modules.
 - On the phone the day rail is pinned while scrolling; it un-pins during a drag so it cannot cover a drop position.
 - Tests: `tests/move.test.mjs`, the move checks in `scripts/check-api.mjs`, and the
   browser walkthrough `scripts/check-drag-browser.cjs`.

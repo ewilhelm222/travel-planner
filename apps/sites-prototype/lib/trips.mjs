@@ -1,6 +1,7 @@
 import { isWholeTripGroup, participantReferences, referenceSummary } from "../public/participants.mjs";
 import { moveActivity } from "../public/move.mjs";
 import { normalizeLinks, placeReferences, placeReferenceSummary } from "../public/structure.mjs";
+import { applyStayMove } from "../public/stay-move.mjs";
 const text = (v, max = 4000) => typeof v === "string" ? v.trim().slice(0, max) : "";
 export const validDate = v => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
 const id = v => typeof v === "string" && /^[a-zA-Z0-9_-]{1,80}$/.test(v);
@@ -178,6 +179,10 @@ export function applyTripChange(trip, change) {
         for (const key of ["title", "subtitle", "start", "end", "timezone", "kind"])
             if (key in (change.patch || {}))
                 next[key] = change.patch[key];
+    }
+    else if (change.action === "stay-move") {
+        // A confirmed stay move: shifts only the listed flexible activities, re-checked against the trip as it is now.
+        return normalizeTrip(applyStayMove(trip, { stayId: change.stayId, days: change.days, shiftActivityIds: change.shiftActivityIds }), trip.id);
     }
     else if (change.action === "move") {
         // Drag-and-drop: one record changes day/order for every participant.

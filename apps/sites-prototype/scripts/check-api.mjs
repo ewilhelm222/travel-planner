@@ -225,3 +225,31 @@ console.log('PASS: organizer full backup download and a verified restore into a 
     assert.equal((await req(`/api/archive?id=${tid}`, 'POST', { action: 'archive', base: { trip: 2 } })).status, 200);
     console.log('PASS: per-record revisions: parallel saves to different cards, single winner on one card, strict rule for older pages, drag without neighbour conflicts, separate guest-link and trip records.');
 }
+// Stay move: confirmed activities shift with the stay; fixed and mixed ones cannot be moved this way; undo restores everything.
+{
+    const { parallelTripInput } = await import('../tests/fixtures/parallel-trip.mjs');
+    const made = await (await req('/api/trips', 'POST', { trip: parallelTripInput() })).json(), tid = made.snapshot.trip.id, tp = `/api/trip?id=${tid}`;
+    const move = (shiftActivityIds, base) => req(tp, 'PATCH', { action: 'stay-move', stayId: 'cedar-kyoto', days: 1, shiftActivityIds, base });
+    for (const blocked of ['shared-dinner', 'shared-walk', 'museum'])
+        assert.equal((await move([blocked], { 'stay:cedar-kyoto': 1 })).status, 400, `${blocked} must not move with Cedar's stay`);
+    // Another planner makes the garden a fixed booking after the preview: the confirmed move is refused by its base revision.
+    assert.equal((await req(tp, 'PATCH', { action: 'edit', activityId: 'solo-garden', patch: { fixed: true }, base: { 'activity:solo-garden': 1 } })).status, 200);
+    assert.equal((await move(['solo-garden', 'cedar-arrival'], { 'stay:cedar-kyoto': 1, 'activity:solo-garden': 1, 'activity:cedar-arrival': 1 })).status, 409);
+    assert.equal((await move(['solo-garden'], { 'stay:cedar-kyoto': 1, 'activity:solo-garden': 2 })).status, 400, 'and by the rules even with a fresh revision');
+    const ok = await move(['cedar-arrival', 'cy-only'], { 'stay:cedar-kyoto': 1, 'activity:cedar-arrival': 1, 'activity:cy-only': 1 });
+    assert.equal(ok.status, 200, await ok.clone().text());
+    const after = (await ok.json()).snapshot;
+    assert.deepEqual([after.trip.stays[0].start, after.trip.stays[0].end], ['2027-04-13', '2027-04-15']);
+    assert.equal(after.trip.activities.find(x => x.id === 'cedar-arrival').date, '2027-04-13');
+    assert.equal(after.trip.activities.find(x => x.id === 'solo-garden').date, '2027-04-13', 'the fixed booking stayed');
+    assert.equal(after.trip.activities.find(x => x.id === 'museum').date, '2027-04-13');
+    assert.deepEqual(after.trip.stays.slice(1).map(x => x.start), ['2027-04-13', '2027-04-13', '2027-04-14'], 'other stays untouched');
+    const entry = (await (await req(`/api/history?id=${tid}`)).json()).changes[0];
+    assert.match(entry.summary, /Moved a stay 1 day later .* with 2 flexible activities/);
+    assert.equal(entry.records.length, 3);
+    const undone2 = await (await req(`/api/history?id=${tid}`, 'POST', { action: 'undo', changeId: entry.id })).json();
+    assert.equal(undone2.snapshot.trip.stays[0].start, '2027-04-12');
+    assert.equal(undone2.snapshot.trip.activities.find(x => x.id === 'cy-only').date, '2027-04-13');
+    assert.equal(undone2.snapshot.trip.activities.find(x => x.id === 'cedar-arrival').date, '2027-04-12');
+    console.log('PASS: stay move shifts only confirmed flexible activities, refuses fixed/mixed/stale ones, and undoes as one step.');
+}

@@ -46,6 +46,7 @@ export function summarize(change, records) {
   if (action === "share") return change.enabled ? "Enabled or replaced the guest link" : "Disabled the guest link";
   if (!records.length) return "Saved with no changes";
   if (action === "move" && main) return main.after?.date === main.before?.date ? `Reordered ${quote(main.after)} on ${main.after.date || "the ideas list"}` : `Moved ${quote(main.after)} from ${main.before?.date || "ideas"} to ${main.after?.date || "ideas"}`;
+  if (action === "stay-move" && first("stay")) { const n = records.filter(r => r.kind === "activity").length, d = change.days; return `Moved a stay ${Math.abs(d)} day${Math.abs(d) === 1 ? "" : "s"} ${d > 0 ? "later" : "earlier"} (${first("stay").before.start} → ${first("stay").after.start})${n ? ` with ${n} flexible activit${n === 1 ? "y" : "ies"}` : ", moving no activities"}`; }
   if (action === "add" && main) return `Added activity ${quote(main.after)}`;
   if (action === "delete" && main) return `Deleted activity ${quote(main.before)}`;
   if (action === "metadata") return "Changed the trip details";

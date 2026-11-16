@@ -4,6 +4,7 @@
     const { filterChoices, matchesSelection, defaultParticipants, includesPerson, peopleOf, isWholeTripGroup, participantRecord, participantReferences, referenceSummary } = await import('/participants.mjs');
     const { fieldChanges } = await import('/history.mjs');
     const { baseFor, recordKey } = await import('/revisions.mjs');
+    const { previewStayMove, daysBetween } = await import('/stay-move.mjs');
     const { isSnapshot, restoreFromSnapshot } = await import('/backup.mjs');
     const { placeReferences, placeReferenceSummary, parseLinks, formatLinks, LEG_MODES } = await import('/structure.mjs');
     const { responsePolicy } = await import('/reading-copy.mjs');
@@ -104,8 +105,8 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v18');
-            state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
+            const cache = await caches.open('waypoint-shell-v19');
+            state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
         catch { }
@@ -546,6 +547,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
         const dialog = $('#structure-dialog');
         dialog.innerHTML = `<div class="dialog-heading"><span class="eyebrow">${eyebrow}</span><button type="button" class="icon-button" data-close="structure-dialog" aria-label="Close">×</button></div><h2 id="structure-title">${title}</h2>${body}`;
         dialog.dataset.back = back ? 'list' : '';
+        dialog.scrollTop = 0;
         if (!dialog.open)
             dialog.showModal();
         status();
@@ -567,7 +569,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
     }
     function openStay(id, back = false) {
         const t = state.snapshot.trip, s = t.stays.find(x => x.id === id) || { id: crypto.randomUUID(), name: '', placeId: t.places[0]?.id || '', start: state.day || t.start, end: '', lodging: '', note: '', participants: defaultParticipants(t) }, disabled = writable() ? '' : 'disabled';
-        structureDialog('Stay', id ? 'Edit stay' : 'Add stay', `<form id="stay-form" data-id="${escape(s.id)}" data-new="${!id}" data-base="${id ? baseAttr(recordKey('stay', id)) : '{}'}"><label>Place<select name="placeId" required ${disabled}>${placeOptions(t, s.placeId, 'Choose a place…')}</select></label>${t.places.length ? '' : '<p class="form-hint">Add a place first (Back → Add place).</p>'}<div class="field-row"><label>Check-in<input type="date" name="start" value="${escape(s.start)}" required ${disabled}></label><label>Check-out<input type="date" name="end" value="${escape(s.end)}" required ${disabled}></label></div><p class="form-hint">The stay covers each night from check-in up to, not including, check-out. Changing these dates does not move any activities.</p><label>Lodging<input name="lodging" value="${escape(s.lodging)}" maxlength="500" ${disabled}><small>Private. Not shown on the guest link.</small></label><label>Short label <small>(optional)</small><input name="name" value="${escape(s.name)}" maxlength="160" ${disabled}></label><label>Private note<textarea name="note" rows="3" maxlength="4000" ${disabled}>${escape(s.note)}</textarea></label>${attendanceFields({ participants: s.participants || [] }, t, !writable(), 'Who is staying')}${formActions('stay', !id, back)}</form>`, back);
+        structureDialog('Stay', id ? 'Edit stay' : 'Add stay', `<form id="stay-form" data-id="${escape(s.id)}" data-new="${!id}" data-base="${id ? baseAttr(recordKey('stay', id)) : '{}'}"><label>Place<select name="placeId" required ${disabled}>${placeOptions(t, s.placeId, 'Choose a place…')}</select></label>${t.places.length ? '' : '<p class="form-hint">Add a place first (Back → Add place).</p>'}<div class="field-row"><label>Check-in<input type="date" name="start" value="${escape(s.start)}" required ${disabled}></label><label>Check-out<input type="date" name="end" value="${escape(s.end)}" required ${disabled}></label></div><p class="form-hint">The stay covers each night from check-in up to, not including, check-out. Changing these dates here does not move any activities${id ? '; use “Move this stay” below to bring flexible plans along' : ''}.</p><label>Lodging<input name="lodging" value="${escape(s.lodging)}" maxlength="500" ${disabled}><small>Private. Not shown on the guest link.</small></label><label>Short label <small>(optional)</small><input name="name" value="${escape(s.name)}" maxlength="160" ${disabled}></label><label>Private note<textarea name="note" rows="3" maxlength="4000" ${disabled}>${escape(s.note)}</textarea></label>${attendanceFields({ participants: s.participants || [] }, t, !writable(), 'Who is staying')}${id ? `<fieldset class="inline-place" id="stay-move"><legend>Move this stay</legend><p class="form-hint">Shifts check-in and check-out together and offers to bring this group’s flexible plans at this place along. You see a preview first; nothing changes until you confirm. Fixed bookings and plans shared with other travelers are never moved.</p><label>New check-in day<input type="date" name="newStart" min="${escape(t.start)}" max="${escape(t.end)}" ${disabled}></label><button type="button" class="secondary" id="stay-move-preview" data-back="${back ? 1 : ''}" ${disabled}>Preview move</button></fieldset>` : ''}${formActions('stay', !id, back)}</form>`, back);
         updateAttendance($('#stay-form'));
     }
     function openLeg(id, back = false) {
@@ -575,6 +577,27 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
         const modes = LEG_MODES.includes(l.mode) || !l.mode ? LEG_MODES : [l.mode, ...LEG_MODES];
         structureDialog('Journey', id ? 'Edit journey' : 'Add journey', `<form id="leg-form" data-id="${escape(l.id)}" data-new="${!id}" data-base="${id ? baseAttr(recordKey('journey', id)) : '{}'}"><label>Title<input name="title" value="${escape(l.title)}" maxlength="160" required placeholder="e.g. Morning train to the coast" ${disabled}></label><div class="field-row"><label>Mode<select name="mode" ${disabled}>${modes.map(m => `<option ${m === l.mode ? 'selected' : ''}>${escape(m)}</option>`).join('')}</select></label><label>Departure day<select name="date" ${disabled}>${days(t).map(d => `<option value="${d}" ${l.date === d ? 'selected' : ''}>${dateLabel(d, { weekday: 'short', month: 'short', day: 'numeric' })}</option>`).join('')}</select></label></div><div class="field-row"><label>From<select name="from" ${disabled}>${placeOptions(t, l.from, 'Start to confirm')}</select></label><label>To<select name="to" ${disabled}>${placeOptions(t, l.to, 'End to confirm')}</select></label></div><div class="field-row"><label>Departure time<input name="time" value="${escape(l.time)}" maxlength="80" ${disabled}></label><label>Arrival time<input name="arrivalTime" value="${escape(l.arrivalTime)}" maxlength="80" ${disabled}></label></div><label>Arrival day <small>(only if different, e.g. overnight)</small><input type="date" name="arrivalDate" value="${escape(l.arrivalDate && l.arrivalDate !== l.date ? l.arrivalDate : '')}" min="${escape(t.start)}" ${disabled}></label><label>Private notes<textarea name="notes" rows="3" maxlength="4000" ${disabled}>${escape(l.notes)}</textarea><small>Journeys are not shown on the guest link.</small></label>${attendanceFields({ participants: l.participants || [] }, t, !writable(), 'Who is travelling')}${formActions('leg', !id, back)}</form>`, back);
         updateAttendance($('#leg-form'));
+    }
+    // ---- Stay move: preview first, apply only what was confirmed ----
+    function openStayMove(stayId, days, back) {
+        const t = state.snapshot.trip, p = previewStayMove(t, stayId, days), off = writable() ? '' : 'disabled';
+        const list = (rows, line) => `<ul class="move-list">${rows.map(r => `<li>${line(r)}</li>`).join('')}</ul>`;
+        const outside = r => r.outside ? ' <span class="move-flag">⚠ now outside the moved stay</span>' : '';
+        const section = (cls, title, note, body) => `<section class="move-group ${cls}"><h3>${title}</h3><p class="form-hint">${note}</p>${body}</section>`;
+        structureDialog('Stay move · preview', `Move the stay at ${escape(placeName(p.stay.placeId))}?`, `<form id="stay-move-form" data-id="${escape(stayId)}" data-days="${days}" data-from-list="${back ? 1 : ''}">
+<p class="move-summary"><strong>${escape(names(p.stay.participants))}</strong><br>${escape(dayName(p.stay.from.start))} → ${escape(dayName(p.stay.from.end))} <span class="was">currently</span><br>${escape(dayName(p.stay.to.start))} → ${escape(dayName(p.stay.to.end))} <strong>after the move (${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} ${days > 0 ? 'later' : 'earlier'})</strong></p>
+<p class="move-notice" role="status"><strong>Nothing has been changed yet.</strong> Only the stay and the activities ticked below will move, and only when you choose Confirm move. Everyone else's stays and plans are left alone.</p>
+${section('shift', `Will move with the stay (${p.shift.length})`, 'Flexible plans at this place whose travelers are all on this stay. Untick any that should keep their day.', p.shift.length ? list(p.shift, r => `<label class="check-label"><input type="checkbox" name="shift" value="${escape(r.id)}" checked ${off}><span>${escape(r.title)}<small>${escape(dayName(r.date))} → ${escape(dayName(r.to))}</small></span></label>`) : '<p>No flexible activities to move.</p>')}
+${p.fixed.length ? section('fixed', `■ Fixed bookings · stay where they are (${p.fixed.length})`, 'Bookings are never moved automatically. Rebook, or make one flexible and move it yourself.', list(p.fixed, r => `${escape(r.title)}<small>${escape(dayName(r.date))}</small>${outside(r)}`)) : ''}
+${p.mixed.length ? section('mixed', `Shared with travelers who are not moving · stay where they are (${p.mixed.length})`, 'These include someone who is not on this stay, so moving them would change another group’s day. Decide each one by hand.', list(p.mixed, r => `${escape(r.title)}<small>${escape(dayName(r.date))} · ${escape(names(t.activities.find(a => a.id === r.id).participants))}</small>${outside(r)}`)) : ''}
+${p.blocked.length ? section('mixed', `Cannot move · would fall outside the trip (${p.blocked.length})`, 'Left where they are. Change the trip dates or move them by hand.', list(p.blocked, r => `${escape(r.title)}<small>${escape(dayName(r.date))}</small>`)) : ''}
+${p.journeys.length ? section('review', `Journeys to review (${p.journeys.length})`, 'Travel around this stay is not changed. Check whether it still fits.', list(p.journeys, r => `${escape(r.title)}<small>${escape(dayName(r.date))}</small>`)) : ''}
+${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps.length})`, 'After the move, some of the same travelers would be booked in two places on the same night. The move is still allowed.', list(p.overlaps, r => `${escape(placeName(r.placeId))}<small>${escape(dayName(r.start))} → ${escape(dayName(r.end))}</small>`)) : ''}
+<p id="structure-message" role="alert"></p><div class="dialog-actions"><button type="button" class="secondary" id="structure-reload" hidden>Load latest plan</button><button type="button" class="secondary" data-stay="${escape(stayId)}" ${back ? 'data-from-list="1"' : ''}>Cancel · change nothing</button><button class="primary" id="structure-save" ${off}>Confirm move</button></div></form>`, back);
+    }
+    async function confirmStayMove(form) {
+        const stayId = form.dataset.id, ids = [...form.querySelectorAll('[name=shift]:checked')].map(x => x.value);
+        await saveStructure({ action: 'stay-move', stayId, days: Number(form.dataset.days), shiftActivityIds: ids, base: base(recordKey('stay', stayId), ...ids.map(id => recordKey('activity', id))) }, `Stay moved${ids.length ? ` with ${ids.length} flexible ${ids.length === 1 ? 'activity' : 'activities'}` : '; no activities were moved'}. Undo is available in History.`);
     }
     const checked = form => [...form.querySelectorAll('[name=participants]:checked')].filter(x => !x.disabled).map(x => x.value);
     function structureDraft(form) {
@@ -809,6 +832,17 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
                 openStay(b.dataset.stay, !!b.dataset.fromList);
             if (b.dataset.leg)
                 openLeg(b.dataset.leg, !!b.dataset.fromList);
+            if (b.id === 'stay-move-preview') {
+                const form = $('#stay-form'), stay = state.snapshot.trip.stays.find(x => x.id === form.dataset.id), to = form.elements.newStart.value;
+                try {
+                    if (!to)
+                        throw new Error('Choose the new check-in day first.');
+                    openStayMove(stay.id, daysBetween(stay.start, to), !!b.dataset.back);
+                }
+                catch (e) {
+                    $('#structure-message').textContent = e.message;
+                }
+            }
             if (b.id === 'place-inline-save')
                 await saveInlinePlace();
             if ((b.id === 'stay-delete' || b.id === 'leg-delete') && confirm(`Delete this ${b.id === 'leg-delete' ? 'journey' : 'stay'}? Activities are not affected. You can undo this from History.`))
@@ -932,7 +966,7 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
         }
     }
     document.addEventListener('submit', async (event) => {
-        if (!['edit-form', 'create-form', 'import-form', 'traveler-form', 'family-form', 'editor-form', 'place-form', 'stay-form', 'leg-form'].includes(event.target.id))
+        if (!['edit-form', 'create-form', 'import-form', 'traveler-form', 'family-form', 'editor-form', 'place-form', 'stay-form', 'leg-form', 'stay-move-form'].includes(event.target.id))
             return;
         event.preventDefault();
         if (!writable())
@@ -940,6 +974,10 @@ ${t ? `${dayChooser(t, state.day)}<div id="itinerary" tabindex="-1" class="date-
         const f = event.target;
         if (f.id === 'editor-form') {
             await changeEditors('add', f.elements.email.value);
+            return;
+        }
+        if (f.id === 'stay-move-form') {
+            await confirmStayMove(f);
             return;
         }
         if (['place-form', 'stay-form', 'leg-form'].includes(f.id)) {
