@@ -1,7 +1,8 @@
 # Pictures on cards
 
-Status: November 17, 2026. Built and checked locally with synthetic data; not
-deployed. **Adds a database table (migration `0004_card_pictures.sql`).** No
+Status: deployed as Sites version 16; laptop picture bands deployed as version 17.
+See [release provenance](multi-events.md#release-provenance) for the exact sources
+and live verification limits. **Added a database table (migration `0004_card_pictures.sql`) in version 16.** No
 existing table or stored trip is changed. From the
 [feedback plan](feedback-2026-11-15-plan.md), where it was deferred as "a later
 design decision, minimized on phones".
@@ -28,8 +29,10 @@ changing or removing a picture is in History as "Picture" and can be undone.
 
 ## Pictures in the laptop week view and the Ideas column
 
-Status: November 17, 2026. Built and checked locally with synthetic data and
-made-up pictures; not deployed. No data, API or schema change.
+Status: deployed as Sites version 17 (November 17 UTC / November 16 Pacific).
+Built and checked locally with synthetic data and made-up pictures. Deployment
+checks passed; live browser checks were not available. See
+[release provenance](multi-events.md#release-provenance). No data, API or schema change.
 
 A trip longer than four days opens in the week view on a laptop, and that view
 and the Ideas column left pictures out, so on most real trips a laptop showed
@@ -148,7 +151,7 @@ What keeps this narrow:
 
 Not verified: a real phone's camera roll (HEIC photos depend on the phone's
 browser converting them, which iPhones do when a photo is chosen from the
-library), the migration on the hosted database, and how 200 pictures affect
+library), and how 200 pictures affect
 the hosted storage allowance.
 
 ## Screenshots (synthetic data)

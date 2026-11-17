@@ -1,7 +1,9 @@
 # Two-level places: areas and venues
 
-Status: November 17, 2026. Built and checked locally with synthetic data; not
-deployed. Adds one optional field to a place. No database migration; no stored
+Status: deployed as Sites version 16; top-level place labels deployed as version 17.
+See [release provenance](multi-events.md#release-provenance) for exact sources
+and live verification limits. Built and checked locally with synthetic data.
+Adds one optional field to a place. No database migration; no stored
 trip is rewritten. From the [feedback plan](feedback-2026-11-15-plan.md)
 (item P2); the organizer confirmed one level of nesting is enough.
 
