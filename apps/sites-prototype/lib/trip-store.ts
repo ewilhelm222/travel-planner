@@ -2,12 +2,17 @@ import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../app/chatgpt-auth";
 import { tripRole, withTiming } from "./trips.mjs";
 import { staleRecords, staleMessage } from "../public/revisions.mjs";
+import { validEmbedKey } from "../public/maps.mjs";
 export const response = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "private, no-store", "Vary": "Cookie", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow" } });
 export const db = () => { if (!env.DB)
     throw new Error("Database unavailable"); return env.DB; };
 export const isCreator = (user: {
     email: string;
 }) => ((env as unknown as Record<string, string>).PLANNER_CREATOR_EMAILS || "").toLowerCase().split(",").map(s => s.trim()).includes(user.email.toLowerCase());
+// The Google Maps Embed key, from runtime configuration only. It is given to signed-in members of a trip
+// (an embed key is used in the browser by design; its protection is the restriction set on it in Google
+// Cloud). Unset or malformed means the day map stays a schematic.
+export const mapsEmbedKey = () => { const key = ((env as unknown as Record<string, string>).GOOGLE_MAPS_EMBED_KEY || "").trim(); return validEmbedKey(key) ? key : ""; };
 export const validOrigin = (request: Request) => request.headers.get("Origin") === new URL(request.url).origin && request.headers.get("Sec-Fetch-Site") !== "cross-site";
 export async function body(request: Request, max = 250000) { if (!validOrigin(request))
     throw Object.assign(new Error("Open the planner to make changes."), { status: 403 }); if (!request.headers.get("Content-Type")?.startsWith("application/json"))

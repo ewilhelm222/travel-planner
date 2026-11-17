@@ -338,3 +338,18 @@ console.log('PASS: organizer full backup download and a verified restore into a 
     assert.ok(!/Seedy|actor|lastEdit/.test(guestData), 'the guest view names no editor');
     console.log('PASS: last-edited comes from the change log, ignores cards a drag only renumbered, links stay within their trip, and guests get none of it.');
 }
+// Google Maps Embed key: from runtime configuration, to trip members only. The value is never printed.
+{
+    const made = await (await req('/api/trips', 'POST', { template: 'thanksgiving' })).json(), tid = made.snapshot.trip.id;
+    const member = await (await req(`/api/trip?id=${tid}`)).json();
+    assert.equal(typeof member.mapsEmbedKey, 'string', 'members are told the key, or an empty string when none is configured');
+    assert.ok(member.mapsEmbedKey === '' || /^[A-Za-z0-9_-]{30,60}$/.test(member.mapsEmbedKey));
+    const blocked = async r => { const text = await r.text(); assert.ok(!text.includes('mapsEmbedKey') && (!member.mapsEmbedKey || !text.includes(member.mapsEmbedKey))); };
+    await blocked(await anon(`/api/trip?id=${tid}`));
+    await blocked(await req('/api/trips'));
+    const shareOn = await (await req(`/api/share?id=${tid}`, 'POST', { action: 'rotate', base: { share: 1 } })).json();
+    await blocked(await anon('/api/shared', { headers: { Authorization: `Share ${new URL(shareOn.url).hash.slice(1)}` } }));
+    const saved = await req(`/api/trip?id=${tid}`, 'PATCH', { action: 'edit', activityId: 'option-2', patch: { notes: 'x' }, base: { 'activity:option-2': 1 } });
+    assert.ok(!JSON.stringify((await saved.json()).snapshot).includes('mapsEmbedKey'), 'the key is never part of a trip');
+    console.log(`PASS: the Google Maps key (${member.mapsEmbedKey ? 'configured' : 'not configured'}) reaches trip members only, never guests, signed-out visitors or stored trips.`);
+}

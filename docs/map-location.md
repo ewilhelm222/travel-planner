@@ -31,6 +31,10 @@ as searches, to keep them apart from the reviewed links, which are unchanged.
 
 ## Rules
 
+- **Since the Google day map was adopted** (November 17,
+  [google-maps-embed.md](google-maps-embed.md)), a day's stop locations are also
+  sent to Google when that map is shown, if a key is configured. The rest of
+  this section describes the planner without a key.
 - **The planner looks nothing up.** An address is never turned into a point, so
   a place with only an address is listed and linked but drawn in plan order (or
   along the bottom edge), not by position. No request leaves the planner; the

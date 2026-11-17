@@ -58,7 +58,7 @@
     }
     function persist() {
         try {
-            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, hideExamples: state.hideExamples, ideasClosed: state.ideasClosed, moreOpen: state.moreOpen, allDays: state.allDays }));
+            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, mapStyle: state.mapStyle, hideExamples: state.hideExamples, ideasClosed: state.ideasClosed, moreOpen: state.moreOpen, allDays: state.allDays }));
         }
         catch { }
     }
@@ -66,7 +66,7 @@
         state.downloadedAt = new Date().toISOString();
         state.copies[state.selected] = { snapshot: state.snapshot, downloadedAt: state.downloadedAt, isOwner: state.isOwner };
         try {
-            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, hideExamples: state.hideExamples, ideasClosed: state.ideasClosed, moreOpen: state.moreOpen, allDays: state.allDays }));
+            localStorage.setItem(KEY, JSON.stringify({ user: state.user, library: state.library, copies: state.copies, selected: state.selected, filter: state.filter, day: state.day, compactChoice: state.compactChoice, denseChoice: state.denseChoice, mapView: state.mapView, mapStyle: state.mapStyle, hideExamples: state.hideExamples, ideasClosed: state.ideasClosed, moreOpen: state.moreOpen, allDays: state.allDays }));
         }
         catch {
             state.message = 'This browser could not keep a reading copy. Save an offline HTML file.';
@@ -108,7 +108,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v44');
+            const cache = await caches.open('waypoint-shell-v45');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/activity-view.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -145,6 +145,8 @@
                 const result = await request(endpoint('/api/trip'));
                 state.snapshot = result.snapshot;
                 state.isOwner = result.isOwner;
+                // Kept in memory only: never written to the downloaded copy on this device.
+                mapsKey = typeof result.mapsEmbedKey === 'string' ? result.mapsEmbedKey : '';
                 state.day = preferredDay(state.snapshot.trip, state.day);
                 remember();
             }
@@ -252,6 +254,7 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
                 $('#itinerary').scrollLeft = selected.offsetLeft - $('#itinerary').offsetLeft;
             revealDay();
         }
+        armEmbed();
         // Cards changed in the last day get their mark, and the log is asked again if the plan has moved on.
         showLastEdits();
         loadLastEdits();
@@ -352,12 +355,53 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
     }
     // ---- Maps: tile-free schematics drawn from the same filtered records as the board ----
     // The panel itself is drawn by map-panel.mjs, which the guest page shares.
-    const mapOptions = () => ({ view: state.mapView === 'trip' ? 'trip' : 'day', filter: state.filter, day: state.day, compact: phone(), canEdit: true, dayName });
+    // Google Maps for the day needs a configured key and a live connection; otherwise the schematic is drawn.
+    let mapsKey = '', embedFailed = false, embedTimer = 0, embedWatch = null;
+    const mapOptions = () => ({ view: state.mapView === 'trip' ? 'trip' : 'day', filter: state.filter, day: state.day, compact: phone(), canEdit: true, dayName, embedKey: state.online && !state.needsSignIn ? mapsKey : '', mapStyle: state.mapStyle === 'schematic' ? 'schematic' : 'google', embedFailed });
+    const EMBED_WAIT_MS = 12000, GOOGLE_PROBE = 'https://www.google.com/maps/embed/v1/place', GOOGLE_PROBE_MS = 6000;
+    // Give the Google frame its address only when it scrolls into view, and fall back to the schematic when
+    // Google cannot be reached (offline, blocked, or unreachable as in mainland China). A frame reports
+    // "loaded" even when it only shows a network error, so reachability is asked first with a request that
+    // carries no key, no location, no cookie and no referrer. An error that Google draws inside its own
+    // frame (a wrong or restricted key) cannot be seen from here; "Show the schematic instead" covers that.
+    function armEmbed() {
+        clearTimeout(embedTimer);
+        embedWatch?.disconnect();
+        embedWatch = null;
+        const frame = $('#map-frame');
+        if (!frame?.dataset?.src || frame.src)
+            return;
+        const fail = () => { clearTimeout(embedTimer); if (frame.isConnected) { embedFailed = true; refreshMaps(); } };
+        const start = async () => {
+            embedWatch?.disconnect();
+            embedWatch = null;
+            const control = new AbortController(), probe = setTimeout(() => control.abort(), GOOGLE_PROBE_MS);
+            try {
+                await fetch(GOOGLE_PROBE, { mode: 'no-cors', cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer', signal: control.signal });
+            }
+            catch {
+                return fail();
+            }
+            finally {
+                clearTimeout(probe);
+            }
+            if (!frame.isConnected)
+                return;
+            embedTimer = setTimeout(fail, EMBED_WAIT_MS);
+            frame.addEventListener('load', () => clearTimeout(embedTimer), { once: true });
+            frame.src = frame.dataset.src;
+        };
+        if (!('IntersectionObserver' in window))
+            return start();
+        embedWatch = new IntersectionObserver(entries => { if (entries.some(e => e.isIntersecting)) start(); }, { rootMargin: '50px' });
+        embedWatch.observe(frame);
+    }
     const mapsBody = t => mapBodyHtml(t, mapOptions());
     const mapsSection = t => mapSectionHtml(t, mapOptions());
     function refreshMaps() {
         if ($('#maps-body') && state.snapshot)
             $('#maps-body').innerHTML = mapsBody(state.snapshot.trip);
+        armEmbed();
     }
     const ideaList = t => t.activities.filter(a => !a.date && matchesSelection(a, state.filter, t) && !(state.hideExamples && isExample(a)));
     function ideas(t) { return ideaCards(ideaList(t), t) || '<p>No unscheduled ideas yet.</p>'; }
@@ -1159,10 +1203,19 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
                 $('#import-error').textContent = '';
                 $('#import-dialog').showModal();
             }
+            if (b.dataset.mapStyle) {
+                // Google Maps or the schematic for the day map; the choice is remembered on this device.
+                state.mapStyle = b.dataset.mapStyle === 'schematic' ? 'schematic' : 'google';
+                embedFailed = false;
+                persist();
+                refreshMaps();
+                $('#maps-body [data-map-style]')?.focus();
+            }
             if (b.dataset.mapView) {
                 state.mapView = b.dataset.mapView;
                 persist();
                 $('#maps').outerHTML = mapsSection(state.snapshot.trip);
+                armEmbed();
                 document.querySelector(`[data-map-view="${state.mapView}"]`)?.focus();
             }
             if (b.id === 'ideas-toggle') {
