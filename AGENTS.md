@@ -13,6 +13,8 @@ illustrate proposals; they do not establish completed features or approved
 schema changes. Tapping an activity opens its read-only view; the editor opens
 only from that view's Edit button (`docs/activity-view.md`). A place's map location is an address or
 coordinates as typed; nothing is geocoded or converted (`docs/map-location.md`).
+The weather line under each date is fetched by the server for the stay's location;
+an address is looked up for the weather only and never stored (`docs/weather.md`).
 "Last edited by" is read from the change log, never stored, and never shown to
 guests (`docs/last-edited.md`). Read `docs/prototype.md` for implementation status and checks.
 

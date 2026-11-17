@@ -4,6 +4,7 @@ import { VIEW_ID, viewDialog, showActivityView, focusCard, enableViewDismiss } f
 import { matchesSelection } from './participants.mjs';
 import { buildOfflineHtml } from './offline-export.mjs';
 import { mapSectionHtml, followPin } from './map-panel.mjs';
+import { applyWeather, weatherNote, unitsFor } from './weather.mjs';
 const app = document.querySelector('#guest-app'), token = location.hash.slice(1);
 let trip, revision, updatedAt, day, filter = 'all', mapView = 'day';
 // A per-device reading preference; the guest page keeps nothing else.
@@ -23,6 +24,22 @@ function showPictures() {
     for (const img of document.querySelectorAll('img[data-image]:not([src])'))
         pictureFor(img.dataset.image).then(url => { if (url) { img.src = url; img.hidden = false; } else img.remove(); });
 }
+// The weather line under each date: the same as the planner's, fetched with the guest token in a header and
+// kept for this visit only. A failed request leaves the lines quiet.
+let weather = null, weatherFor = null;
+const showWeather = () => applyWeather(document, weather, { units: unitsFor(navigator.language), loading: weatherFor !== revision });
+async function loadWeather() {
+    let data = null;
+    try {
+        const r = await fetch('/api/shared-weather', { headers: { Authorization: `Share ${token}` }, cache: 'no-store', credentials: 'omit' });
+        if (r.ok)
+            data = await r.json();
+    }
+    catch { /* no weather */ }
+    weather = data;
+    weatherFor = revision;
+    showWeather();
+}
 const phone = () => window.matchMedia?.(PHONE_QUERY).matches;
 let layout;
 function render() {
@@ -41,7 +58,7 @@ function render() {
     // plan order. No address, coordinates or map link reaches this page, so none can be shown.
     const dayName = date => date ? dateLabel(date, { weekday: 'short', month: 'short', day: 'numeric' }) : 'Unscheduled ideas';
     const map = mapSectionHtml(trip, { view: mapView, filter, day, compact: layout, guest: true, dayName });
-    const schedule = `${dayChooser(trip, day, { ...(ideaList.length ? { ideas: ideaList.length } : {}), allDays })}<div class="board-wrap">${ideas}<div class="date-board" id="itinerary" tabindex="-1">${board(trip, { filter, day, guest: true })}</div></div>`;
+    const schedule = `${dayChooser(trip, day, { ...(ideaList.length ? { ideas: ideaList.length } : {}), allDays })}<div class="board-wrap">${ideas}<div class="date-board" id="itinerary" tabindex="-1">${board(trip, { filter, day, guest: true })}</div></div>${weatherNote()}`;
     // The same read-only activity view as the planner. Guests cannot edit, so it is drawn without an Edit button.
     // The activity view shared with the planner, and a small reading dialog for a stay the organizer chose to share.
     const dialog = `${viewDialog()}<dialog id="stay-view" aria-labelledby="stay-title"><div class="dialog-heading"><span class="eyebrow">Stay</span><button type="button" class="icon-button" data-close="stay-view" aria-label="Close stay details">×</button></div><h2 id="stay-title"></h2><div id="stay-body"></div></dialog>`;
@@ -51,6 +68,7 @@ function render() {
         : `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar"><span class="brand">Waypoint<span class="brand-dot">↗</span></span><span class="private-label">● Guest view · read only</span></header><main class="compact"><header class="trip-header"><div><span class="eyebrow">An invitation to explore</span><h1>${escape(trip.title)}<span class="title-dot">.</span></h1><p class="trip-subtitle">${escape(trip.subtitle)}</p><p class="trip-facts">${escape(trip.start)} – ${escape(trip.end)} · ${escape(trip.timezone)}</p></div></header><div class="toolbar">${filterLabel}<button class="secondary" id="refresh">Refresh</button><button class="secondary" id="download">Save a reading copy</button></div>${banner}<p role="status" id="guest-status">${guide}</p><p class="study-meta">${meta}</p>${schedule}${map}<footer>Read-only guest link · No account or RSVP required. Keep the link within your group.</footer></main>${dialog}`;
     fitColumns(document.querySelector('#itinerary'));
     showPictures();
+    showWeather();
     const selected = document.querySelector(`[data-date="${day}"]`);
     if (selected)
         document.querySelector('#itinerary').scrollLeft = selected.offsetLeft - document.querySelector('#itinerary').offsetLeft;
@@ -67,6 +85,7 @@ async function load() { try {
     ({ trip, revision, updatedAt } = data);
     day = preferredDay(trip, day);
     render();
+    loadWeather();
 }
 catch (e) {
     if (trip) {
