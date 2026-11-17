@@ -31,7 +31,7 @@ test('the board groups a day by area and names the venue on the card', () => {
     assert.deepEqual([...day.matchAll(/<section class="agenda-city"><h3 title="([^"]*)"/g)].map(m => m[1]), ['Our shared base · location to confirm', 'Town'], 'one section per area; the lodge is not a section of its own');
     assert.ok(card(t.activities[1], t).includes('<span class="card-venue">At The Lodge</span>'));
     assert.ok(card(t.activities[2], t).includes('At Museum &lt;one&gt;'));
-    assert.ok(!card(t.activities[3], t).includes('card-venue'), 'a plan at the area itself needs no venue line');
+    assert.ok(card(t.activities[3], t).includes('<span class="card-venue">At Our shared base · location to confirm</span>'), 'a plan at the area itself names the area');
     const guest = publicTrip({ ...t, activities: t.activities.map(a => ({ ...a, sourceKind: 'entered' })) });
     assert.deepEqual(guest.places.map(p => p.parentId), [null, 'home', null, 'town']);
     assert.ok(board(guest, { guest: true }).includes('At The Lodge'), 'guests see the same grouping and venue names');
