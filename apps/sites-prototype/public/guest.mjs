@@ -9,6 +9,18 @@ let allDays = false;
 try { allDays = localStorage.getItem('waypoint-guest-all-days') === '1'; } catch { }
 const allDaysView = () => phone() && allDays;
 function jumpToDay() { pressDay(document, day); document.querySelector(`#itinerary .agenda-day[data-date="${day}"]`)?.scrollIntoView({ block: 'start' }); }
+// Card pictures: fetched with the guest token in a header (an <img> address cannot carry one), kept in
+// memory for this visit only, and shown when they arrive. A picture that cannot be loaded leaves no gap.
+const pictures = new Map();
+function pictureFor(id) {
+    if (!pictures.has(id))
+        pictures.set(id, fetch(`/api/shared-image?image=${encodeURIComponent(id)}`, { headers: { Authorization: `Share ${token}` }, cache: 'no-store', credentials: 'omit' }).then(r => r.ok ? r.blob() : null).then(blob => blob ? URL.createObjectURL(blob) : null).catch(() => null));
+    return pictures.get(id);
+}
+function showPictures() {
+    for (const img of document.querySelectorAll('img.card-image[data-image]'))
+        pictureFor(img.dataset.image).then(url => { if (url) { img.src = url; img.hidden = false; } else img.remove(); });
+}
 const phone = () => window.matchMedia?.(PHONE_QUERY).matches;
 let layout;
 function render() {
@@ -30,6 +42,7 @@ function render() {
         ? `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar slim" id="top"><span class="brand">Waypoint<span class="brand-dot">↗</span></span><span class="private-label">● Guest view · read only</span></header><main class="compact schedule-first${allDays ? ' all-days' : ''}"><section class="trip-bar" aria-label="Schedule and traveler selection"><h1 class="trip-name">${escape(trip.title)}</h1>${filterLabel}</section>${banner}${schedule}<section class="manage" id="manage" aria-labelledby="manage-title"><h2 id="manage-title">About this schedule</h2><p class="manage-trip">${escape(trip.title)} · ${escape(trip.start)} – ${escape(trip.end)} · ${escape(trip.timezone)}</p>${trip.subtitle ? `<p>${escape(trip.subtitle)}</p>` : ''}<p role="status" id="guest-status">${guide}</p><div class="manage-group"><h3>Copies &amp; updates</h3><div class="tools"><button class="secondary" id="refresh">Refresh</button><button class="secondary" id="download">Save a reading copy</button></div><p class="study-meta">${meta}</p></div><a class="jump-link back-top" href="#top">↑ Back to the schedule</a></section><footer>Read-only guest link · No account or RSVP required. Keep the link within your group.</footer></main>${dialog}`
         : `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar"><span class="brand">Waypoint<span class="brand-dot">↗</span></span><span class="private-label">● Guest view · read only</span></header><main class="compact"><header class="trip-header"><div><span class="eyebrow">An invitation to explore</span><h1>${escape(trip.title)}<span class="title-dot">.</span></h1><p class="trip-subtitle">${escape(trip.subtitle)}</p><p class="trip-facts">${escape(trip.start)} – ${escape(trip.end)} · ${escape(trip.timezone)}</p></div></header><div class="toolbar">${filterLabel}<button class="secondary" id="refresh">Refresh</button><button class="secondary" id="download">Save a reading copy</button></div>${banner}<p role="status" id="guest-status">${guide}</p><p class="study-meta">${meta}</p>${schedule}<footer>Read-only guest link · No account or RSVP required. Keep the link within your group.</footer></main>${dialog}`;
     fitColumns(document.querySelector('#itinerary'));
+    showPictures();
     const selected = document.querySelector(`[data-date="${day}"]`);
     if (selected)
         document.querySelector('#itinerary').scrollLeft = selected.offsetLeft - document.querySelector('#itinerary').offsetLeft;

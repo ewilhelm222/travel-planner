@@ -114,7 +114,8 @@ Paste JSON provides a working alternative.
 Card pictures (November 17, not yet deployed) live in their own table,
 `planner_images`, added by migration `0004_card_pictures.sql`; see
 [pictures.md](pictures.md). They are not part of the trip document, the change
-log, the exports or the guest view.
+log or the exports. A guest sees the picture on a card they can see, fetched
+with the guest token from `/api/shared-image`.
 
 ## Verification and remaining work
 

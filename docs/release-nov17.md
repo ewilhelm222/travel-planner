@@ -18,10 +18,12 @@ own note:
   version runs unchanged against the new schema, so the migration can be
   applied first and a rollback of the app needs no database rollback.
 - No stored trip is rewritten. New fields are optional and read as empty.
-- The offline shell cache is `waypoint-shell-v38`.
-- **The guest link changes only if the organizer ticks "Show this stay on the
-  guest link" in a stay.** Venue names appear on guest cards once venues exist.
-  Pictures and private stay notes never reach guests.
+- The offline shell cache is `waypoint-shell-v39`.
+- **The guest link changes in two ways.** A stay appears only if the organizer
+  ticks "Show this stay on the guest link" in it. **A picture on a card that
+  guests can see is shown to guests as soon as it is saved** (the organizer's
+  decision of November 17). Venue names appear on guest cards once venues
+  exist. Private stay notes and addresses never reach guests.
 
 ## Combined checks
 

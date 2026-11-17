@@ -9,7 +9,7 @@ import { buildOfflineHtml } from '../public/offline-export.mjs';
 const read = path => readFileSync(new URL(path, import.meta.url), 'utf8');
 const b64 = bytes => Buffer.from(bytes).toString('base64');
 const JPEG = [0xff, 0xd8, 0xff, 0xe0, 0, 16, 74, 70, 73, 70, 0, 1], PNG = [0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10, 0, 0, 0, 13];
-const IMAGE = '0b0e7c1e-1111-4222-8333-444455556666';
+const IMAGE = '0b0e7c1e-1111-4222-8333-444455556666', OTHER = '0b0e7c1e-9999-4222-8333-444455556666';
 
 test('only small JPEG, PNG or WebP pictures are accepted, and the bytes must match the type', () => {
     assert.deepEqual(parseImageDataUrl(`data:image/jpeg;base64,${b64(JPEG)}`), { mime: 'image/jpeg', base64: b64(JPEG), bytes: 12 });
@@ -33,16 +33,20 @@ test('an activity points at its picture by id; old activities have none and are 
     assert.equal(applyTripChange(t, { action: 'edit', activityId: 'option-2', patch: { imageId: '' } }).activities[1].imageId, '', 'removing is an ordinary edit');
 });
 
-test('signed-in cards show the picture; the guest link, its cards and the offline file never do', () => {
+test('signed-in and guest cards show the picture; the offline file never embeds one', () => {
     let t = thanksgivingExample();
     t.activities.forEach(a => { a.sourceKind = 'entered'; });
+    t.activities[3].sourceKind = 'synthetic';
     t = applyTripChange(t, { action: 'edit', activityId: 'option-2', patch: { imageId: IMAGE } });
-    const html = card(t.activities[1], t);
-    assert.match(html, new RegExp(`<img class="card-image" src="/api/image\\?id=thanksgiving-example&amp;image=${IMAGE}" alt="" loading="lazy" decoding="async">`));
+    t = applyTripChange(t, { action: 'edit', activityId: 'option-4', patch: { imageId: OTHER } });
+    assert.match(card(t.activities[1], t), new RegExp(`<img class="card-image" src="/api/image\\?id=thanksgiving-example&amp;image=${IMAGE}" alt="" loading="lazy" decoding="async">`));
     assert.ok(!card(t.activities[2], t).includes('card-image'));
     const guest = publicTrip(t);
-    assert.ok(!JSON.stringify(guest).includes(IMAGE) && !('imageId' in guest.activities[1]));
-    assert.ok(!board(guest, { guest: true }).includes('card-image') && !card(t.activities[1], t, true).includes('card-image'));
+    assert.equal(guest.activities.find(a => a.id === 'option-2').imageId, IMAGE, 'guests get the picture id of a card they can see');
+    assert.ok(!JSON.stringify(guest).includes(OTHER), 'but not the picture of an item they cannot see');
+    const guestCard = card(guest.activities.find(a => a.id === 'option-2'), guest, true);
+    assert.match(guestCard, new RegExp(`<img class="card-image" data-image="${IMAGE}" alt="" hidden>`), 'the guest card waits for the page to fetch it with the guest token');
+    assert.ok(!guestCard.includes('/api/image'), 'and never points at the signed-in route');
     assert.ok(!buildOfflineHtml({ trip: t, revision: 1 }).includes('<img'), 'the offline file stays free of images and outside requests');
 });
 
@@ -52,7 +56,14 @@ test('the picture route checks trip membership, serves only that trip\'s picture
     assert.match(route, /WHERE id = \? AND trip_id = \?/);
     assert.match(route, /"X-Content-Type-Options": "nosniff"/);
     assert.match(route, /parseImageDataUrl\(input\?\.data\)/);
-    assert.ok(!guest.includes('/api/image') && !shared.includes('planner_images'), 'the guest page and guest data never touch pictures');
+    const guestRoute = read('../app/api/shared-image/route.ts'), view = read('../public/view.html');
+    assert.ok(!guest.includes("'/api/image") && !guest.includes('/api/image?'), 'the guest page never calls the signed-in picture route');
+    assert.match(guest, /fetch\(`\/api\/shared-image\?image=\$\{encodeURIComponent\(id\)\}`, \{ headers: \{ Authorization: `Share \$\{token\}` \}, cache: 'no-store', credentials: 'omit' \}\)/, 'the token goes in a header, never in the address, and no cookies are sent');
+    assert.match(guestRoute, /publicTrip\(snapshot\(r\)\.trip\)\.activities\.some\(/, 'guests can fetch only a picture that a card they can see currently shows');
+    assert.match(guestRoute, /WHERE id = \? AND trip_id = \?/);
+    assert.match(guestRoute, /"Cache-Control": "private, no-store"/, 'so switching the link off ends access to pictures too');
+    assert.match(view, /img-src 'self' blob:;/);
+    assert.ok(!shared.includes('planner_images'));
     const migration = readdirSync(new URL('../drizzle/', import.meta.url)).find(f => f.startsWith('0004_'));
     assert.equal(migration, '0004_card_pictures.sql');
     assert.match(read(`../drizzle/${migration}`), /CREATE TABLE `planner_images`/);

@@ -803,3 +803,5 @@ button.lodging { padding-left: 8px; }
 #picture-preview[hidden] { display: none; }
 .picture-field .tools { align-items: center; }
 #picture-message:empty { display: none; }
+
+.card-image[hidden] { display: none; }
