@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { thanksgivingExample, applyTripChange, publicTrip } from '../lib/trips.mjs';
 import { board } from '../public/board.mjs';
 import { classify, weatherWords, weatherLine, weatherIcon, unitsFor, applyWeather } from '../public/weather.mjs';
-import { tripWeather, stayLocation, parseForecast, localDate, memoryCache, FORECAST_URL, GEOCODE_URL } from '../lib/weather.mjs';
+import { tripWeather, stayLocation, stayLocations, parseForecast, localDate, memoryCache, FORECAST_URL, GEOCODE_URL } from '../lib/weather.mjs';
 
 const source = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 // Synthetic trip: Nov 25–29, one stay at "home" from Nov 25 to Nov 30. The place gets an invented location.
@@ -88,20 +88,22 @@ test('every day header carries the weather line, in the planner and for guests, 
         assert.match(html, /<\/h2><p class="day-weather" data-weather="2026-11-25"><\/p><\/header>/, 'directly under the date, inside the header');
     }
     const css = await source('public/planner.css');
-    assert.match(css, /\.day-weather \{[^}]*height: 24px;[^}]*overflow: hidden;[^}]*white-space: nowrap;/, 'one line of fixed height whether or not there is a forecast');
+    assert.match(css, /\.day-weather \{[^}]*height: 24px;[^}]*overflow: hidden;[^}]*white-space: nowrap;/, 'one line of fixed height when the trip has a forecast');
+    assert.match(css, /body:not\(\.has-weather\) \.day-weather \{ display: none; \}/, 'and no line at all when it has none');
     assert.ok(!JSON.stringify(publicTrip(trip)).includes('38.2541'), 'the stay location still never reaches the guest trip');
 });
 
 test('the page fills lines, day chips and the note in place', () => {
-    const el = (dataset, label) => { const attrs = { ...(label ? { 'aria-label': label } : {}) }; return { dataset, innerHTML: '', title: '', hidden: true, added: '', removeAttribute(n) { if (n === 'title') this.title = ''; }, getAttribute: n => attrs[n], setAttribute(n, v) { attrs[n] = v; }, querySelector: () => null, insertAdjacentHTML(_, html) { this.added = html; } }; };
+    const el = (dataset, label) => { const attrs = { ...(label ? { 'aria-label': label } : {}) }, classes = new Set(); return { classes, classList: { toggle: (c, on) => on ? classes.add(c) : classes.delete(c) }, dataset, innerHTML: '', title: '', hidden: true, added: '', removeAttribute(n) { if (n === 'title') this.title = ''; }, getAttribute: n => attrs[n], setAttribute(n, v) { attrs[n] = v; }, querySelector: () => null, insertAdjacentHTML(_, html) { this.added = html; } }; };
     const lines = [el({ weather: '2026-11-25' }), el({ weather: '2026-11-26' }), el({ weather: '2026-11-27' })], chips = [el({ day: '2026-11-25' }, 'Wednesday, November 25'), el({ day: '2026-11-26' }, 'Thursday, November 26')], note = el({});
-    const document = { querySelectorAll: s => s.startsWith('.day-weather') ? lines : chips, querySelector: () => note };
+    const body = el({}), document = { body, querySelectorAll: s => s.startsWith('.day-weather') ? lines : chips, querySelector: () => note };
     applyWeather(document, { days: { '2026-11-25': { ...day('snow'), where: 'Pine <Flat>' }, '2026-11-26': day('dry') }, updatedAt: '2026-11-20T18:00:00Z' }, { units: 'us', locale: 'en-US' });
     assert.match(lines[0].innerHTML, /Snow 90% · 4 in/);
     assert.match(lines[0].title, /^Forecast for Pine <Flat>\. Updated Nov 20, .*Weather data by Open-Meteo\.com$/, 'when it was updated is on the line');
     assert.match(lines[1].innerHTML, /weather-precip dry/);
     assert.match(lines[2].innerHTML, /weather-none/, 'a day without a forecast gets the quiet dash');
     assert.equal(lines[2].title, '');
+    assert.ok(body.classes.has('has-weather') && lines[2].classes.has('none') && !lines[0].classes.has('none'), 'the lines take room because some day has a forecast');
     assert.match(chips[0].added, /class="medallion-weather snow"/, 'a snowy day is marked on its chip');
     assert.match(chips[0].getAttribute('aria-label'), /^Wednesday, November 25\. Forecast: snow, 90 percent/, 'and said in its label');
     assert.equal(chips[1].added, '', 'a dry day leaves its chip alone');
@@ -111,6 +113,16 @@ test('the page fills lines, day chips and the note in place', () => {
     assert.deepEqual(lines.map(l => l.innerHTML), ['', '', ''], 'loading leaves the lines empty');
     assert.equal(note.hidden, true);
     assert.equal(chips[0].getAttribute('aria-label'), 'Wednesday, November 25', 'the chip label is put back');
+    assert.ok(!body.classes.has('has-weather'), 'while loading for the first time no room is taken');
+    applyWeather(document, null, { loading: true, reserve: true });
+    assert.ok(body.classes.has('has-weather'), 'a trip that had a forecast last time keeps the room while it loads');
+    // No forecast for any day: the line is given back, and a signed-in person is told why.
+    assert.equal(applyWeather(document, { days: {}, updatedAt: null, why: { reason: 'not-found', text: 'Camp <X>' } }, { reserve: true }), false);
+    assert.ok(!body.classes.has('has-weather'), 'no forecast at all: the line is reclaimed');
+    assert.equal(note.hidden, false);
+    assert.match(note.innerHTML, /^No forecast: the weather lookup could not find “Camp &lt;X&gt;”\. Add an address or coordinates/);
+    applyWeather(document, { days: {}, updatedAt: null }, {});
+    assert.equal(note.hidden, true, 'guests get no reason');
 });
 
 test('a stay with coordinates gets its forecast; only rounded coordinates are sent', async () => {
@@ -120,6 +132,7 @@ test('a stay with coordinates gets its forecast; only rounded coordinates are se
     assert.deepEqual(Object.keys(w.days), ['2026-11-25', '2026-11-26', '2026-11-27', '2026-11-28', '2026-11-29']);
     assert.deepEqual(['2026-11-25', '2026-11-26', '2026-11-27', '2026-11-28'].map(d => classify(w.days[d]).kind), ['rain', 'snow', 'mixed', 'dry']);
     assert.equal(w.days['2026-11-25'].where, trip.places[0].name);
+    assert.equal('why' in w, false);
     assert.equal(w.updatedAt, '2026-11-20T18:00:00.000Z', 'when the forecast was fetched');
     assert.equal(s.calls.length, 1, 'one request for the one location');
     const url = new URL(s.calls[0].url);
@@ -161,7 +174,10 @@ test('a stay with only an address is looked up for the weather, and the result i
     assert.deepEqual(stayLocation(located({ address: '5 Mill Lane, Pine Flat' }), trip.stays[0]), { kind: 'address', text: '5 Mill Lane, Pine Flat' });
     assert.deepEqual(stayLocation(located({ locationText: '39.9163, 116.3972', coordSystem: 'GCJ02' }), trip.stays[0]), { kind: 'coordinates', lat: 39.92, lng: 116.4 }, 'used as typed, never converted');
     const none = service({ forecast: forecastBody('2026-11-20', {}) });
-    assert.deepEqual((await tripWeather(trip, { fetch: none.fetch, cache: memoryCache(), now: NOW })).days, {}, 'an address nobody can find gives no weather');
+    const lost = await tripWeather(trip, { fetch: none.fetch, cache: memoryCache(), now: NOW, names: true });
+    assert.deepEqual(lost.days, {}, 'an address nobody can find gives no weather');
+    assert.deepEqual(lost.why, { reason: 'not-found', text: '12 Lantern Row, Pine Flat, CA' }, 'and a signed-in person is told which text was not found');
+    assert.equal('why' in await tripWeather(trip, { fetch: none.fetch, cache: memoryCache(), now: NOW }), false, 'guests are not');
     assert.ok(none.calls.every(c => c.url.startsWith(GEOCODE_URL)), 'and no forecast is asked for');
 });
 
@@ -172,17 +188,49 @@ test('a venue without a location uses the area it sits in', () => {
     assert.deepEqual(stayLocation(trip, trip.stays[0]), { kind: 'coordinates', lat: 38.25, lng: -120.35 });
 });
 
+test('a place with only a name is looked up by the area name, then its own', async () => {
+    let trip = applyTripChange(thanksgivingExample(), { action: 'place-edit', placeId: 'home', patch: { name: 'Pine Flat' } });
+    trip = applyTripChange(trip, { action: 'place-add', place: { id: 'camp', name: 'Camp Made-Up', parentId: 'home' } });
+    trip = applyTripChange(trip, { action: 'stay-edit', stayId: 'shared-base', patch: { placeId: 'camp' } });
+    assert.deepEqual(stayLocations(trip, trip.stays[0]), [{ kind: 'name', text: 'Pine Flat' }, { kind: 'name', text: 'Camp Made-Up' }]);
+    const s = service({ forecast: forecastBody('2026-11-20', { 5: 'rain' }), places: { 'Pine Flat': [38.25, -120.35] } });
+    s.fetch = (inner => async (url, init) => { const r = await inner(url, init); return String(url).startsWith(GEOCODE_URL) ? Response.json((await r.json()).map(x => ({ ...x, display_name: 'Pine Flat, Sample County, California, United States' }))) : r; })(s.fetch);
+    const w = await tripWeather(trip, { fetch: s.fetch, cache: memoryCache(), now: NOW, names: true });
+    assert.equal(classify(w.days['2026-11-25']).kind, 'rain');
+    assert.equal(w.days['2026-11-25'].where, 'Pine Flat, Sample County, California', 'the tooltip names what the lookup matched, so a wrong match can be noticed');
+    assert.equal(s.calls.length, 2, 'one lookup, one forecast');
+    // The area is unknown to the lookup: the venue's own name is tried next.
+    const venue = service({ forecast: forecastBody('2026-11-20', {}), places: { 'Camp Made-Up': [38.3, -120.3] } });
+    assert.equal(Object.keys((await tripWeather(trip, { fetch: venue.fetch, cache: memoryCache(), now: NOW })).days).length, 5);
+    // An address is preferred to a name, and coordinates to both.
+    trip = applyTripChange(trip, { action: 'place-edit', placeId: 'home', patch: { locationText: '1 Mill Lane, Pine Flat' } });
+    assert.deepEqual(stayLocations(trip, trip.stays[0]).map(x => x.kind), ['address', 'name', 'name']);
+    // A venue with a street address inside an area with coordinates: the coordinates are used, with no lookup at all.
+    trip = applyTripChange(trip, { action: 'place-edit', placeId: 'camp', patch: { address: '9 Camp Road' } });
+    trip = applyTripChange(trip, { action: 'place-edit', placeId: 'home', patch: { locationText: '38.012595, -120.227007', coordSystem: 'WGS84' } });
+    assert.deepEqual(stayLocations(trip, trip.stays[0])[0], { kind: 'coordinates', lat: 38.01, lng: -120.23 });
+    const direct = service({ forecast: forecastBody('2026-11-20', {}) });
+    assert.equal(Object.keys((await tripWeather(trip, { fetch: direct.fetch, cache: memoryCache(), now: NOW })).days).length, 5);
+    assert.ok(direct.calls.length === 1 && direct.calls[0].url.startsWith(FORECAST_URL), 'only the forecast is asked for');
+});
+
 test('no location: nothing is fetched and no weather is shown', async () => {
-    const trip = thanksgivingExample(), s = service({ forecast: forecastBody('2026-11-20', {}) });
+    const s = service({ forecast: forecastBody('2026-11-20', {}) });
+    const trip = { ...thanksgivingExample() };
+    trip.stays = trip.stays.map(x => ({ ...x, placeId: null }));
     assert.equal(stayLocation(trip, trip.stays[0]), null);
     assert.deepEqual(await tripWeather(trip, { fetch: s.fetch, cache: memoryCache(), now: NOW }), { days: {}, updatedAt: null });
+    assert.deepEqual((await tripWeather(trip, { fetch: s.fetch, cache: memoryCache(), now: NOW, names: true })).why, { reason: 'no-location' });
+    assert.deepEqual((await tripWeather({ ...trip, stays: [] }, { fetch: s.fetch, cache: memoryCache(), now: NOW, names: true })).why, { reason: 'no-stay' });
     assert.equal(s.calls.length, 0);
 });
 
 test('dates outside the forecast range have no weather, never an invented one', async () => {
     // The service answers Nov 5–20: the whole trip (Nov 25–29) is beyond it.
     const far = service({ forecast: forecastBody('2026-11-05', {}) });
-    assert.deepEqual((await tripWeather(withCoordinates(), { fetch: far.fetch, cache: memoryCache(), now: () => new Date('2026-11-05T18:00:00Z') })).days, {});
+    const beyond = await tripWeather(withCoordinates(), { fetch: far.fetch, cache: memoryCache(), now: () => new Date('2026-11-05T18:00:00Z'), names: true });
+    assert.deepEqual(beyond.days, {});
+    assert.deepEqual(beyond.why, { reason: 'out-of-range' });
     // The service answers Nov 12–27: Nov 28 and 29 are past the range.
     const part = service({ forecast: forecastBody('2026-11-12', {}) });
     assert.deepEqual(Object.keys((await tripWeather(withCoordinates(), { fetch: part.fetch, cache: memoryCache(), now: () => new Date('2026-11-12T18:00:00Z') })).days), ['2026-11-25', '2026-11-26', '2026-11-27']);
@@ -197,11 +245,15 @@ test('a failed lookup shows nothing, raises nothing, and is not retried at once'
     const down = service({ fail: true }), cache = memoryCache(() => clock);
     let clock = 0;
     assert.deepEqual(await tripWeather(withCoordinates(), { fetch: down.fetch, cache, now: NOW }), { days: {}, updatedAt: null });
+    assert.deepEqual((await tripWeather(withCoordinates(), { fetch: down.fetch, cache: memoryCache(), now: NOW, names: true })).why, { reason: 'forecast-failed', detail: 'Error' });
+    assert.deepEqual((await tripWeather(located({ locationText: '1 Mill Lane, Pine Flat' }), { fetch: down.fetch, cache: memoryCache(), now: NOW, names: true })).why, { reason: 'lookup-failed', detail: 'Error' });
+    const asked = down.calls.length;
     await tripWeather(withCoordinates(), { fetch: down.fetch, cache, now: NOW });
-    assert.equal(down.calls.length, 1, 'the failure is remembered for a few minutes');
+    assert.equal(down.calls.length, asked, 'the failure is remembered for a few minutes');
     clock = 6 * 60 * 1000;
     const up = service({ forecast: forecastBody('2026-11-20', {}) });
     assert.equal(Object.keys((await tripWeather(withCoordinates(), { fetch: up.fetch, cache, now: NOW })).days).length, 5, 'then it is tried again');
+    assert.deepEqual((await tripWeather(withCoordinates(), { fetch: async () => new Response('busy', { status: 429 }), cache: memoryCache(), now: NOW, names: true })).why, { reason: 'forecast-failed', detail: 'HTTP 429' }, 'the organizer is told what the service answered');
     const refused = { fetch: async () => new Response('busy', { status: 429 }) }, garbled = { fetch: async () => new Response('<html>', { headers: { 'Content-Type': 'text/html' } }) };
     for (const s of [refused, garbled])
         assert.deepEqual((await tripWeather(withCoordinates(), { fetch: s.fetch, cache: memoryCache(), now: NOW })).days, {});

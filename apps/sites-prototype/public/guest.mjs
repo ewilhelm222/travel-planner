@@ -27,7 +27,14 @@ function showPictures() {
 // The weather line under each date: the same as the planner's, fetched with the guest token in a header and
 // kept for this visit only. A failed request leaves the lines quiet.
 let weather = null, weatherFor = null;
-const showWeather = () => applyWeather(document, weather, { units: unitsFor(navigator.language), loading: weatherFor !== revision });
+// Whether there was a forecast last time is remembered on this device, so the room for the line is kept while it loads.
+function showWeather() {
+    let reserve = false;
+    try { reserve = localStorage.getItem('waypoint-guest-weather') === '1'; } catch { }
+    const any = applyWeather(document, weather, { units: unitsFor(navigator.language), loading: weatherFor !== revision, reserve });
+    if (weatherFor === revision)
+        try { localStorage.setItem('waypoint-guest-weather', any ? '1' : '0'); } catch { }
+}
 async function loadWeather() {
     let data = null;
     try {

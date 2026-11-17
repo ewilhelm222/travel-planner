@@ -76,6 +76,9 @@
     async function clearDownloaded() {
         localStorage.removeItem(KEY);
         localStorage.removeItem(OLD_KEY);
+        for (const k of Object.keys(localStorage))
+            if (k.startsWith('waypoint-weather:'))
+                localStorage.removeItem(k);
         if ('caches' in window)
             await Promise.all((await caches.keys()).filter(k => k.startsWith('waypoint-')).map(k => caches.delete(k)));
         if ('serviceWorker' in navigator)
@@ -109,7 +112,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v45');
+            const cache = await caches.open('waypoint-shell-v46');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/activity-view.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs', '/weather.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -283,7 +286,13 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
     const weatherKey = () => state.snapshot ? `${state.snapshot.trip.id}:${state.snapshot.revision}` : null;
     function showWeather() {
         const current = weather.key === weatherKey();
-        applyWeather(document, current ? weather.data : null, { units: unitsFor(navigator.language), loading: !current && state.online && !state.needsSignIn });
+        // Whether this trip had a forecast last time is remembered, so the room for the line is kept while it loads.
+        const hint = `waypoint-weather:${state.snapshot?.trip.id}`;
+        let reserve = false;
+        try { reserve = localStorage.getItem(hint) === '1'; } catch { }
+        const any = applyWeather(document, current ? weather.data : null, { units: unitsFor(navigator.language), loading: !current && state.online && !state.needsSignIn, reserve });
+        if (current && state.snapshot)
+            try { localStorage.setItem(hint, any ? '1' : '0'); } catch { }
     }
     async function loadWeather() {
         const key = weatherKey();
