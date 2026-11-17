@@ -31,6 +31,10 @@ as searches, to keep them apart from the reviewed links, which are unchanged.
 
 ## Rules
 
+- **Since the Google day map was adopted** (November 17,
+  [google-maps-embed.md](google-maps-embed.md)), a day's stop locations are also
+  sent to Google when that map is shown, if a key is configured. The rest of
+  this section describes the planner without a key.
 - **The map looks nothing up.** (Since later the same day, the weather line does look an
   address up, on the server, for the forecast only; the result is never stored on
   the place or drawn. See [weather.md](weather.md).) An address is never turned into a point, so

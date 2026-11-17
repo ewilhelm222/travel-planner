@@ -56,7 +56,9 @@ test('no link is ever built from coordinates, and none for Amap', async () => {
     assert.deepEqual(textDirectionLinks(''), []);
     const code = await source('public/maps.mjs') + await source('public/map-panel.mjs');
     assert.ok(!/uri\.amap\.com|amap\.com\/(marker|navigation|search)|ll=|sll=|center=/.test(code));
-    assert.ok(!/fetch\(|XMLHttpRequest|<img|<iframe|tile/i.test(await source('public/map-panel.mjs')), 'the panel loads nothing');
+    const panel = await source('public/map-panel.mjs');
+    assert.ok(!/fetch\(|XMLHttpRequest|<img|tile/i.test(panel), 'the panel fetches nothing itself');
+    assert.equal((panel.match(/<iframe/g) || []).length, 1, 'the only frame is the Google day map, drawn when a key is configured (tests/google-embed.test.mjs)');
 });
 
 test('an activity with no place stays usable: it can be opened, and its own address gives links', () => {

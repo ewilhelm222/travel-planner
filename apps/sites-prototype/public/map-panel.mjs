@@ -3,7 +3,7 @@
 // names only, so a guest map is always drawn in plan order and carries no address, coordinates or link.
 import { escape } from './board.mjs';
 import { participantRecord } from './participants.mjs';
-import { tripMap, dayMap, mapSvg, mapCaption, routeText, placeLinks, activityLinks, describeLocation } from './maps.mjs';
+import { tripMap, dayMap, mapSvg, mapCaption, routeText, placeLinks, activityLinks, describeLocation, dayEmbed, embedUrl } from './maps.mjs';
 
 /** One labelled row of outside links. Reviewed links are solid; searches and directions are dashed and say what they are. */
 export function linkRow(group, name) {
@@ -26,8 +26,9 @@ export function placeDetails(p, { guest = false, canEdit = false, directions = f
 /**
  * The body of the Map panel for one view. `view` is "day" or "trip". `dayName` formats a date.
  * If the drawing cannot be made, the numbered list and its links are still shown, with a sentence saying so.
+ * `embedKey` turns on Google Maps for the day; `mapStyle` "schematic" and `embedFailed` put the schematic back.
  */
-export function mapBodyHtml(trip, { view = 'day', filter = 'all', day, compact = false, guest = false, canEdit = false, dayName = d => d, draw = mapSvg } = {}) {
+export function mapBodyHtml(trip, { view = 'day', filter = 'all', day, compact = false, guest = false, canEdit = false, dayName = d => d, draw = mapSvg, embedKey = '', mapStyle = 'google', embedFailed = false } = {}) {
     const whole = view === 'trip', who = filter === 'all' ? 'everyone' : (participantRecord(trip, filter)?.name || 'the selected travelers');
     const model = whole ? tripMap(trip, { filter, compact }) : dayMap(trip, { filter, day, compact });
     const title = whole ? `Whole trip for ${who}: ${model.nodes.length} place${model.nodes.length === 1 ? '' : 's'}` : `${dayName(day)} for ${who}: ${model.stops.length} stop${model.stops.length === 1 ? '' : 's'}`;
@@ -49,6 +50,17 @@ export function mapBodyHtml(trip, { view = 'day', filter = 'all', day, compact =
     }
     else if (model.nodes.length)
         drawing = `<p class="map-caption map-nothing">Nothing to draw yet: a map needs at least two places${whole ? '' : ' on this day'}.${guest ? '' : ' A place is positioned from its coordinates. A typed address is used for map-app searches, not for the drawing. Use Edit place to add either.'}</p>`;
+    // Google Maps for the day, when the organizer has configured a key and every stop has something Google
+    // can place. Never for guests (they are sent no address) and never for the whole trip. The frame has no
+    // address until the page gives it one as it scrolls into view, so nothing is sent before then.
+    const embed = !whole && !guest && embedKey ? dayEmbed(model) : null, url = embed?.ok ? embedUrl(embed, embedKey) : '';
+    if (url && mapStyle !== 'schematic' && !embedFailed) {
+        drawing = `<div class="map-google" id="map-google"><iframe class="map-frame" id="map-frame" title="${escape(`Google Maps: ${title}`)}" data-src="${escape(url)}" referrerpolicy="strict-origin" allowfullscreen></iframe><p class="map-caption">Google Maps, ${embed.mode === 'place' ? 'this stop' : `directions through the ${embed.count} stops in itinerary order`}. The stops’ addresses or coordinates are sent to Google to show it. ${embed.mode === 'place' ? '' : 'The route and times are Google’s suggestion, not part of the plan. '}It does not load in mainland China. <button type="button" class="text-button" data-map-style="schematic">Show the schematic instead</button></p></div>`;
+    }
+    else if (url)
+        drawing += `<p class="map-caption map-switch">${embedFailed ? '<span role="status">Google Maps did not load, so this is the schematic.</span> ' : ''}<button type="button" class="text-button" data-map-style="google">${embedFailed ? 'Try Google Maps again' : 'Show this day on Google Maps'}</button></p>`;
+    else if (embed && embed.reason && model.nodes.length)
+        drawing += `<p class="map-caption map-switch">${escape(embed.reason)}</p>`;
     const route = routeText(model);
     return `<p class="map-title" id="map-view-title">${escape(title)}</p>${model.nodes.length ? `${drawing}${route ? `<p class="map-route">${escape(route)}</p>` : ''}<ol class="map-list" aria-label="${whole ? 'Places in plan order' : 'Stops in itinerary order'}">${list}</ol>` : `<p class="empty-lane">${escape(empty)}</p>`}${loose}`;
 }

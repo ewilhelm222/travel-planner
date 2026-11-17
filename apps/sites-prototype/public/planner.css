@@ -922,6 +922,12 @@ dialog.activity-view h2 { margin: 4px 0 10px; overflow-wrap: anywhere; outline: 
 .history-older { padding: 14px 0 4px; border-top: 1px solid #e6dcf2; color: var(--muted); font-size: 14px; }
 @media print { .last-edit, .edited-mark { display: none; } }
 
+/* Google Maps for the day map, when a key is configured. The schematic stays one button away. */
+.map-frame { display: block; width: 100%; max-width: 760px; aspect-ratio: 16 / 10; min-height: 280px; border: 0; border-radius: 16px; background: var(--dusk); }
+.map-switch { margin-top: 8px; }
+.map-caption .text-button { min-height: 44px; }
+@media (orientation: landscape) and (max-height: 500px) { .map-frame { aspect-ratio: auto; height: 78vh; min-height: 0; } }
+@media print { .map-google { display: none; } }
 /* Weather under the date (November 17). One line of fixed height in every day header, filled in place by
    weather.mjs, so the stay line and cards start at the same height with a forecast, without one, and while it
    loads. Precipitation leads: a wet or snowy day is a lit pill, a dry day is quiet text. Temperature follows, smaller. */

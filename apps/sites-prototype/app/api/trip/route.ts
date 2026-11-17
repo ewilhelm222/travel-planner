@@ -1,4 +1,4 @@
-import { access, body, response, snapshot, userView, failed, staleCheck, transact } from "../../../lib/trip-store";
+import { access, body, response, snapshot, userView, failed, staleCheck, transact, mapsEmbedKey } from "../../../lib/trip-store";
 import { applyTripChange, editorRestriction } from "../../../lib/trips.mjs";
 import { diffTrips, summarize } from "../../../public/history.mjs";
 import { advance } from "../../../public/revisions.mjs";
@@ -7,7 +7,7 @@ export async function GET(request: Request) { try {
     const a = await access(request);
     if (a.error)
         return a.error;
-    return response({ user: userView(a.user!), snapshot: snapshot(a.row!), isOwner: a.isOwner, role: a.role });
+    return response({ user: userView(a.user!), snapshot: snapshot(a.row!), isOwner: a.isOwner, role: a.role, mapsEmbedKey: mapsEmbedKey() });
 }
 catch (e) {
     return failed(e);

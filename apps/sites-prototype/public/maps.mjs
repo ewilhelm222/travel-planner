@@ -147,6 +147,47 @@ export function activityLinks(activity, { guest = false } = {}) {
   if (!address) return { reviewed: [], search: null, directions: null };
   return { reviewed: [], search: { label: "Search this address in", kind: "address", links: textSearchLinks(address) }, directions: { label: "Directions to this address in", kind: "directions", links: textDirectionLinks(address) } };
 }
+// ---- Google Maps Embed for the day map (owner decision, November 17, 2026) ----
+// Used only when a key is configured. What is sent to Google is what a person entered: a typed
+// address, or coordinates recorded as WGS-84, which is the system Google's embed expects. Coordinates
+// in GCJ-02, BD-09 or an unknown system are never sent, because Google would draw them in the wrong
+// place and converting them would be guesswork. A bare place name is not sent either.
+export const EMBED_MAX_WAYPOINTS = 20;
+/** A browser key as Google issues them; anything else is treated as "no key configured". */
+export const validEmbedKey = key => typeof key === "string" && /^[A-Za-z0-9_-]{30,60}$/.test(key);
+/** The text to give Google for a place, or null when the place has nothing usable. */
+export function embedLocation(place) {
+  if (!place) return null;
+  const typed = locationAddress(place);
+  if (typed) return typed;
+  if (hasCoordinates(place) && place.coordSystem === "WGS84") return `${place.lat},${place.lng}`;
+  return text(place.localAddress, 500) || text(place.address, 500) || null;
+}
+/**
+ * How a day would be shown in a Google embed: one stop in place mode, several in directions mode
+ * (first stop, the stops between as waypoints, last stop, in itinerary order). `{ ok: false, reason }`
+ * when it cannot be: no stops, a stop with no usable location, or more waypoints than the embed takes.
+ */
+export function dayEmbed(model) {
+  const stops = model?.kind === "day" ? model.stops : [];
+  if (!stops.length) return { ok: false, reason: "" };
+  const missing = stops.filter(s => !embedLocation(s.place));
+  if (missing.length) {
+    const names = [...new Set(missing.map(s => `“${s.name}”`))], other = missing.some(s => hasCoordinates(s.place));
+    return { ok: false, reason: `Shown as a schematic, not on Google Maps, because ${names.join(", ")} ${names.length === 1 ? "has" : "have"} no address${other ? " and coordinates in a system Google Maps would misplace" : " or WGS-84 coordinates"}. Add one under Edit place.` };
+  }
+  const at = stops.map(s => embedLocation(s.place));
+  if (at.length === 1) return { ok: true, mode: "place", q: at[0], count: 1 };
+  if (at.length - 2 > EMBED_MAX_WAYPOINTS) return { ok: false, reason: `Shown as a schematic: Google Maps takes at most ${EMBED_MAX_WAYPOINTS + 2} stops in one map and this day has ${at.length}.` };
+  return { ok: true, mode: "directions", origin: at[0], destination: at.at(-1), waypoints: at.slice(1, -1), count: at.length };
+}
+/** The embed address. The key travels in it, as Google's embed requires; it is never stored in a trip or in source. */
+export function embedUrl(embed, key) {
+  if (!embed?.ok || !validEmbedKey(key)) return "";
+  const e = encodeURIComponent;
+  return embed.mode === "place" ? `https://www.google.com/maps/embed/v1/place?key=${e(key)}&q=${e(embed.q)}`
+    : `https://www.google.com/maps/embed/v1/directions?key=${e(key)}&origin=${e(embed.origin)}&destination=${e(embed.destination)}${embed.waypoints.length ? `&waypoints=${embed.waypoints.map(e).join("|")}` : ""}`;
+}
 /** The order of travel in words, for people who cannot see or use the drawing. Empty when there is nothing to say. */
 export function routeText(model) {
   const name = id => model.nodes.find(n => n.id === id)?.name || "a place to confirm";
