@@ -1,9 +1,11 @@
 # Google Maps for the day map
 
-Status: November 17, 2026. Owner decision the same day: use the Google Maps
-Embed API for the day map. Built and checked locally with synthetic data and
-with Google stubbed out; not deployed, and **not yet seen with a real key**.
-No database migration.
+Status: deployed November 17, 2026 (America/Los_Angeles), Sites version 20,
+from main `972a146b4c29c0b983fbd1ab4210f19d6fd62dc3`. The key is configured
+as a Sites secret in runtime environment revision 2. **A real Google map has
+not been seen working with the key here**: browser controls were unavailable.
+See [release provenance](multi-events.md#release-provenance) for results and limits.
+Local checks used synthetic data with Google stubbed out. No database migration.
 
 **Stop locations are sent to Google.** When the Google day map is shown, the
 addresses or coordinates of that day's stops go to Google in the map's address,
@@ -126,6 +128,15 @@ if a string shaped like a Google key appears anywhere in the repository.
   checks still pass with and without a key.
 
 ## Not verified
+
+Deployment observation, November 17, 2026: version 20 publication succeeded.
+Published scripts match pinned source and contain no key text; signed-out trip
+APIs return 401 without the key field. The owner confirmed the required API and
+Site-referrer restrictions, but the Google Cloud console was not independently
+inspected. No authenticated owner or guest browser check was possible; the real
+Google map, referrer acceptance, schematic fallback, stop list, guest display and
+weather regression remain not checked. No live trip edit was made.
+
 
 - **A real Google map.** Google could not be reached from the build
   environment, so the supplied key was never accepted or refused by Google
