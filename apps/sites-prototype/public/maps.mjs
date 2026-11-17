@@ -28,16 +28,81 @@ export function mapUrl(kind, value) {
   return url;
 }
 /**
- * The location part of a place: optional coordinates, the system they are in, where they
- * came from, and map links a person has opened and checked. Coordinates always come as a
- * pair, and always with an explicit system (which may be "unknown").
+ * Read what a person typed into "Location for the map". Three answers, never a guess:
+ *   { kind: "empty" }
+ *   { kind: "coordinates", lat, lng }  for a pair in decimal degrees, e.g. "39.9163, 116.3972" or "39.9163° N 116.3972° E"
+ *   { kind: "address", text }          for anything with words in it: a street address or a place name
+ * Text made only of numbers and compass marks that is not a valid pair is refused with a reason,
+ * rather than being searched for as if it were an address. Nothing is converted between systems.
+ */
+export function parseLocation(value) {
+  const typed = text(value, 500);
+  if (!typed) return { kind: "empty" };
+  // Compass letters (on their own or attached to a number) and degree marks are set aside before asking "are there words here?".
+  const bare = typed.replace(/[°º˚]/g, " ").replace(/(?<!\p{L})[NSEW](?!\p{L})/giu, " ");
+  if (/\p{L}/u.test(bare)) return { kind: "address", text: typed };
+  if (/['′’"″”]/.test(typed)) throw new Error("These look like coordinates in degrees, minutes and seconds. Enter decimal degrees instead (for example 39.9163, 116.3972), or type the address.");
+  const flat = typed.replace(/[°º˚]/g, " ").replace(/[,;，；、]/g, " ").replace(/\s+/g, " ").trim(), n = "([-+]?\\d{1,3}(?:\\.\\d+)?)", c = "([NSEW])";
+  const bad = () => new Error("This looks like coordinates, but not a complete pair. Enter latitude then longitude in decimal degrees (for example 39.9163, 116.3972), or type the address or place name.");
+  // A compass letter may come before its number ("N 39.9 E 116.4") or after it ("39.9 N, 116.4 E"), attached or not.
+  const before = flat.match(new RegExp(`^${c} ?${n} ${c}? ?${n}$`, "i")), after = flat.match(new RegExp(`^${n} ?${c}? ${n} ?${c}?$`, "i"));
+  const values = before ? [{ token: before[2], letter: before[1] }, { token: before[4], letter: before[3] }] : after ? [{ token: after[1], letter: after[2] }, { token: after[3], letter: after[4] }] : null;
+  // "39,9163 116,3972": decimal commas cannot be told apart from separators, so say so.
+  if (!values) throw /^[-+]?\d+ \d+ [-+]?\d+ \d+$/.test(flat) ? new Error("Use a full stop for decimals and a comma between the two numbers (for example 39.9163, 116.3972).") : bad();
+  for (const v of values) v.letter = (v.letter || "").toUpperCase();
+  let [a, b] = values;
+  // "116.3972 E, 39.9163 N" is longitude first, and says so; without letters the order is latitude, longitude.
+  if (/[EW]/.test(a.letter) && (!b.letter || /[NS]/.test(b.letter))) [a, b] = [b, a];
+  if (/[EW]/.test(a.letter) || /[NS]/.test(b.letter)) throw bad();
+  const signed = (v, negative) => { const n = Number(v.token); if (v.letter && n < 0) throw bad(); return v.letter === negative ? -n : n; };
+  return { kind: "coordinates", lat: number(signed(a, "S"), 90, "Latitude"), lng: number(signed(b, "W"), 180, "Longitude") };
+}
+/**
+ * The location part of a place: an optional typed location (an address or place name, or
+ * coordinates), the system the coordinates are in, where they came from, and map links a person
+ * has opened and checked. `locationText` is kept exactly as typed. When it holds coordinates,
+ * `lat`/`lng` are read from it; when it holds an address there are no coordinates at all, because
+ * an address is never turned into a point here. A place saved before `locationText` existed keeps
+ * its `lat`/`lng` untouched. Coordinates always come with an explicit system (which may be "unknown").
  */
 export function normalizePlaceGeo(place) {
-  const lat = number(place.lat, 90, "Latitude"), lng = number(place.lng, 180, "Longitude");
+  const locationText = text(place.locationText, 500), typed = parseLocation(locationText);
+  let lat, lng;
+  if (typed.kind === "coordinates") ({ lat, lng } = typed);
+  else if (typed.kind === "address") lat = lng = null;
+  else { lat = number(place.lat, 90, "Latitude"); lng = number(place.lng, 180, "Longitude"); }
   if ((lat === null) !== (lng === null)) throw new Error("Enter both latitude and longitude, or leave both empty.");
   if (lat !== null && !COORD_SYSTEMS.includes(place.coordSystem)) throw new Error("Say which coordinate system these numbers use, or choose Unknown. They are never converted or guessed.");
   const amapUrl = mapUrl("amap", place.amapUrl), appleMapsUrl = mapUrl("apple", place.appleMapsUrl);
-  return { lat, lng, coordSystem: lat === null ? "" : place.coordSystem, coordSource: text(place.coordSource, 300), amapUrl, appleMapsUrl, navReviewed: place.navReviewed === true && !!(amapUrl || appleMapsUrl) };
+  return { locationText, lat, lng, coordSystem: lat === null ? "" : place.coordSystem, coordSource: text(place.coordSource, 300), amapUrl, appleMapsUrl, navReviewed: place.navReviewed === true && !!(amapUrl || appleMapsUrl) };
+}
+/** The address or place name typed as the map location, or "" when the place has coordinates or nothing. */
+export const locationAddress = place => { if (!place?.locationText) return ""; try { const l = parseLocation(place.locationText); return l.kind === "address" ? l.text : ""; } catch { return ""; } };
+/** What to put back in the "Location for the map" box: the text as typed, or an older place's stored pair. */
+export const locationInput = place => place?.locationText || (hasCoordinates(place) ? `${place.lat}, ${place.lng}` : "");
+const SYSTEM_NAMES = { WGS84: "WGS-84", GCJ02: "GCJ-02", BD09: "BD-09" };
+const degrees = (n, positive, negative) => `${Math.abs(n)}° ${n < 0 ? negative : positive}`;
+/**
+ * The saved location in words, for people: `{ kind, text, note }`. Coordinates read as
+ * "39.9163° N, 116.3972° E" with their system; an address reads as typed.
+ */
+export function describeLocation(place) {
+  const address = locationAddress(place);
+  if (address) return { kind: "address", text: address, note: "Address for map apps. Not positioned on the drawing, because an address is not turned into coordinates." };
+  if (!hasCoordinates(place)) return { kind: "empty", text: "", note: "" };
+  return { kind: "coordinates", text: `${degrees(place.lat, "N", "S")}, ${degrees(place.lng, "E", "W")}`, note: place.coordSystem === "unknown" ? "coordinate system unknown, not positioned" : SYSTEM_NAMES[place.coordSystem] || place.coordSystem };
+}
+/**
+ * Map-app searches for a typed address: the text goes to the map app exactly as typed, and only
+ * when a person follows the link. These are searches, not checked links; nothing is looked up
+ * by the planner itself. No link is built from coordinates, and none for Amap (its link format
+ * was never checked from here).
+ */
+export function searchLinks(place) {
+  const query = locationAddress(place);
+  if (!query) return [];
+  const q = encodeURIComponent(query);
+  return [{ label: "Apple Maps", url: `https://maps.apple.com/?q=${q}` }, { label: "Google Maps", url: `https://www.google.com/maps/search/?api=1&query=${q}` }];
 }
 /** Links to offer for getting there: only ones a person marked as opened and checked. */
 export function reviewedLinks(place) {

@@ -268,6 +268,31 @@ console.log('PASS: organizer full backup download and a verified restore into a 
     assert.ok(!/45\.5|GCJ02|PRIVATE|amap/.test(guestMap), 'coordinates, their source and map links are not in the guest view');
     console.log('PASS: place coordinates need an explicit system, map links must be on the provider\'s site, and none of it reaches guests.');
 }
+// Location for the map: an address or coordinates in one field, kept as typed; an older page's two numbers still work.
+{
+    const made = await (await req('/api/trips', 'POST', { template: 'thanksgiving' })).json(), tid = made.snapshot.trip.id, tp = `/api/trip?id=${tid}`;
+    let rev = 1;
+    const edit = async patch => { const r = await req(tp, 'PATCH', { action: 'place-edit', placeId: 'home', patch, base: { 'place:home': rev } }); if (r.status === 200) rev++; return r; };
+    const home = async r => (await r.json()).snapshot.trip.places[0];
+    const address = await edit({ locationText: '  12 Lantern Row, Harbour Town ', coordSystem: '' });
+    assert.equal(address.status, 200, await address.clone().text());
+    let saved = await home(address);
+    assert.deepEqual([saved.locationText, saved.lat, saved.lng, saved.coordSystem], ['12 Lantern Row, Harbour Town', null, null, ''], 'an address is kept as typed, with no coordinates');
+    assert.equal((await edit({ locationText: '45.5, -122.6' })).status, 400, 'typed coordinates still need an explicit system');
+    assert.equal((await edit({ locationText: '95, 200', coordSystem: 'WGS84' })).status, 400);
+    assert.equal((await edit({ locationText: '45', coordSystem: 'WGS84' })).status, 400, 'half a pair is refused, not searched');
+    saved = await home(await edit({ locationText: '45.5° N, 122.6° W', coordSystem: 'WGS84' }));
+    assert.deepEqual([saved.locationText, saved.lat, saved.lng, saved.coordSystem], ['45.5° N, 122.6° W', 45.5, -122.6, 'WGS84']);
+    saved = await home(await edit({ lat: '45.6', lng: '-122.7', coordSystem: 'GCJ02' }));
+    assert.deepEqual([saved.locationText, saved.lat, saved.lng, saved.coordSystem], ['', 45.6, -122.7, 'GCJ02'], 'a page from before this change still saves two numbers');
+    saved = await home(await edit({ name: 'Renamed base' }));
+    assert.deepEqual([saved.lat, saved.lng, saved.coordSystem], [45.6, -122.7, 'GCJ02'], 'an unrelated edit leaves stored coordinates alone');
+    await edit({ locationText: 'PRIVATE Lantern Row', coordSystem: '' });
+    const shareOn = await (await req(`/api/share?id=${tid}`, 'POST', { action: 'rotate', base: { share: 1 } })).json();
+    const guestMap = JSON.stringify(await (await anon('/api/shared', { headers: { Authorization: `Share ${new URL(shareOn.url).hash.slice(1)}` } })).json());
+    assert.ok(!/PRIVATE|Lantern|locationText/.test(guestMap), 'the typed map location is not in the guest view');
+    console.log('PASS: the map location accepts an address or coordinates as typed, refuses half a pair, keeps older coordinates, and stays out of the guest view.');
+}
 
 // Guest projection of an entered plan: guest description only, never private notes; examples are left out.
 {

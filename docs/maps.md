@@ -32,7 +32,8 @@ under each drawing says which kind it is:
 
 **Edit place** (from the map list or *Places, stays & journeys*) has:
 
-- Latitude and longitude in decimal degrees, optional.
+- One box for a street address, a place name or coordinates in decimal
+  degrees, optional. See [Location for the map](map-location.md) (November 17).
 - **Coordinate system**, required when coordinates are entered: WGS-84 (GPS and
   most maps outside mainland China), GCJ-02 (Amap, Tencent, Apple Maps in
   mainland China), BD-09 (Baidu), or Unknown.
@@ -51,9 +52,10 @@ under each drawing says which kind it is:
 - **Only reviewed links are offered.** A pasted link appears on the map only
   after the tick box is set, and changing the link clears the tick. Amap links
   must be `https` on `amap.com`; Apple links must be `https://maps.apple.com/`.
-- **No link is built from coordinates.** The only generated link is a helper in
-  the place form that searches Apple Maps by the place's name and address, and
-  it is labelled unreviewed.
+- **No link is built from coordinates.** Generated links are searches by text
+  only, and are labelled as searches: a helper in the place form (Apple Maps,
+  by name and address) and, since November 17, Apple Maps and Google Maps
+  searches for an address typed as the map location.
 - Coordinates, their source and map links are private. The guest view does not
   include them and has no map. The private offline HTML file lists them as text.
 

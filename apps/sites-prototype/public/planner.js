@@ -5,7 +5,7 @@
     const { fieldChanges } = await import('/history.mjs');
     const { baseFor, recordKey } = await import('/revisions.mjs');
     const { previewStayMove, daysBetween } = await import('/stay-move.mjs');
-    const { tripMap, dayMap, mapSvg, mapCaption, reviewedLinks, appleSearchUrl, hasCoordinates, COORD_SYSTEMS, COORD_LABELS } = await import('/maps.mjs');
+    const { tripMap, dayMap, mapSvg, mapCaption, reviewedLinks, appleSearchUrl, COORD_SYSTEMS, COORD_LABELS, parseLocation, locationInput, describeLocation, searchLinks } = await import('/maps.mjs');
     const { isSnapshot, restoreFromSnapshot } = await import('/backup.mjs');
     const { placeReferences, placeReferenceSummary, parseLinks, formatLinks, LEG_MODES, parseImageDataUrl, imageUrl } = await import('/structure.mjs');
     const { responsePolicy } = await import('/reading-copy.mjs');
@@ -107,7 +107,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v41');
+            const cache = await caches.open('waypoint-shell-v42');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/activity-view.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -294,10 +294,13 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
         render();
     }
     // ---- Maps: tile-free schematics drawn from the same filtered records as the board ----
-    const coordText = p => hasCoordinates(p) ? `${p.lat}, ${p.lng} · ${p.coordSystem === 'unknown' ? 'coordinate system unknown, not positioned' : escape(p.coordSystem)}${p.coordSource ? ` · source: ${escape(p.coordSource)}` : ''}` : 'No coordinates yet';
+    // The saved map location in words: coordinates with their system and source, or the address as typed.
+    const coordText = p => { const l = describeLocation(p); return l.kind === 'coordinates' ? `${escape(l.text)} · ${escape(l.note)}${p.coordSource ? ` · source: ${escape(p.coordSource)}` : ''}` : l.kind === 'address' ? `Map address: ${escape(l.text)} · not positioned on the drawing` : 'No location for the map yet'; };
+    // Searches for a typed address, kept visibly apart from links a person has opened and checked.
+    const searchLinksHtml = p => { const links = searchLinks(p); return links.length ? `<span class="map-links map-search"><span class="map-search-label">Search this address in</span>${links.map(l => `<a class="map-link search" href="${escape(l.url)}" target="_blank" rel="noopener noreferrer">${escape(l.label)} ↗<span class="sr-only"> search for the address of ${escape(p.name)}, not a checked link</span></a>`).join('')}</span>` : ''; };
     function placeLines(p) {
         const links = reviewedLinks(p);
-        return `${p.localName ? `<span lang="zh-Hans" class="map-local">${escape(p.localName)}</span>` : ''}${p.address || p.localAddress ? `<small>${escape(p.address)}${p.address && p.localAddress ? ' · ' : ''}<span lang="zh-Hans">${escape(p.localAddress)}</span></small>` : ''}<small>${coordText(p)}</small><span class="map-links">${links.map(l => `<a class="map-link" href="${escape(l.url)}" target="_blank" rel="noopener noreferrer">${escape(l.label)} ↗<span class="sr-only"> for ${escape(p.name)}, reviewed link</span></a>`).join('') || '<small>No reviewed map link yet</small>'}<button type="button" class="text-button" data-place-edit="${escape(p.id)}" aria-label="Edit place ${escape(p.name)}">Edit place</button></span>`;
+        return `${p.localName ? `<span lang="zh-Hans" class="map-local">${escape(p.localName)}</span>` : ''}${p.address || p.localAddress ? `<small>${escape(p.address)}${p.address && p.localAddress ? ' · ' : ''}<span lang="zh-Hans">${escape(p.localAddress)}</span></small>` : ''}<small>${coordText(p)}</small>${searchLinksHtml(p)}<span class="map-links">${links.map(l => `<a class="map-link" href="${escape(l.url)}" target="_blank" rel="noopener noreferrer">${escape(l.label)} ↗<span class="sr-only"> for ${escape(p.name)}, reviewed link</span></a>`).join('') || '<small>No reviewed map link yet</small>'}<button type="button" class="text-button" data-place-edit="${escape(p.id)}" aria-label="Edit place ${escape(p.name)}">Edit place</button></span>`;
     }
     function mapsBody(t) {
         const trip = state.mapView === 'trip', who = state.filter === 'all' ? 'everyone' : (participantRecord(t, state.filter)?.name || 'the selected travelers');
@@ -308,7 +311,7 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
             ? model.nodes.map(n => `<li><span class="map-stop" aria-hidden="true">${n.n}</span><div><strong>${escape(n.name)}</strong>${n.detail ? `<small>Staying ${escape(n.detail)}</small>` : ''}${placeLines(n.place)}</div></li>`).join('')
             : model.stops.map(s => `<li><span class="map-stop" aria-hidden="true">${s.n}</span><div><strong>${escape(s.name)}</strong><small>${s.activities.map(a => `${escape(a.time || 'Time to confirm')} · ${escape(a.title)}`).join('<br>')}</small>${placeLines(s.place)}</div></li>`).join('');
         const loose = !trip && model.unplaced.length ? `<p class="map-unplaced"><strong>Location to confirm (${model.unplaced.length}):</strong> ${model.unplaced.map(a => escape(a.title)).join(' · ')}. These are in the day’s plan but cannot be drawn until they have a place.</p>` : trip && model.missing ? `<p class="map-unplaced">${model.missing} stay${model.missing === 1 ? '' : 's'} or journey${model.missing === 1 ? '' : 's'} for this selection ${model.missing === 1 ? 'has' : 'have'} a place still to confirm and ${model.missing === 1 ? 'is' : 'are'} not drawn.</p>` : '';
-        return `<p class="map-title" id="map-view-title">${escape(title)}</p>${model.nodes.length ? `${model.nodes.length > 1 ? `${mapSvg(model, `${title}. ${mapCaption(model)}`, { scale: phone() ? 1.7 : 1 })}<p class="map-caption">${escape(mapCaption(model))}${model.reason ? ` ${escape(model.reason)}` : ''}</p>` : `<p class="map-caption map-nothing">Nothing to draw yet: a map needs at least two places${trip ? '' : ' on this day'}. A place is positioned from its coordinates, never from a typed address. Use Edit place to add them or to search for the place in a map app.</p>`}<ol class="map-list" aria-label="${trip ? 'Places in plan order' : 'Stops in itinerary order'}">${list}</ol>` : `<p class="empty-lane">${escape(empty)}</p>`}${loose}`;
+        return `<p class="map-title" id="map-view-title">${escape(title)}</p>${model.nodes.length ? `${model.nodes.length > 1 ? `${mapSvg(model, `${title}. ${mapCaption(model)}`, { scale: phone() ? 1.7 : 1 })}<p class="map-caption">${escape(mapCaption(model))}${model.reason ? ` ${escape(model.reason)}` : ''}</p>` : `<p class="map-caption map-nothing">Nothing to draw yet: a map needs at least two places${trip ? '' : ' on this day'}. A place is positioned from its coordinates. A typed address is used for map-app searches, not for the drawing. Use Edit place to add either.</p>`}<ol class="map-list" aria-label="${trip ? 'Places in plan order' : 'Stops in itinerary order'}">${list}</ol>` : `<p class="empty-lane">${escape(empty)}</p>`}${loose}`;
     }
     function mapsSection(t) {
         const tab = (view, label) => `<button type="button" class="secondary" data-map-view="${view}" aria-pressed="${(state.mapView === 'trip' ? 'trip' : 'day') === view}">${label}</button>`;
@@ -550,7 +553,7 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
     }
     // ---- Safety net: history with conditional undo, removing travelers/groups, deleting (archiving) a trip ----
     const archivedButton = (off, phoneLayout) => !state.archived.length ? '' : phoneLayout ? `<div class="manage-group"><h3>Deleted trips</h3><div class="tools"><button class="secondary wide" id="archived-open" ${off}>Archived trips (${state.archived.length})</button></div></div>` : `<button class="secondary" id="archived-open" ${off}>Archived trips (${state.archived.length})</button>`;
-    const FIELD_LABELS = { title: 'Title', name: 'Name', subtitle: 'Subtitle', date: 'Day', time: 'Time', placeId: 'Place', order: 'Position in the day', fixed: 'Set time (protected)', timing: 'Timing', optional: 'Optional', highlight: 'Whole-group activity', participants: 'Participants', notes: 'Private notes', guestNotes: 'Guest description', guestLocation: 'Guest meeting point', address: 'Address', start: 'Start', end: 'End', timezone: 'Time zone', kind: 'Kind', familyId: 'Family / group', showOnGuest: 'Shown to guests', groupInfo: 'For the group', checkOutTime: 'Check-out time', color: 'Accent', lodging: 'Lodging', note: 'Note', mode: 'Mode', from: 'From', to: 'To', arrivalDate: 'Arrival day', arrivalTime: 'Arrival time', localName: 'Local name', localAddress: 'Local address', parentId: 'Inside', sourceKind: 'Source', allTravelers: 'Whole-trip group', links: 'Links', imageId: 'Picture', lat: 'Latitude', lng: 'Longitude', coordSystem: 'Coordinate system', coordSource: 'Coordinate source', amapUrl: 'Amap link', appleMapsUrl: 'Apple Maps link', navReviewed: 'Map links reviewed' };
+    const FIELD_LABELS = { title: 'Title', name: 'Name', subtitle: 'Subtitle', date: 'Day', time: 'Time', placeId: 'Place', order: 'Position in the day', fixed: 'Set time (protected)', timing: 'Timing', optional: 'Optional', highlight: 'Whole-group activity', participants: 'Participants', notes: 'Private notes', guestNotes: 'Guest description', guestLocation: 'Guest meeting point', address: 'Address', start: 'Start', end: 'End', timezone: 'Time zone', kind: 'Kind', familyId: 'Family / group', showOnGuest: 'Shown to guests', groupInfo: 'For the group', checkOutTime: 'Check-out time', color: 'Accent', lodging: 'Lodging', note: 'Note', mode: 'Mode', from: 'From', to: 'To', arrivalDate: 'Arrival day', arrivalTime: 'Arrival time', localName: 'Local name', localAddress: 'Local address', locationText: 'Location for the map', parentId: 'Inside', sourceKind: 'Source', allTravelers: 'Whole-trip group', links: 'Links', imageId: 'Picture', lat: 'Latitude', lng: 'Longitude', coordSystem: 'Coordinate system', coordSource: 'Coordinate source', amapUrl: 'Amap link', appleMapsUrl: 'Apple Maps link', navReviewed: 'Map links reviewed' };
     function historyValue(field, value) {
         const t = state.snapshot.trip, name = id => participantRecord(t, id)?.name || 'someone since removed';
         if (value === null || value === undefined || value === '')
@@ -712,10 +715,31 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
 <h3>Journeys (${t.legs.length})<button type="button" class="secondary" id="structure-add-leg" ${off}>Add journey</button></h3><ul class="roster-list">${[...t.legs].sort((a, b) => a.date.localeCompare(b.date)).map(l => row(`${escape(l.date)} · ${escape(l.mode || 'Journey')} · ${escape(l.title)}`, `${escape(l.from ? placeName(l.from) : 'Start to confirm')} → ${escape(l.to ? placeName(l.to) : 'End to confirm')} · ${escape(names(l.participants))}`, `data-leg="${escape(l.id)}" data-from-list="1"`, `journey ${escape(l.title)}`)).join('') || '<li>No journeys yet.</li>'}</ul>
 <div class="dialog-actions"><button type="button" class="secondary" data-close="structure-dialog">Done</button></div>`);
     }
+    // Says back how the typed map location was understood, and shows the coordinate questions only for coordinates.
+    function readLocation() {
+        const form = $('#place-form'), out = $('#location-read');
+        if (!form || !out)
+            return;
+        let read, error = '';
+        try {
+            read = parseLocation(form.elements.locationText.value);
+        }
+        catch (e) {
+            read = { kind: 'error' };
+            error = e.message;
+        }
+        const pair = read.kind === 'coordinates' ? describeLocation({ lat: read.lat, lng: read.lng, coordSystem: '' }).text : '';
+        out.className = `location-read ${read.kind}`;
+        out.textContent = read.kind === 'coordinates' ? `Read as coordinates: ${pair}. Say below which coordinate system they use.`
+            : read.kind === 'address' ? 'Read as an address or place name. The map list and the activity will offer Apple Maps and Google Maps searches for exactly this text. It is not drawn by position, because the planner does not look addresses up.'
+                : read.kind === 'error' ? error : 'Nothing entered yet. The place is still listed on the map, without a position or search links.';
+        $('#coord-fields').hidden = read.kind !== 'coordinates';
+    }
     function openPlace(id) {
         const t = state.snapshot.trip, p = t.places.find(x => x.id === id) || { id: crypto.randomUUID(), name: '' }, disabled = writable() ? '' : 'disabled';
         const refs = placeReferences(t, p.id), others = t.places.filter(x => x.id !== p.id);
-        structureDialog('Place', id ? 'Edit place' : 'Add place', `<form id="place-form" data-id="${escape(p.id)}" data-new="${!id}" data-base="${id ? baseAttr(recordKey('place', id)) : '{}'}">${placeFields(p, '', disabled)}${insideField(t, id ? p : {}, '', disabled)}<fieldset class="inline-place"><legend>Location for the map <small>(optional)</small></legend><div class="field-row"><label>Latitude<input name="lat" inputmode="decimal" autocomplete="off" value="${escape(p.lat ?? '')}" placeholder="39.9163" ${disabled}></label><label>Longitude<input name="lng" inputmode="decimal" autocomplete="off" value="${escape(p.lng ?? '')}" placeholder="116.3972" ${disabled}></label></div><label>Coordinate system<select name="coordSystem" ${disabled}><option value="">Choose…</option>${COORD_SYSTEMS.map(c => `<option value="${c}" ${p.coordSystem === c ? 'selected' : ''}>${escape(COORD_LABELS[c])}</option>`).join('')}</select><small>Numbers are stored exactly as entered and are never converted between systems. If you are not sure, choose Unknown: the place is listed but not positioned.</small></label><label>Where the coordinates came from<input name="coordSource" maxlength="300" value="${escape(p.coordSource || '')}" placeholder="e.g. Amap share link, checked 16 Nov" ${disabled}></label></fieldset><fieldset class="inline-place"><legend>Reviewed map links <small>(optional)</small></legend><p class="form-hint">Find the place in the map app, use Share, and paste the link here. Open it once to check it shows the right place.</p><label>Amap 高德 link<input name="amapUrl" type="url" maxlength="500" value="${escape(p.amapUrl || '')}" placeholder="https://surl.amap.com/…" ${disabled}></label><label>Apple Maps link<input name="appleMapsUrl" type="url" maxlength="500" value="${escape(p.appleMapsUrl || '')}" placeholder="https://maps.apple.com/…" ${disabled}></label>${appleSearchUrl(p) ? `<p class="form-hint"><a href="${escape(appleSearchUrl(p))}" target="_blank" rel="noopener noreferrer">Search Apple Maps by this place’s name ↗</a> An unreviewed search to help you find it; paste the link you checked above.</p>` : ''}<label class="check-label"><input type="checkbox" name="navReviewed" ${p.navReviewed ? 'checked' : ''} ${disabled}> I opened these links and they show the right place</label><p class="form-hint">Only reviewed links are offered on the map. Changing a link clears this tick.</p></fieldset>${id ? `<p class="form-hint">${refs.total ? `Used by ${escape(placeReferenceSummary(refs))}.` : 'Nothing uses this place yet.'}</p><div class="reassign" id="place-reassign" hidden><p><strong>This place is in use.</strong> Deleting it will not delete those plans. Choose where they should point instead.</p><label>Move ${escape(placeReferenceSummary(refs))} to<select name="reassignTo"><option value="">Choose…</option>${others.map(x => `<option value="${escape(x.id)}">${escape(placeLabel(x))}</option>`).join('')}<option value="__none">No place · “Location to confirm”</option></select></label><button type="button" class="secondary" id="place-delete-confirm">Move them and delete this place</button></div>` : ''}${formActions('place', !id, true)}</form>`, true);
+        structureDialog('Place', id ? 'Edit place' : 'Add place', `<form id="place-form" data-id="${escape(p.id)}" data-new="${!id}" data-base="${id ? baseAttr(recordKey('place', id)) : '{}'}">${placeFields(p, '', disabled)}${insideField(t, id ? p : {}, '', disabled)}<fieldset class="inline-place"><legend>Location for the map <small>(optional)</small></legend><label>Street address, place name or GPS coordinates<input name="locationText" maxlength="500" autocomplete="off" autocapitalize="off" spellcheck="false" value="${escape(locationInput(p))}" data-initial="${escape(locationInput(p))}" placeholder="12 Lantern Row, Harbour Town" aria-describedby="location-help location-read" ${disabled}></label><p class="form-hint" id="location-help">Either is fine. Type an address or the place’s name as you would in a map app, or paste coordinates as latitude, longitude (for example 39.9163, 116.3972). It is kept exactly as you type it.</p><p class="location-read" id="location-read" role="status"></p><div id="coord-fields" hidden><label>Coordinate system<select name="coordSystem" ${disabled}><option value="">Choose…</option>${COORD_SYSTEMS.map(c => `<option value="${c}" ${p.coordSystem === c ? 'selected' : ''}>${escape(COORD_LABELS[c])}</option>`).join('')}</select><small>Numbers are stored exactly as entered and are never converted between systems. If you are not sure, choose Unknown: the place is listed but not positioned.</small></label><label>Where the coordinates came from<input name="coordSource" maxlength="300" value="${escape(p.coordSource || '')}" placeholder="e.g. Amap share link, checked 16 Nov" ${disabled}></label></div></fieldset><fieldset class="inline-place"><legend>Reviewed map links <small>(optional)</small></legend><p class="form-hint">Find the place in the map app, use Share, and paste the link here. Open it once to check it shows the right place.</p><label>Amap 高德 link<input name="amapUrl" type="url" maxlength="500" value="${escape(p.amapUrl || '')}" placeholder="https://surl.amap.com/…" ${disabled}></label><label>Apple Maps link<input name="appleMapsUrl" type="url" maxlength="500" value="${escape(p.appleMapsUrl || '')}" placeholder="https://maps.apple.com/…" ${disabled}></label>${appleSearchUrl(p) ? `<p class="form-hint"><a href="${escape(appleSearchUrl(p))}" target="_blank" rel="noopener noreferrer">Search Apple Maps by this place’s name ↗</a> An unreviewed search to help you find it; paste the link you checked above.</p>` : ''}<label class="check-label"><input type="checkbox" name="navReviewed" ${p.navReviewed ? 'checked' : ''} ${disabled}> I opened these links and they show the right place</label><p class="form-hint">Only reviewed links are offered on the map. Changing a link clears this tick.</p></fieldset>${id ? `<p class="form-hint">${refs.total ? `Used by ${escape(placeReferenceSummary(refs))}.` : 'Nothing uses this place yet.'}</p><div class="reassign" id="place-reassign" hidden><p><strong>This place is in use.</strong> Deleting it will not delete those plans. Choose where they should point instead.</p><label>Move ${escape(placeReferenceSummary(refs))} to<select name="reassignTo"><option value="">Choose…</option>${others.map(x => `<option value="${escape(x.id)}">${escape(placeLabel(x))}</option>`).join('')}<option value="__none">No place · “Location to confirm”</option></select></label><button type="button" class="secondary" id="place-delete-confirm">Move them and delete this place</button></div>` : ''}${formActions('place', !id, true)}</form>`, true);
+        readLocation();
     }
     // Reading view of a stay, opened from the board. Editing is one step further, on purpose.
     function openStayView(id) {
@@ -760,10 +784,21 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
         await saveStructure({ action: 'stay-move', stayId, days: Number(form.dataset.days), shiftActivityIds: ids, base: base(recordKey('stay', stayId), ...ids.map(id => recordKey('activity', id))) }, `Stay moved${ids.length ? ` with ${ids.length} flexible ${ids.length === 1 ? 'activity' : 'activities'}` : '; no activities were moved'}. Undo is available in History.`);
     }
     const checked = form => [...form.querySelectorAll('[name=participants]:checked')].filter(x => !x.disabled).map(x => x.value);
+    // The map location is sent only when it was edited, so opening and saving an older place (stored
+    // as two numbers) changes nothing. The system is sent only for coordinates; an address has none.
+    function placeLocationDraft(form) {
+        const box = form.elements.locationText, typed = box.value.trim();
+        let kind = 'error';
+        try {
+            kind = parseLocation(typed).kind;
+        }
+        catch { /* the server explains what is wrong */ }
+        return { ...(typed === box.dataset.initial ? {} : { locationText: typed }), coordSystem: kind === 'address' || kind === 'empty' ? '' : form.elements.coordSystem.value };
+    }
     function structureDraft(form) {
         const v = name => form.elements[name].value;
         if (form.id === 'place-form')
-            return { name: v('name'), localName: v('localName'), address: v('address'), localAddress: v('localAddress'), parentId: v('parentId') || null, lat: v('lat').trim() || null, lng: v('lng').trim() || null, coordSystem: v('coordSystem'), coordSource: v('coordSource'), amapUrl: v('amapUrl'), appleMapsUrl: v('appleMapsUrl'), navReviewed: form.elements.navReviewed.checked };
+            return { name: v('name'), localName: v('localName'), address: v('address'), localAddress: v('localAddress'), parentId: v('parentId') || null, ...placeLocationDraft(form), coordSource: v('coordSource'), amapUrl: v('amapUrl'), appleMapsUrl: v('appleMapsUrl'), navReviewed: form.elements.navReviewed.checked };
         if (form.id === 'stay-form')
             return { name: v('name'), placeId: v('placeId') || null, start: v('start'), end: v('end'), lodging: v('lodging'), note: v('note'), groupInfo: v('groupInfo'), checkOutTime: v('checkOutTime'), showOnGuest: form.elements.showOnGuest.checked, participants: checked(form) };
         return { title: v('title'), mode: v('mode'), date: v('date'), arrivalDate: v('arrivalDate') || v('date'), time: v('time'), arrivalTime: v('arrivalTime'), from: v('from') || null, to: v('to') || null, notes: v('notes'), participants: checked(form) };
@@ -1478,6 +1513,8 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
     document.addEventListener('input', event => {
         if (event.target.name === 'time' && event.target.form?.id === 'edit-form')
             suggestTiming();
+        if (event.target.name === 'locationText' && event.target.form?.id === 'place-form')
+            readLocation();
         if (event.target.matches?.('#edit-form textarea[data-grow]'))
             growTextareas();
     });

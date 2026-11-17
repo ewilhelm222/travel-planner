@@ -11,7 +11,8 @@ through `commit()`/`transact()` in `apps/sites-prototype/lib/trip-store.ts` so i
 logged and checked per record (`docs/safety-net.md`, `docs/per-record-revisions.md`). Design studies
 illustrate proposals; they do not establish completed features or approved
 schema changes. Tapping an activity opens its read-only view; the editor opens
-only from that view's Edit button (`docs/activity-view.md`). Read `docs/prototype.md` for implementation status and checks.
+only from that view's Edit button (`docs/activity-view.md`). A place's map location is an address or
+coordinates as typed; nothing is geocoded or converted (`docs/map-location.md`). Read `docs/prototype.md` for implementation status and checks.
 
 Apply the visual system incrementally while preserving authentication,
 concurrent-edit protection, exports, and the offline/session lifecycle. Keep
