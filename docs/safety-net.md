@@ -24,6 +24,8 @@ adds a table and two columns. Existing trips are not rewritten.
   stops working, but nothing is erased. **Archived trips** (shown once you have
   one) restores it with its plan, history and editors. The old guest link stays
   dead; enable a new one if you want one.
+- Since November 17 each activity says who last edited it and links straight to
+  that entry here; see [last-edited.md](last-edited.md).
 - **Download full backup** (in History, organizer only) saves one file with the
   whole trip and its history. **Import JSON** accepts that file, checks it for
   damage, and restores it as a separate new trip.

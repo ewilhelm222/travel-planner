@@ -2,7 +2,7 @@
     'use strict';
     const { escape, dateLabel, days, preferredDay, board, dayChooser, isExample, ideaCards, timingOf, TIMINGS, TIMING_LABELS, PHONE_QUERY, dayInView, pressDay, fitColumns, areaId, orderedPlaces, swipeStep } = await import('/board.mjs');
     const { usefulFilterChoices, matchesSelection, defaultParticipants, includesPerson, peopleOf, isWholeTripGroup, participantRecord, participantReferences, referenceSummary } = await import('/participants.mjs');
-    const { fieldChanges } = await import('/history.mjs');
+    const { fieldChanges, lastEditHtml, lastEditText, recentlyEdited, historyHref } = await import('/history.mjs');
     const { baseFor, recordKey } = await import('/revisions.mjs');
     const { previewStayMove, daysBetween } = await import('/stay-move.mjs');
     const { appleSearchUrl, COORD_SYSTEMS, COORD_LABELS, parseLocation, locationInput, describeLocation } = await import('/maps.mjs');
@@ -108,7 +108,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v43');
+            const cache = await caches.open('waypoint-shell-v44');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/activity-view.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -241,7 +241,7 @@ ${t ? `<div class="toolbar"><span class="view-title">Daily plans</span>${filterS
 <div id="status" role="status" aria-live="polite"></div><div id="message" role="alert"></div>
 ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-closed' : ''}">${ideasSection(t)}<div id="itinerary" tabindex="-1" class="date-board">${board(t, { filter: state.filter, day: state.day, compact: state.compact, hideExamples: state.hideExamples })}</div></div><div class="board-notes"><p id="drag-hint" class="drag-hint"></p><p id="filter-status" role="status" aria-live="polite">${state.filter === 'all' ? 'Everyone · shared plans appear once' : 'Selected group · all shared attendee labels remain visible'}</p>${examplesToggle}${roleNote}</div>${mapsSection(t)}` : welcome()}
 <footer><span>Waypoint <span class="title-dot">×</span> Make plans. Take detours.</span><span>Guest links are optional and read-only.</span></footer></main>
-`}${viewDialog()}<dialog id="editor" class="form-dialog" aria-labelledby="edit-title"><form id="edit-form"><div class="dialog-heading"><span class="eyebrow"></span><button type="button" class="icon-button" id="close-editor" aria-label="Close activity">×</button></div><h2 id="edit-title">Activity</h2><div id="editor-fields"></div><p id="edit-message" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button" id="copy-draft" hidden>Copy my draft</button><button type="button" class="secondary" id="reload-after-conflict" hidden>Load latest plan</button><button type="button" class="text-button" id="delete">Delete activity</button><button type="submit" class="primary" id="save">Save changes</button></div></form></dialog>
+`}${viewDialog()}<dialog id="editor" class="form-dialog" aria-labelledby="edit-title"><form id="edit-form"><div class="dialog-heading"><span class="eyebrow"></span><button type="button" class="icon-button" id="close-editor" aria-label="Close activity">×</button></div><h2 id="edit-title">Activity</h2><div id="editor-fields"></div><p class="last-edit" id="edit-last-edit" hidden></p><p id="edit-message" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button" id="copy-draft" hidden>Copy my draft</button><button type="button" class="secondary" id="reload-after-conflict" hidden>Load latest plan</button><button type="button" class="text-button" id="delete">Delete activity</button><button type="submit" class="primary" id="save">Save changes</button></div></form></dialog>
 <dialog id="roster-dialog" class="form-dialog" aria-labelledby="roster-title"></dialog><dialog id="history-dialog" aria-labelledby="history-title"></dialog><dialog id="stay-view" aria-labelledby="stay-view-title"></dialog><dialog id="structure-dialog" class="form-dialog" aria-labelledby="structure-title"></dialog><dialog id="archived-dialog" aria-labelledby="archived-title"></dialog><dialog id="editors-dialog" class="form-dialog" aria-labelledby="editors-title"></dialog><dialog id="create-dialog" class="form-dialog" aria-labelledby="create-title"><form id="create-form"><h2 id="create-title">New trip or event</h2><label>Name<input name="title" required maxlength="160"></label><label>Subtitle <small>(optional; shown under the name, and to guests)</small><input name="subtitle" maxlength="500"></label><div class="field-row"><label>First day<input type="date" name="start" required></label><label>Last day<input type="date" name="end" required></label></div><label>Time zone<input name="timezone" value="America/Los_Angeles" required></label><label>Kind<select name="kind"><option value="event">Gathering / event</option><option value="trip">Trip</option></select></label><p id="create-error" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button danger" id="trip-delete" hidden>Delete this trip…</button><button type="button" class="secondary" data-close="create-dialog">Cancel</button><button class="primary" id="create-submit">Create</button></div></form></dialog>
 <dialog id="import-dialog" class="form-dialog" aria-labelledby="import-title"><form id="import-form"><h2 id="import-title">Import a trip or event</h2><label>Trip JSON<textarea id="import-json" rows="14" required maxlength="250000" spellcheck="false"></textarea></label><p>Creates a separate private trip. Guest sharing starts disabled. A full backup file is checked for damage first.</p><p id="import-error" role="alert"></p><div class="dialog-actions"><button type="button" class="secondary" data-close="import-dialog">Cancel</button><button class="primary">Import trip</button></div></form></dialog><dialog id="share-dialog" aria-labelledby="share-title"><h2 id="share-title">A link for your guests</h2><p>Anyone holding this link can browse the dated activities and the unscheduled ideas, with group names, opted-in traveler display names, guest descriptions, meeting points, and the pictures on those cards. They cannot edit.</p><p>Private planning notes, journey notes, source links, and editor identities are excluded. A stay appears only if you ticked “Show this stay on the guest link” in it, and never with its private note or address. So is anything marked “Example · not a real plan”. Downloaded copies cannot be recalled.</p><div id="share-body"></div><p id="share-error" role="alert"></p><div class="dialog-actions"><button class="secondary" data-close="share-dialog">Close</button></div></dialog>`;
         status();
@@ -252,6 +252,9 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
                 $('#itinerary').scrollLeft = selected.offsetLeft - $('#itinerary').offsetLeft;
             revealDay();
         }
+        // Cards changed in the last day get their mark, and the log is asked again if the plan has moved on.
+        showLastEdits();
+        loadLastEdits();
         // A redraw replaces the dialogs: put an open activity view back, with the values just loaded or saved.
         if (viewing)
             openView(viewing);
@@ -268,7 +271,60 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
             return;
         viewScope = preview ? '.guest-preview' : '';
         showActivityView(document, a, trip, { guest: preview, canEdit: !preview });
+        showLastEdits();
     }
+    // ---- "Last edited by": read from the change log, never stored; shown to signed-in members only ----
+    // `lastEdits.map` answers for one saved revision of one trip. After any save it is asked for again,
+    // and until the answer arrives nothing is shown rather than something out of date.
+    let lastEdits = { trip: null, revision: 0, map: {} }, lastEditsLoading = false;
+    const lastEditOf = id => state.snapshot && lastEdits.trip === state.snapshot.trip.id && lastEdits.revision === state.snapshot.revision ? lastEdits.map[id] || null : null;
+    async function loadLastEdits() {
+        const snap = state.snapshot;
+        if (!snap || !state.online || state.needsSignIn || lastEditsLoading || (lastEdits.trip === snap.trip.id && lastEdits.revision === snap.revision))
+            return;
+        lastEditsLoading = true;
+        try {
+            // A plain request: if it fails (offline, signed out) the note is simply absent, and nothing else changes.
+            const r = await fetch(`/api/history?id=${encodeURIComponent(snap.trip.id)}&last=activity`, { cache: 'no-store', credentials: 'same-origin' });
+            if (r.ok && (r.headers.get('Content-Type') || '').includes('application/json')) {
+                const data = await r.json();
+                lastEdits = { trip: snap.trip.id, revision: data.revision, map: data.last || {} };
+            }
+        }
+        catch { /* no note */ }
+        lastEditsLoading = false;
+        showLastEdits();
+        // Someone saved while this was on its way: ask once more for the revision now on screen.
+        if (state.snapshot && lastEdits.trip === state.snapshot.trip.id && lastEdits.revision < state.snapshot.revision)
+            loadLastEdits();
+    }
+    function showLastEdits() {
+        const trip = state.snapshot?.trip;
+        if (!trip)
+            return;
+        const fill = (el, id, newTab) => { if (el) { el.innerHTML = lastEditHtml(lastEditOf(id), trip.id, { newTab }); el.hidden = !el.innerHTML; } };
+        const view = $(`#${VIEW_ID}`);
+        fill(view?.querySelector('#view-last-edit'), view?.dataset.activity, false);
+        const form = $('#edit-form');
+        fill($('#edit-last-edit'), form?.dataset.new === 'true' ? null : form?.dataset.id, true);
+        // Cards changed in the last day carry a small "Edited" mark; who and when is in the view. Never in the guest preview.
+        for (const card of document.querySelectorAll('#itinerary .activity[data-detail], .idea-cards .activity[data-detail]')) {
+            const entry = lastEditOf(card.dataset.detail), mark = card.querySelector('.edited-mark');
+            if (!recentlyEdited(entry))
+                mark?.remove();
+            else if (!mark)
+                card.insertAdjacentHTML('beforeend', `<span class="edited-mark"><span aria-hidden="true">✎ </span>Edited<span class="sr-only"> recently: ${escape(lastEditText(entry))}</span></span>`);
+        }
+    }
+    // Follow a "see this change" link without leaving the page: the address changes, so it can be copied and survives a reload.
+    async function openHistoryAt(changeId) {
+        viewing = null;
+        if ($(`#${VIEW_ID}`)?.open)
+            $(`#${VIEW_ID}`).close();
+        history.pushState(null, '', historyHref(state.selected, changeId));
+        await openHistory('', changeId);
+    }
+    const linkedChange = () => { const v = new URLSearchParams(location.search).get('history'); return v && /^\d+$/.test(v) ? Number(v) : null; };
     enableViewDismiss({ document, sheet: () => phone() });
     // Long descriptions are shown whole in the editor too, where the browser cannot size the box itself.
     function growTextareas() {
@@ -397,6 +453,8 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
                 el.focus();
             el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         }
+        showLastEdits();
+        loadLastEdits();
     }
     async function moveCard({ activityId, date, beforeId = null, follow = false, focus = false }) {
         if (!writable() || !state.snapshot)
@@ -564,14 +622,26 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
             return `<li><strong>${what}</strong><ul>${fieldChanges(r).map(f => `<li>${escape(FIELD_LABELS[f.field] || f.field)}: <span class="was">${escape(historyValue(f.field, f.before))}</span> → <span class="now">${escape(historyValue(f.field, f.after))}</span></li>`).join('')}</ul></li>`;
         }).join('');
         const state_ = c.wasUndone ? '<span class="history-tag">Undone</span>' : !c.records.length ? '' : c.canUndo ? `<button type="button" class="secondary" data-undo="${c.id}" aria-label="Undo: ${escape(c.summary)}">Undo</button>` : '<span class="history-tag" title="A record this change touched has been edited again since.">Changed since · can’t undo</span>';
-        return `<li class="history-entry"><div class="history-line"><span><strong>${escape(c.summary)}</strong><small>${escape(c.actor)} · ${escape(new Date(c.at).toLocaleString())} · revision ${c.revision}</small></span>${state_}</div>${details ? `<details><summary>What changed (${c.records.length})</summary><ul class="history-records">${details}</ul></details>` : ''}</li>`;
+        return `<li class="history-entry" id="change-${c.id}" tabindex="-1"><div class="history-line"><span><strong>${escape(c.summary)}</strong><small>${escape(c.actor)} · ${escape(new Date(c.at).toLocaleString())} · revision ${c.revision}</small></span>${state_}</div>${details ? `<details><summary>What changed (${c.records.length})</summary><ul class="history-records">${details}</ul></details>` : ''}</li>`;
     }
-    async function openHistory(message = '') {
-        const data = await request(endpoint('/api/history'));
+    // `focusId` is the entry a link pointed at: it is scrolled into view, opened and outlined.
+    async function openHistory(message = '', focusId = null) {
+        const data = await request(`${endpoint('/api/history')}${focusId ? `&change=${focusId}` : ''}`);
         const dialog = $('#history-dialog');
-        dialog.innerHTML = `<div class="dialog-heading"><span class="eyebrow">Safety net</span><button type="button" class="icon-button" data-close="history-dialog" aria-label="Close history">×</button></div><h2 id="history-title">History</h2><p>Every saved change, newest first. <strong>Undo</strong> puts back just the records that one change touched, and only while they are still exactly as that change left them. If someone has edited them again since, nothing is changed and you are told.</p><p id="history-message" role="alert">${escape(message)}</p>${data.revision !== state.snapshot.revision ? '<p class="form-hint">This trip has newer saved changes than the plan on your screen. Close this and choose Refresh to see them.</p>' : ''}<ol class="history-list">${data.changes.map(historyEntry).join('') || '<li>No changes recorded yet. History starts with the first change saved after this feature was installed.</li>'}</ol><div class="dialog-actions">${state.isOwner ? '<button type="button" class="secondary" id="full-backup">Download full backup</button>' : ''}<button type="button" class="secondary" data-close="history-dialog">Done</button></div>`;
+        if (focusId && data.linked === 'missing')
+            message = 'That change is not in this trip’s history. The link may be for another trip.';
+        const older = data.linked === 'older' ? data.changes.pop() : null;
+        dialog.innerHTML = `<div class="dialog-heading"><span class="eyebrow">Safety net</span><button type="button" class="icon-button" data-close="history-dialog" aria-label="Close history">×</button></div><h2 id="history-title">History</h2><p>Every saved change, newest first. <strong>Undo</strong> puts back just the records that one change touched, and only while they are still exactly as that change left them. If someone has edited them again since, nothing is changed and you are told.</p><p id="history-message" role="alert">${escape(message)}</p>${data.revision !== state.snapshot.revision ? '<p class="form-hint">This trip has newer saved changes than the plan on your screen. Close this and choose Refresh to see them.</p>' : ''}<ol class="history-list">${data.changes.map(historyEntry).join('') || '<li>No changes recorded yet. History starts with the first change saved after this feature was installed.</li>'}${older ? `<li class="history-older">Older than the newest 100 changes:</li>${historyEntry(older)}` : ''}</ol><div class="dialog-actions">${state.isOwner ? '<button type="button" class="secondary" id="full-backup">Download full backup</button>' : ''}<button type="button" class="secondary" data-close="history-dialog">Done</button></div>`;
         if (!dialog.open)
             dialog.showModal();
+        const entry = focusId && dialog.querySelector(`#change-${focusId}`);
+        if (entry) {
+            entry.classList.add('linked');
+            entry.querySelector('details')?.setAttribute('open', '');
+            entry.insertAdjacentHTML('afterbegin', '<span class="history-linked-label">The change you followed</span>');
+            entry.scrollIntoView({ block: 'center' });
+            entry.focus({ preventScroll: true });
+        }
     }
     async function undo(changeId) {
         state.busy = true;
@@ -982,7 +1052,7 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
 <div id="some-panel" ${kind === 'some' ? '' : 'hidden'}><label class="check-label"><input type="checkbox" name="optional" ${a.optional ? 'checked' : ''} ${off}> Optional · offered as a choice, not a commitment</label><div id="attendance-slot">${attendanceFields(a, t, disabled, 'Who', true)}</div></div>
 <details class="more-details" id="more-details" ${hasMore || state.moreOpen ? 'open' : ''}><summary>More details <small>place, meeting point, notes, links</small></summary><label>Place<select name="placeId" ${off}><option value="">Location to confirm</option>${orderedPlaces(t).map(p => `<option value="${escape(p.id)}" ${a.placeId === p.id ? 'selected' : ''}>${escape(placeChoice(p))}</option>`).join('')}${disabled ? '' : '<option value="__new">＋ Add new place…</option>'}</select></label><fieldset class="inline-place" id="place-inline" hidden><legend>New place</legend>${placeFields({}, 'newPlace', '')}${insideField(t, {}, 'newPlace', '')}<p id="place-inline-message" role="alert"></p><button type="button" class="secondary" id="place-inline-save">Add this place</button><p class="form-hint">Adds the place to the trip straight away. Your activity is saved separately with the Save button below.</p></fieldset><label>Guest meeting point<input name="guestLocation" maxlength="500" value="${escape(a.guestLocation)}" ${off}><small>Shown on the card as “Meet · …”, and on the guest link.</small></label><label>Guest description<textarea name="guestNotes" rows="3" maxlength="4000" data-grow ${off}>${escape(a.guestNotes)}</textarea><small>Visible if you enable this event's guest link.</small></label><label>Address <small>(private)</small><input name="address" maxlength="500" value="${escape(a.address || '')}" ${off}><small>For this activity only. Never shown on the guest link; use Guest meeting point for that.</small></label><label>Private planning notes<textarea name="notes" rows="4" maxlength="4000" data-grow ${off}>${escape(a.notes)}</textarea><small>Excluded from the guest link.</small></label>${(a.links || []).length ? `<ul class="link-list" aria-label="Saved links">${a.links.map(l => `<li><a href="${escape(l.url)}" target="_blank" rel="noopener noreferrer">${escape(l.label || l.url)} ↗</a></li>`).join('')}</ul>` : ''}<label>Links <small>(private, optional)</small><textarea name="links" rows="2" maxlength="6000" spellcheck="false" placeholder="Tickets https://example.com/…" ${off}>${escape(formatLinks(a.links))}</textarea><small>One per line: an optional label, then the web address. Excluded from the guest link.</small></label><div class="picture-field"><span class="picture-title">Picture <small>(optional)</small></span><input type="hidden" name="imageId" value="${escape(a.imageId || '')}"><img id="picture-preview" alt="Picture for this activity" ${a.imageId ? `src="${escape(imageUrl(t.id, a.imageId))}"` : 'hidden'}><div class="tools">${disabled ? '' : '<label class="secondary file-label">Choose a picture<input type="file" id="picture-file" accept="image/jpeg,image/png,image/webp,image/*"></label>'}<button type="button" class="text-button" id="picture-remove" ${a.imageId && !disabled ? '' : 'hidden'}>Remove picture</button></div><p id="picture-message" role="status" aria-live="polite"></p><small>Shown at the top of the card. The picture is made smaller on this device before it is saved. It is also shown on the guest link, if one is enabled, so choose pictures you are happy for guests to see and pass on.</small></div></details>`;
     }
-    function openEditor(id, preset = {}) { returnTo = null; const a = state.snapshot.trip.activities.find(a => a.id === id) || { id: crypto.randomUUID(), date: 'date' in preset ? preset.date : state.day, time: '', title: '', placeId: preset.placeId || state.snapshot.trip.places[0]?.id || null, participants: defaultParticipants(state.snapshot.trip), notes: '', guestNotes: '', guestLocation: '', fixed: false, optional: state.snapshot.trip.kind === 'event', order: state.snapshot.trip.activities.length, sourceKind: 'entered' }; const form = $('#edit-form'); form.dataset.id = a.id; form.dataset.new = String(!id); form.dataset.lastPlace = a.placeId || ''; form.dataset.before = !id && preset.beforeId ? preset.beforeId : ''; form.dataset.beforeDate = preset.date || ''; form.dataset.kind = kindOf(a, state.snapshot.trip); form.dataset.wasSet = String(!!id && a.fixed === true); form.dataset.timingTouched = ''; form.dataset.timingBefore = ''; form.dataset.timingSuggested = ''; form.dataset.highlight = String(a.highlight === true); form.dataset.base = JSON.stringify(id ? base(recordKey('activity', a.id)) : {}); $('#editor-fields').innerHTML = formData(a); $('#delete').hidden = !id || !writable(); $('#save').disabled = !writable(); $('#copy-draft').hidden = true; $('#reload-after-conflict').hidden = true; $('#edit-message').textContent = !writable() ? 'Downloaded reading copy. Connect and refresh before editing.' : a.sourceKind === 'tentative' ? 'Tentative source plan. Times, hosts, and bookings need review.' : a.sourceKind === 'synthetic' ? 'This is an example, not a real plan. Edit it to make it yours, or delete it.' : ''; lockTiming(); updateAttendance(); $('#editor').showModal(); growTextareas(); }
+    function openEditor(id, preset = {}) { returnTo = null; const a = state.snapshot.trip.activities.find(a => a.id === id) || { id: crypto.randomUUID(), date: 'date' in preset ? preset.date : state.day, time: '', title: '', placeId: preset.placeId || state.snapshot.trip.places[0]?.id || null, participants: defaultParticipants(state.snapshot.trip), notes: '', guestNotes: '', guestLocation: '', fixed: false, optional: state.snapshot.trip.kind === 'event', order: state.snapshot.trip.activities.length, sourceKind: 'entered' }; const form = $('#edit-form'); form.dataset.id = a.id; form.dataset.new = String(!id); form.dataset.lastPlace = a.placeId || ''; form.dataset.before = !id && preset.beforeId ? preset.beforeId : ''; form.dataset.beforeDate = preset.date || ''; form.dataset.kind = kindOf(a, state.snapshot.trip); form.dataset.wasSet = String(!!id && a.fixed === true); form.dataset.timingTouched = ''; form.dataset.timingBefore = ''; form.dataset.timingSuggested = ''; form.dataset.highlight = String(a.highlight === true); form.dataset.base = JSON.stringify(id ? base(recordKey('activity', a.id)) : {}); $('#editor-fields').innerHTML = formData(a); $('#delete').hidden = !id || !writable(); $('#save').disabled = !writable(); $('#copy-draft').hidden = true; $('#reload-after-conflict').hidden = true; $('#edit-message').textContent = !writable() ? 'Downloaded reading copy. Connect and refresh before editing.' : a.sourceKind === 'tentative' ? 'Tentative source plan. Times, hosts, and bookings need review.' : a.sourceKind === 'synthetic' ? 'This is an example, not a real plan. Edit it to make it yours, or delete it.' : ''; lockTiming(); updateAttendance(); $('#editor').showModal(); growTextareas(); showLastEdits(); }
     // Timing level and the fields it governs. No day means "any day" (it lives in Ideas). A plan saved with a set
     // time keeps its day and time locked until another level is chosen, which is what the server enforces too.
     const CLOCK = /\b\d{1,2}[:.]\d{2}\b|\b\d{1,2}\s?(am|pm)\b/i;
@@ -1038,6 +1108,13 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
         // A marker on the map drawing goes to its entry in the list below.
         if (followPin(document, event))
             return;
+        // "See this change" opens History at that entry. A link meant for a new tab, or a modified click, is left to the browser.
+        const change = event.target.closest?.('a[data-history-change]');
+        if (change && !change.target && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+            event.preventDefault();
+            openHistoryAt(Number(change.dataset.historyChange)).catch(e => { state.message = e.message; status(); });
+            return;
+        }
         const menu = $('#manage-menu');
         if (menu?.open && !event.target.closest('#manage-menu summary') && !event.target.closest('#manage-menu .file-label'))
             menu.open = false;
@@ -1532,11 +1609,23 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
             returnTo = null;
             openView(id);
         }
+        // Leaving History drops the entry from the address, so a reload goes back to the plan.
+        if (event.target.id === 'history-dialog' && linkedChange() !== null)
+            history.replaceState(null, '', state.selected ? `/?trip=${state.selected}` : '/');
         if (state.layoutStale)
             relayout();
     }, true);
+    // Back and Forward move between the plan and a linked History entry.
+    window.addEventListener('popstate', () => {
+        const id = linkedChange();
+        if (id !== null && state.snapshot)
+            openHistory('', id).catch(() => { });
+        else if ($('#history-dialog')?.open)
+            $('#history-dialog').close();
+    });
     restore();
     state.online = navigator.onLine;
     render();
-    load();
+    // Opened from a link to one History entry: show it once the trip has loaded.
+    load().then(() => { const id = linkedChange(); if (id !== null && state.snapshot && state.online) return openHistory('', id); }).catch(() => { });
 })();
