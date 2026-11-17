@@ -14,6 +14,7 @@
     const { moveActivity, stepTarget } = await import('/move.mjs');
     const { enableDrag } = await import('/drag.mjs');
     const { VIEW_ID, viewDialog, showActivityView, focusCard, enableViewDismiss } = await import('/activity-view.mjs');
+    const { applyWeather, weatherNote, unitsFor } = await import('/weather.mjs');
     const KEY = 'waypoint-library-v2', OLD_KEY = 'waypoint-downloaded-trip-v1';
     const app = document.querySelector('#app');
     const state = { user: null, snapshot: null, library: [], archived: [], copies: {}, canCreate: false, isOwner: false, selected: new URLSearchParams(location.search).get('trip'), filter: 'all', day: null, compact: true, online: navigator.onLine, busy: false, message: '', downloadedAt: null, offlineReady: false, needsSignIn: false };
@@ -108,8 +109,8 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v45');
-            state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/activity-view.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
+            const cache = await caches.open('waypoint-shell-v46');
+            state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/activity-view.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs', '/weather.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
         catch { }
@@ -227,7 +228,7 @@
 <h1 class="sr-only">${escape(t?.title || 'Waypoint trips and events')}</h1><div id="state-flag" role="status"></div><p class="edit-state" id="edit-state" role="status"></p>
 <section class="trip-bar" aria-label="Trip and traveler selection"><label>Trip<select id="trip-select" ${!state.library.length ? 'disabled' : ''}>${state.library.map(x => `<option value="${escape(x.id)}" ${x.id === state.selected ? 'selected' : ''}>${escape(x.title)}</option>`).join('')}</select></label>${filterSelect ? `<label>Show plans for${filterSelect}</label>` : ''}</section>
 <div id="message" role="alert"></div>
-${t ? `${rail(t, state.day)}<div id="itinerary" tabindex="-1" class="date-board">${board(t, { filter: state.filter, day: state.day, compact: state.compact, hideExamples: state.hideExamples })}</div>${ideasSection(t)}${mapsSection(t)}` : welcome()}
+${t ? `${rail(t, state.day)}<div id="itinerary" tabindex="-1" class="date-board">${board(t, { filter: state.filter, day: state.day, compact: state.compact, hideExamples: state.hideExamples })}</div>${weatherNote()}${ideasSection(t)}${mapsSection(t)}` : welcome()}
 <section class="manage" id="manage" aria-labelledby="manage-title"><h2 id="manage-title">Plan &amp; manage</h2>${t ? `<p class="manage-trip">${escape(t.title)} · ${escape(t.start)} – ${escape(t.end)} · ${escape(t.timezone)}</p>
 <div class="manage-group"><h3>This plan</h3><div class="tools"><button class="primary wide" id="add" ${off}>Add activity</button><button class="secondary" id="travelers" ${off}>Manage travelers</button><button class="secondary" id="structure" ${off}>Places, stays &amp; journeys</button>${state.isOwner ? `<button class="secondary" id="settings" ${off}>Trip details</button>` : ''}<button class="secondary" id="history" ${off}>History</button>${state.isOwner ? `<button class="secondary" id="share" ${off}>Guest link</button><button class="secondary" id="editors" ${off}>Editors</button>` : ''}</div>${roleNote}<p id="drag-hint" class="drag-hint"></p><p id="filter-status" role="status" aria-live="polite">${state.filter === 'all' ? 'Everyone · shared plans appear once' : 'Selected group · all shared attendee labels remain visible'}</p>${examplesToggle}</div>
 <div class="manage-group"><h3>Copies &amp; updates</h3><div class="tools"><button class="secondary" id="offline-file">Save offline trip</button><button class="secondary" id="export">Download JSON</button><button class="secondary wide" id="refresh">Refresh</button></div><div id="status" role="status" aria-live="polite"></div></div>` : '<div id="status" role="status" aria-live="polite"></div>'}
@@ -241,7 +242,7 @@ ${state.canCreate ? `<div class="manage-group"><h3>Trips &amp; events</h3><div c
 <header class="trip-header"><div><button class="story-toggle" id="story-toggle">${state.compact ? "Open the poster" : "Focus on the plan"}</button><span class="eyebrow">${t?.kind === 'event' ? 'TIME TOGETHER' : 'Lose each other all day. Find each other at night.'}</span><h1>${escape(t?.title || 'A plan for every gathering')}<span class="title-dot">.</span></h1><p class="trip-subtitle">${escape(t?.subtitle || 'Choose a trip, bring an idea, and leave a little room to wander.')}</p>${t ? `<div class="trip-facts"><span>${escape(t.start)} – ${escape(t.end)}</span><span>${escape(t.timezone)}</span><span>${t.families.length} ${t.families.length === 1 ? "group" : "groups"}</span></div>` : ''}</div><aside class="story-art" aria-label="Decorative crossing routes"><svg viewBox="0 0 520 420" aria-hidden="true"><circle cx="268" cy="214" r="150" fill="none" stroke="#6b3df5" stroke-width="1.5"/><circle cx="268" cy="214" r="196" fill="none" stroke="#6b3df5" stroke-width="1.5" stroke-dasharray="3 12"/><path d="M40 330 C120 300 150 180 268 214 S420 150 480 60" fill="none" stroke="#3ee6c9" stroke-width="22" stroke-linecap="round"/><path d="M60 70 C150 90 170 240 268 214 S400 330 470 360" fill="none" stroke="#cdb8ff" stroke-width="22" stroke-linecap="round"/><circle cx="268" cy="214" r="30" fill="#ff3d9a"/><circle cx="268" cy="214" r="11" fill="#2d1480"/><circle cx="40" cy="330" r="14" fill="#2d1480" stroke="#3ee6c9" stroke-width="6"/><circle cx="60" cy="70" r="14" fill="#2d1480" stroke="#cdb8ff" stroke-width="6"/><circle cx="480" cy="60" r="14" fill="#2d1480" stroke="#3ee6c9" stroke-width="6"/><circle cx="470" cy="360" r="14" fill="#2d1480" stroke="#cdb8ff" stroke-width="6"/></svg><p>Split up. Meet up.</p></aside></header>
 ${t ? `<div class="toolbar"><span class="view-title">Daily plans</span>${filterSelect ? `<label class="traveler-select">Show plans for${filterSelect}</label>` : ''}<div class="tools"><button class="primary" id="add" ${off}>Add activity</button>${manageMenu(t, off)}<button class="secondary" id="density" aria-pressed="${state.dense}" title="${state.dense ? 'Show three larger day columns' : 'Show seven narrower day columns'}">${state.dense ? 'Larger cards' : 'Fit a week'}</button></div></div>` : ''}
 <div id="status" role="status" aria-live="polite"></div><div id="message" role="alert"></div>
-${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-closed' : ''}">${ideasSection(t)}<div id="itinerary" tabindex="-1" class="date-board">${board(t, { filter: state.filter, day: state.day, compact: state.compact, hideExamples: state.hideExamples })}</div></div><div class="board-notes"><p id="drag-hint" class="drag-hint"></p><p id="filter-status" role="status" aria-live="polite">${state.filter === 'all' ? 'Everyone · shared plans appear once' : 'Selected group · all shared attendee labels remain visible'}</p>${examplesToggle}${roleNote}</div>${mapsSection(t)}` : welcome()}
+${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-closed' : ''}">${ideasSection(t)}<div id="itinerary" tabindex="-1" class="date-board">${board(t, { filter: state.filter, day: state.day, compact: state.compact, hideExamples: state.hideExamples })}</div></div><div class="board-notes"><p id="drag-hint" class="drag-hint"></p><p id="filter-status" role="status" aria-live="polite">${state.filter === 'all' ? 'Everyone · shared plans appear once' : 'Selected group · all shared attendee labels remain visible'}</p>${weatherNote()}${examplesToggle}${roleNote}</div>${mapsSection(t)}` : welcome()}
 <footer><span>Waypoint <span class="title-dot">×</span> Make plans. Take detours.</span><span>Guest links are optional and read-only.</span></footer></main>
 `}${viewDialog()}<dialog id="editor" class="form-dialog" aria-labelledby="edit-title"><form id="edit-form"><div class="dialog-heading"><span class="eyebrow"></span><button type="button" class="icon-button" id="close-editor" aria-label="Close activity">×</button></div><h2 id="edit-title">Activity</h2><div id="editor-fields"></div><p class="last-edit" id="edit-last-edit" hidden></p><p id="edit-message" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button" id="copy-draft" hidden>Copy my draft</button><button type="button" class="secondary" id="reload-after-conflict" hidden>Load latest plan</button><button type="button" class="text-button" id="delete">Delete activity</button><button type="submit" class="primary" id="save">Save changes</button></div></form></dialog>
 <dialog id="roster-dialog" class="form-dialog" aria-labelledby="roster-title"></dialog><dialog id="history-dialog" aria-labelledby="history-title"></dialog><dialog id="stay-view" aria-labelledby="stay-view-title"></dialog><dialog id="structure-dialog" class="form-dialog" aria-labelledby="structure-title"></dialog><dialog id="archived-dialog" aria-labelledby="archived-title"></dialog><dialog id="editors-dialog" class="form-dialog" aria-labelledby="editors-title"></dialog><dialog id="create-dialog" class="form-dialog" aria-labelledby="create-title"><form id="create-form"><h2 id="create-title">New trip or event</h2><label>Name<input name="title" required maxlength="160"></label><label>Subtitle <small>(optional; shown under the name, and to guests)</small><input name="subtitle" maxlength="500"></label><div class="field-row"><label>First day<input type="date" name="start" required></label><label>Last day<input type="date" name="end" required></label></div><label>Time zone<input name="timezone" value="America/Los_Angeles" required></label><label>Kind<select name="kind"><option value="event">Gathering / event</option><option value="trip">Trip</option></select></label><p id="create-error" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button danger" id="trip-delete" hidden>Delete this trip…</button><button type="button" class="secondary" data-close="create-dialog">Cancel</button><button class="primary" id="create-submit">Create</button></div></form></dialog>
@@ -258,6 +259,9 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
         // Cards changed in the last day get their mark, and the log is asked again if the plan has moved on.
         showLastEdits();
         loadLastEdits();
+        // The weather lines are filled in place from the last answer, and asked for again when the plan or the hour has moved on.
+        showWeather();
+        loadWeather();
         // A redraw replaces the dialogs: put an open activity view back, with the values just loaded or saved.
         if (viewing)
             openView(viewing);
@@ -275,6 +279,33 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
         viewScope = preview ? '.guest-preview' : '';
         showActivityView(document, a, trip, { guest: preview, canEdit: !preview });
         showLastEdits();
+    }
+    // ---- Weather under each date: fetched by the server for where each day's stay is; never stored ----
+    // `weather.data` answers for one saved revision of one trip. A failed request leaves the lines as they were.
+    let weather = { key: null, at: 0, data: null }, weatherLoading = false;
+    const weatherKey = () => state.snapshot ? `${state.snapshot.trip.id}:${state.snapshot.revision}` : null;
+    function showWeather() {
+        const current = weather.key === weatherKey();
+        applyWeather(document, current ? weather.data : null, { units: unitsFor(navigator.language), loading: !current && state.online && !state.needsSignIn });
+    }
+    async function loadWeather() {
+        const key = weatherKey();
+        if (!key || !state.online || state.needsSignIn || weatherLoading || (weather.key === key && Date.now() - weather.at < 30 * 60 * 1000))
+            return;
+        weatherLoading = true;
+        let data = null;
+        try {
+            const r = await fetch(`/api/weather?id=${encodeURIComponent(state.snapshot.trip.id)}`, { cache: 'no-store', credentials: 'same-origin' });
+            if (r.ok && (r.headers.get('Content-Type') || '').includes('application/json'))
+                data = await r.json();
+        }
+        catch { /* no weather */ }
+        weather = { key, at: Date.now(), data };
+        weatherLoading = false;
+        showWeather();
+        // The plan was saved while this was on its way: ask once more for what is now on screen.
+        if (weatherKey() !== key)
+            loadWeather();
     }
     // ---- "Last edited by": read from the change log, never stored; shown to signed-in members only ----
     // `lastEdits.map` answers for one saved revision of one trip. After any save it is asked for again,
@@ -480,6 +511,7 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
             return render();
         const left = it.scrollLeft, top = it.scrollTop;
         it.innerHTML = board(t, { filter: state.filter, day: state.day, compact: state.compact, hideExamples: state.hideExamples });
+        showWeather();
         it.scrollLeft = left;
         it.scrollTop = top;
         if ($('.idea-cards'))

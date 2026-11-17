@@ -16,6 +16,8 @@ coordinates as typed; nothing is geocoded or converted (`docs/map-location.md`).
 The day map uses Google Maps Embed when `GOOGLE_MAPS_EMBED_KEY` is set in runtime
 configuration, and the schematic otherwise; the key is never committed
 (`docs/google-maps-embed.md`).
+The weather line under each date is fetched by the server for the stay's location;
+an address is looked up for the weather only and never stored (`docs/weather.md`).
 "Last edited by" is read from the change log, never stored, and never shown to
 guests (`docs/last-edited.md`). Read `docs/prototype.md` for implementation status and checks.
 
