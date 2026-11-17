@@ -60,6 +60,12 @@ PR 2 remain as deployed. The timing step differs
 from the plan in one detail: `fixed` remains the field that protects a plan and
 the new `timing` field only tells "that day" from "any day".
 
+Built on November 17: PR 11 (stay information, S2 and S3) and, from the P2
+list, two-level places (P2), add between cards (C3), flick between days (L2)
+and pictures on cards; see [release-nov17.md](release-nov17.md). Still not
+built from this plan: repeating activities (T3), people in more than one group
+(W5) and richer maps (M2).
+
 ## The short version
 
 1. **Most of the feedback applies to the app as it is today.** The repository

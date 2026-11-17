@@ -28,7 +28,9 @@ changes](docs/layout.md). Built on November 16 from the
 days](docs/ideas-column.md), and [one Manage menu and a sideways-phone
 layout](docs/landscape-and-menu.md). Built after that and not yet deployed:
 [a shorter activity form](docs/quick-add.md), [timing levels](docs/timing.md),
-and [all days in one scroll on phones](docs/all-days.md). A daily automatic backup is
+and [all days in one scroll on phones](docs/all-days.md). Built on November 17 and not yet deployed:
+[five additions](docs/release-nov17.md) (stay information for the group,
+two-level places, add between cards, flick between days, pictures on cards). A daily automatic backup is
 [proposed](docs/backup-proposal.md) and not enabled.
 
 [Open the planner](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site) · [Current implementation and access status](docs/multi-events.md) · [What is deployed](docs/multi-events.md#release-provenance) · [Managing travelers](docs/travelers.md) · [Drag-and-drop](docs/drag-drop.md) · [Schedule-first phone layout](docs/schedule-first.md) · [Editors and what they may change](docs/editors.md) · [Source](apps/sites-prototype)

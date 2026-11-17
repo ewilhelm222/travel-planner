@@ -1,5 +1,5 @@
-import { usefulFilterChoices } from "./participants.mjs";
-import { escape, preferredDay, board, dayChooser, ideaCards, PHONE_QUERY, dayInView, pressDay, fitColumns } from './board.mjs';
+import { usefulFilterChoices, participantRecord } from "./participants.mjs";
+import { escape, preferredDay, board, dayChooser, dateLabel, ideaCards, PHONE_QUERY, dayInView, pressDay, fitColumns, swipeStep, days } from './board.mjs';
 import { VIEW_ID, viewDialog, showActivityView, focusCard, enableViewDismiss } from './activity-view.mjs';
 import { matchesSelection } from './participants.mjs';
 import { buildOfflineHtml } from './offline-export.mjs';
@@ -10,6 +10,18 @@ let allDays = false;
 try { allDays = localStorage.getItem('waypoint-guest-all-days') === '1'; } catch { }
 const allDaysView = () => phone() && allDays;
 function jumpToDay() { pressDay(document, day); document.querySelector(`#itinerary .agenda-day[data-date="${day}"]`)?.scrollIntoView({ block: 'start' }); }
+// Card pictures: fetched with the guest token in a header (an <img> address cannot carry one), kept in
+// memory for this visit only, and shown when they arrive. A picture that cannot be loaded leaves no gap.
+const pictures = new Map();
+function pictureFor(id) {
+    if (!pictures.has(id))
+        pictures.set(id, fetch(`/api/shared-image?image=${encodeURIComponent(id)}`, { headers: { Authorization: `Share ${token}` }, cache: 'no-store', credentials: 'omit' }).then(r => r.ok ? r.blob() : null).then(blob => blob ? URL.createObjectURL(blob) : null).catch(() => null));
+    return pictures.get(id);
+}
+function showPictures() {
+    for (const img of document.querySelectorAll('img[data-image]:not([src])'))
+        pictureFor(img.dataset.image).then(url => { if (url) { img.src = url; img.hidden = false; } else img.remove(); });
+}
 const phone = () => window.matchMedia?.(PHONE_QUERY).matches;
 let layout;
 function render() {
@@ -26,12 +38,14 @@ function render() {
     const ideas = ideaList.length ? `<section class="ideas" id="ideas"><h2>Ideas <span>· not scheduled yet</span></h2><div class="idea-cards">${ideaCards(ideaList, trip, true)}</div></section>` : '';
     const schedule = `${dayChooser(trip, day, { ...(ideaList.length ? { ideas: ideaList.length } : {}), allDays })}<div class="board-wrap">${ideas}<div class="date-board" id="itinerary" tabindex="-1">${board(trip, { filter, day, guest: true })}</div></div>`;
     // The same read-only activity view as the planner. Guests cannot edit, so it is drawn without an Edit button.
-    const dialog = viewDialog();
+    // The activity view shared with the planner, and a small reading dialog for a stay the organizer chose to share.
+    const dialog = `${viewDialog()}<dialog id="stay-view" aria-labelledby="stay-title"><div class="dialog-heading"><span class="eyebrow">Stay</span><button type="button" class="icon-button" data-close="stay-view" aria-label="Close stay details">×</button></div><h2 id="stay-title"></h2><div id="stay-body"></div></dialog>`;
     // Phone: the schedule comes first, matching the signed-in planner; reading-copy and refresh controls follow it.
     app.innerHTML = layout
         ? `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar slim" id="top"><span class="brand">Waypoint<span class="brand-dot">↗</span></span><span class="private-label">● Guest view · read only</span></header><main class="compact schedule-first${allDays ? ' all-days' : ''}"><section class="trip-bar" aria-label="Schedule and traveler selection"><h1 class="trip-name">${escape(trip.title)}</h1>${filterLabel}</section>${banner}${schedule}<section class="manage" id="manage" aria-labelledby="manage-title"><h2 id="manage-title">About this schedule</h2><p class="manage-trip">${escape(trip.title)} · ${escape(trip.start)} – ${escape(trip.end)} · ${escape(trip.timezone)}</p>${trip.subtitle ? `<p>${escape(trip.subtitle)}</p>` : ''}<p role="status" id="guest-status">${guide}</p><div class="manage-group"><h3>Copies &amp; updates</h3><div class="tools"><button class="secondary" id="refresh">Refresh</button><button class="secondary" id="download">Save a reading copy</button></div><p class="study-meta">${meta}</p></div><a class="jump-link back-top" href="#top">↑ Back to the schedule</a></section><footer>Read-only guest link · No account or RSVP required. Keep the link within your group.</footer></main>${dialog}`
         : `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar"><span class="brand">Waypoint<span class="brand-dot">↗</span></span><span class="private-label">● Guest view · read only</span></header><main class="compact"><header class="trip-header"><div><span class="eyebrow">An invitation to explore</span><h1>${escape(trip.title)}<span class="title-dot">.</span></h1><p class="trip-subtitle">${escape(trip.subtitle)}</p><p class="trip-facts">${escape(trip.start)} – ${escape(trip.end)} · ${escape(trip.timezone)}</p></div></header><div class="toolbar">${filterLabel}<button class="secondary" id="refresh">Refresh</button><button class="secondary" id="download">Save a reading copy</button></div>${banner}<p role="status" id="guest-status">${guide}</p><p class="study-meta">${meta}</p>${schedule}<footer>Read-only guest link · No account or RSVP required. Keep the link within your group.</footer></main>${dialog}`;
     fitColumns(document.querySelector('#itinerary'));
+    showPictures();
     const selected = document.querySelector(`[data-date="${day}"]`);
     if (selected)
         document.querySelector('#itinerary').scrollLeft = selected.offsetLeft - document.querySelector('#itinerary').offsetLeft;
@@ -92,9 +106,19 @@ document.addEventListener('click', async (e) => { if (e.target.closest('.skip-li
         jumpToDay();
     document.querySelector('.all-stop')?.focus();
 } if (b.id === 'refresh')
-    await load(); if (b.dataset.close)
+    await load(); if (b.dataset.stayView) {
+    // A stay the organizer chose to share: place, dates, who, lodging line, check-out time and the text for the group.
+    const s = trip.stays.find(x => x.id === b.dataset.stayView), place = trip.places.find(p => p.id === s?.placeId);
+    if (s) {
+        const when = d => dateLabel(d, { weekday: 'long', month: 'short', day: 'numeric' });
+        document.querySelector('#stay-title').textContent = place?.name || 'Stay';
+        document.querySelector('#stay-body').innerHTML = `<p>${escape(when(s.start))} → ${escape(when(s.end))}${s.checkOutTime ? ` · check-out ${escape(s.checkOutTime)}` : ''}</p><p>${escape(s.lodging || s.name || '')}</p><p class="guest-notes">${escape(s.groupInfo || '')}</p><p>${s.participants.map(id => escape(participantRecord(trip, id)?.name || 'Some travelers')).join(' · ')}</p>`;
+        document.querySelector('#stay-view').showModal();
+    }
+} if (b.dataset.close)
     document.getElementById(b.dataset.close)?.close(); if (b.dataset.detail) {
     showActivityView(document, trip.activities.find(a => a.id === b.dataset.detail), trip, { guest: true, canEdit: false });
+    showPictures();
 } if (b.id === 'download') {
     const html = buildOfflineHtml({ trip, revision }, { downloadedAt: new Date().toISOString() });
     const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
@@ -109,3 +133,20 @@ enableViewDismiss({ document, sheet: phone });
 document.addEventListener('close', e => { if (e.target.id === VIEW_ID) focusCard(document, e.target.dataset.activity); }, true);
 load();
 window.addEventListener('resize', () => fitColumns(document.querySelector('#itinerary')));
+// One-day phone view: flick left or right on the day to go to the next or previous day.
+let flick = null;
+document.addEventListener('touchstart', e => { const t = e.touches[0]; flick = e.touches.length === 1 && trip && phone() && !allDays && !document.querySelector('dialog[open]') && e.target.closest?.('#itinerary') ? { x: t.clientX, y: t.clientY, at: Date.now() } : null; }, { passive: true });
+document.addEventListener('touchend', e => {
+    const start = flick, t = e.changedTouches[0];
+    flick = null;
+    if (!start || !t || document.querySelector('dialog[open]'))
+        return;
+    const step = swipeStep({ dx: t.clientX - start.x, dy: t.clientY - start.y, ms: Date.now() - start.at, startX: start.x, width: window.innerWidth });
+    const dates = days(trip), next = dates[dates.indexOf(day) + step];
+    if (step && next) {
+        day = next;
+        render();
+        document.querySelector('#itinerary')?.classList.add(step > 0 ? 'flick-next' : 'flick-prev');
+    }
+}, { passive: true });
+document.addEventListener('touchcancel', () => { flick = null; }, { passive: true });

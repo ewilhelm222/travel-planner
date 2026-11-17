@@ -81,7 +81,7 @@ test('tap opens the view and not the editor', () => {
     assert.ok(body.includes('showActivityView(') && !body.includes('openEditor') && !body.includes("$('#editor')"), 'opening the view never opens the editor');
     // Every way into the editor: the Edit button in the view, and the three "add" entry points. No card tap.
     const calls = [...planner.matchAll(/(?<!function )openEditor\(([^)]*)\)/g)].map(m => m[1]);
-    assert.deepEqual(calls, ['id', '', 'null, { date: b.dataset.addDate || null, placeId: b.dataset.addPlace || undefined }']);
+    assert.deepEqual(calls, ['id', '', "null, { date: b.dataset.addDate || null, placeId: b.dataset.addPlace || undefined, beforeId: b.dataset.before || '' }"]);
     // Showing it: a modal dialog, filled read-only, focus on the title.
     const title = element(), notes = element({ scrollTop: 40 });
     const dialog = element({ open: false, showModal() { this.open = true; this.modal = true; }, querySelector: sel => sel === 'h2' ? title : notes });
@@ -91,7 +91,7 @@ test('tap opens the view and not the editor', () => {
     assert.ok(dialog.innerHTML.includes('Campfire') && !dialog.innerHTML.includes('data-edit-activity'));
     assert.equal(showActivityView(document, undefined, t), null, 'a card whose activity is gone opens nothing');
     assert.match(viewDialog(), /^<dialog id="activity-view" class="activity-view" aria-labelledby="activity-view-title"><\/dialog>$/);
-    assert.ok(planner.includes('${viewDialog()}<dialog id="editor"') && guest.includes('const dialog = viewDialog();'), 'both pages use the one view');
+    assert.ok(planner.includes('${viewDialog()}<dialog id="editor"') && guest.includes('const dialog = `${viewDialog()}<dialog id="stay-view"'), 'both pages use the one view');
 });
 
 test('Edit opens the editor for that activity, and saving or cancelling comes back to the view', () => {

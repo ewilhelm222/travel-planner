@@ -47,3 +47,18 @@ export const plannerChanges = sqliteTable("planner_changes", {
   uniqueIndex("planner_changes_trip_revision_unique").on(table.tripId, table.revision),
   index("planner_changes_trip_id_idx").on(table.tripId, table.id),
 ]);
+
+// Small pictures for activity cards, downscaled in the browser before upload. A row is written once and
+// never changed; an activity points at it by id, and that pointer is saved and logged like any other field.
+export const plannerImages = sqliteTable("planner_images", {
+  id: text("id").primaryKey(),
+  tripId: text("trip_id").notNull(),
+  mime: text("mime").notNull(),
+  // Base64 of the image bytes.
+  data: text("data").notNull(),
+  bytes: integer("bytes").notNull(),
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by").notNull(),
+}, table => [
+  index("planner_images_trip_id_idx").on(table.tripId),
+]);

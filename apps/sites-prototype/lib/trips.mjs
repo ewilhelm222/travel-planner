@@ -52,7 +52,17 @@ export function normalizeTrip(input, tripId) {
             throw new Error("Choose participants from this trip.");
         return p;
     };
-    const places = unique(list(input.places || [], 100).map(p => ({ id: p.id, name: text(p.name, 160), localName: text(p.localName, 160), address: text(p.address, 500), localAddress: text(p.localAddress, 500), ...normalizePlaceGeo(p) })));
+    const places = unique(list(input.places || [], 100).map(p => ({ id: p.id, name: text(p.name, 160), localName: text(p.localName, 160), address: text(p.address, 500), localAddress: text(p.localAddress, 500), parentId: typeof p.parentId === "string" && p.parentId ? p.parentId : null, ...normalizePlaceGeo(p) })));
+    // Two levels at most: an area (a city, a camp) and venues inside it.
+    for (const p of places) {
+        if (!p.parentId)
+            continue;
+        const parent = places.find(x => x.id === p.parentId);
+        if (!parent || parent.id === p.id)
+            throw new Error("Choose an area from this trip for this place to sit inside.");
+        if (parent.parentId)
+            throw new Error("A place can sit inside an area, but areas cannot be nested further. Move its venues out first.");
+    }
     const placeIds = new Set(places.map(p => p.id));
     const place = value => {
         if (value && !placeIds.has(value))
@@ -62,14 +72,14 @@ export function normalizeTrip(input, tripId) {
     const stays = unique(list(input.stays || [], 100).map(s => {
         if (!validDate(s.start) || !validDate(s.end) || s.end <= s.start)
             throw new Error("A stay needs valid check-in and check-out dates.");
-        return { id: s.id, name: text(s.name, 160), placeId: place(s.placeId), start: s.start, end: s.end, lodging: text(s.lodging, 500), note: text(s.note), participants: participants(s.participants) };
+        return { id: s.id, name: text(s.name, 160), placeId: place(s.placeId), start: s.start, end: s.end, lodging: text(s.lodging, 500), note: text(s.note), groupInfo: text(s.groupInfo), checkOutTime: text(s.checkOutTime, 80), showOnGuest: s.showOnGuest === true, participants: participants(s.participants) };
     }));
     const activities = unique(list(input.activities || [], 500).map(a => {
         if (!text(a.title, 160))
             throw new Error("Every activity needs a title.");
         if (a.date !== null && (!validDate(a.date) || a.date < input.start || a.date > input.end))
             throw new Error("Choose an activity day within this trip, or leave it unscheduled.");
-        return { id: a.id, title: text(a.title, 160), date: a.date, placeId: place(a.placeId), time: text(a.time, 80), order: Number.isSafeInteger(a.order) ? Math.max(0, Math.min(1000, a.order)) : 0, fixed: timingOf(a) === "set", timing: timingOf(a), optional: a.optional === true, highlight: a.highlight === true, participants: participants(a.participants), notes: text(a.notes), address: text(a.address, 500), guestNotes: text(a.guestNotes), guestLocation: text(a.guestLocation, 500), links: normalizeLinks(a.links), sourceKind: ["tentative", "synthetic", "entered"].includes(a.sourceKind) ? a.sourceKind : "entered" };
+        return { id: a.id, title: text(a.title, 160), date: a.date, placeId: place(a.placeId), time: text(a.time, 80), order: Number.isSafeInteger(a.order) ? Math.max(0, Math.min(1000, a.order)) : 0, fixed: timingOf(a) === "set", timing: timingOf(a), optional: a.optional === true, highlight: a.highlight === true, participants: participants(a.participants), notes: text(a.notes), address: text(a.address, 500), guestNotes: text(a.guestNotes), guestLocation: text(a.guestLocation, 500), links: normalizeLinks(a.links), imageId: id(a.imageId) ? a.imageId : "", sourceKind: ["tentative", "synthetic", "entered"].includes(a.sourceKind) ? a.sourceKind : "entered" };
     }));
     const legs = unique(list(input.legs || [], 200).map(l => {
         if (!validDate(l.date) || l.date < input.start || l.date > input.end)
@@ -174,6 +184,11 @@ export function applyTripChange(trip, change) {
                             if (leg.to === target)
                                 leg.to = to;
                         }
+                        // Venues inside a deleted area move into the chosen area, or become areas themselves.
+                        const newArea = rows.find(r => r.id === to && !r.parentId);
+                        for (const p of rows)
+                            if (p.parentId === target)
+                                p.parentId = newArea && newArea.id !== p.id ? newArea.id : null;
                     }
                 }
                 rows.splice(index, 1);
@@ -197,6 +212,13 @@ export function applyTripChange(trip, change) {
         if (!id(change.activity?.id) || next.activities.some(a => a.id === change.activity.id))
             throw new Error("Choose a new activity identifier.");
         next.activities.push(change.activity);
+        // "Add here": place the new activity before a named card of the same day; otherwise it goes last.
+        if (typeof change.beforeId === "string" && change.activity.date) {
+            // Start it at the end of its day, so placing it always renumbers the day and never leaves a tie.
+            next.activities.at(-1).order = 1000;
+            const added = normalizeTrip(next, trip.id);
+            return normalizeTrip(moveActivity(added, { activityId: change.activity.id, date: added.activities.find(a => a.id === change.activity.id).date, beforeId: change.beforeId }).trip, trip.id);
+        }
     }
     else {
         const a = next.activities.find(a => a.id === change.activityId);
@@ -207,7 +229,7 @@ export function applyTripChange(trip, change) {
         }
         else {
             const p = change.patch && typeof change.patch === "object" && !Array.isArray(change.patch) ? { ...change.patch } : change.patch;
-            const allowed = ["title", "notes", "address", "links", "guestNotes", "guestLocation", "time", "date", "order", "placeId", "fixed", "timing", "optional", "highlight", "participants"];
+            const allowed = ["title", "notes", "address", "links", "guestNotes", "guestLocation", "time", "date", "order", "placeId", "fixed", "timing", "optional", "highlight", "participants", "imageId"];
             if (!p || typeof p !== "object" || Array.isArray(p) || !Object.keys(p).length || Object.keys(p).some(k => !allowed.includes(k)))
                 throw new Error("Unsupported edit.");
             // A timing level, when sent, decides `fixed`. A page from before timing levels sends only `fixed`.
@@ -223,8 +245,8 @@ export function applyTripChange(trip, change) {
     }
     return normalizeTrip(next, trip.id);
 }
-const PLACE_FIELDS = ["name", "localName", "address", "localAddress", "lat", "lng", "coordSystem", "coordSource", "amapUrl", "appleMapsUrl", "navReviewed"];
-const STAY_FIELDS = ["name", "placeId", "start", "end", "lodging", "note", "participants"];
+const PLACE_FIELDS = ["name", "localName", "address", "localAddress", "parentId", "lat", "lng", "coordSystem", "coordSource", "amapUrl", "appleMapsUrl", "navReviewed"];
+const STAY_FIELDS = ["name", "placeId", "start", "end", "lodging", "note", "groupInfo", "checkOutTime", "showOnGuest", "participants"];
 const LEG_FIELDS = ["title", "date", "arrivalDate", "time", "arrivalTime", "mode", "participants", "notes", "from", "to"];
 const structure = (key, noun, fields) => Object.fromEntries(["add", "edit", "delete"].map(op => [`${noun}-${op}`, { key, noun, idField: `${noun}Id`, fields, op }]));
 const STRUCTURE = { ...structure("places", "place", PLACE_FIELDS), ...structure("stays", "stay", STAY_FIELDS), ...structure("legs", "leg", LEG_FIELDS) };
@@ -279,14 +301,26 @@ export function editorRestriction(trip, change) {
         if ((change.person?.showOnGuest === true) !== (existing?.showOnGuest === true))
             return "Only the organizer chooses whether a traveler's name shows on the guest link.";
     }
+    // A stay reaches the guest link only by the organizer's choice; editors may still write its text.
+    if (change?.action === "stay-add" && change.stay?.showOnGuest === true)
+        return STAY_GUEST_RULE;
+    if (change?.action === "stay-edit" && change.patch && "showOnGuest" in change.patch) {
+        const existing = (trip.stays || []).find(s => s.id === change.stayId);
+        if ((change.patch.showOnGuest === true) !== (existing?.showOnGuest === true))
+            return STAY_GUEST_RULE;
+    }
     return null;
 }
+export const STAY_GUEST_RULE = "Only the organizer chooses whether a stay is shown on the guest link.";
 // The same rule for a whole before/after pair, used where there is no single request to inspect (undo).
 export function editorDiffRestriction(before, after) {
     const shown = trip => JSON.stringify((trip.people || []).filter(p => p.showOnGuest === true).map(p => p.id).sort());
     const details = trip => JSON.stringify(["title", "subtitle", "start", "end", "timezone", "kind"].map(k => trip[k] ?? null));
     if (details(before) !== details(after))
         return EDITOR_TRIP_DETAILS;
+    const stays = trip => JSON.stringify((trip.stays || []).filter(s => s.showOnGuest === true).map(s => s.id).sort());
+    if (stays(before) !== stays(after))
+        return STAY_GUEST_RULE;
     return shown(before) === shown(after) ? null : "Only the organizer chooses whether a traveler's name shows on the guest link.";
 }
 export function publicTrip(trip) {
@@ -314,9 +348,12 @@ export function publicTrip(trip) {
     }
     // Examples (invented items) are never sent to guests: an example must not be read as a plan.
     // Unscheduled ideas are shared too (decided November 16, 2026), with the same limited fields.
-    const activities = trip.activities.filter(a => a.sourceKind !== "synthetic").map(a => ({ id: a.id, title: a.title, date: a.date, placeId: a.placeId, time: a.time, order: a.order, fixed: timingOf(a) === "set", timing: timingOf(a), optional: a.optional, highlight: a.highlight, participants: [...new Set(a.participants.map(guestId))], notes: a.guestNotes, address: a.guestLocation, sourceKind: a.sourceKind }));
+    const activities = trip.activities.filter(a => a.sourceKind !== "synthetic").map(a => ({ id: a.id, title: a.title, date: a.date, placeId: a.placeId, time: a.time, order: a.order, fixed: timingOf(a) === "set", timing: timingOf(a), optional: a.optional, highlight: a.highlight, participants: [...new Set(a.participants.map(guestId))], notes: a.guestNotes, address: a.guestLocation, imageId: a.imageId || "", sourceKind: a.sourceKind }));
     return { schemaVersion: 2, id: 'guest-view', title: trip.title, subtitle: trip.subtitle, kind: trip.kind, start: trip.start, end: trip.end, timezone: trip.timezone,
-        families, people, places: trip.places.map(p => ({ id: p.id, name: p.name, localName: p.localName })), stays: [], legs: [], activities };
+        families, people, places: trip.places.map(p => ({ id: p.id, name: p.name, localName: p.localName, parentId: p.parentId || null })),
+        // A stay is shared only when the organizer ticked it, and then without its private note.
+        stays: (trip.stays || []).filter(s => s.showOnGuest === true).map(s => ({ id: s.id, name: s.name, placeId: s.placeId, start: s.start, end: s.end, lodging: s.lodging, groupInfo: s.groupInfo, checkOutTime: s.checkOutTime, showOnGuest: true, participants: [...new Set((s.participants || []).map(guestId))] })),
+        legs: [], activities };
 }
 export async function tokenHash(token) { return [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)))].map(b => b.toString(16).padStart(2, "0")).join(""); }
 export function newShareToken() { const bytes = crypto.getRandomValues(new Uint8Array(32)); return btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", ""); }
