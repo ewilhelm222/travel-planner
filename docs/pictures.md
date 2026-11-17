@@ -15,7 +15,7 @@ made here; each is easy to revisit:
 | Size | Shrunk in the browser to at most 800 px on the long side before it is sent, typically 30 to 120 KB | Phone photos are several megabytes; cards do not need that |
 | Who sees it | People who sign in, **and guests through the guest link** | Decided by the organizer on November 17. The first build kept pictures off the guest link; that was changed the same day |
 | Phones | A 60 px thumbnail at the right of the card | "Minimized on phones" |
-| Compact views | No pictures in the week view, on a sideways phone, or in the Ideas column beside the days | Those cards show titles only |
+| Compact views | Since the laptop update below: a short band across the top of the card in the week view and in the Ideas column beside the days. No pictures on a sideways phone | A band keeps the title at the card's full width; a sideways phone has too little height |
 
 ## For planners
 
@@ -23,8 +23,53 @@ In an activity's form, under **More details**, **Choose a picture**. The
 picture is shrunk and saved at once and a preview appears; choose **Save** to
 put it on the card. **Remove picture** takes it off (again, then Save).
 
-On a laptop with larger cards the picture fills the top of the card. Adding,
+On a laptop the picture fills the top of the card: full height (16:9) with larger cards, a shorter band (2:1) in the week view and the Ideas column. Adding,
 changing or removing a picture is in History as "Picture" and can be undone.
+
+## Pictures in the laptop week view and the Ideas column
+
+Status: November 17, 2026. Built and checked locally with synthetic data and
+made-up pictures; not deployed. No data, API or schema change.
+
+A trip longer than four days opens in the week view on a laptop, and that view
+and the Ideas column left pictures out, so on most real trips a laptop showed
+none. Now:
+
+| Where | What shows |
+| --- | --- |
+| Week view, 1000 px and wider | A 2:1 band across the top of the card, edge to edge (about 172 to 192 px wide, 86 to 96 px tall) |
+| Ideas column beside the days | The same 2:1 band, in both the week view and with larger cards |
+| Larger cards, tablet upright | Unchanged: the 16:9 picture across the top |
+| Phone held sideways (window under 520 px tall) | No picture, as before: the height goes to the schedule |
+| Phone upright | Unchanged: the 60 px thumbnail at the right |
+
+A band on top was chosen over a thumbnail at the side because week-view cards
+are 172 to 192 px wide: a side thumbnail would take a third of the title's
+width, while a band leaves the title, time and names exactly as wide as on a
+card with no picture.
+
+- The same `<img class="card-image">` from `card()` in `board.mjs` and the same
+  `/api/image` address are used everywhere. Only `planner.css` changed.
+- The shape is fixed (`aspect-ratio` with `object-fit: cover`), so a card is
+  the same size before and after its picture arrives. Pictures are lazy-loaded
+  and have empty `alt` text: they are decoration, the title names the activity.
+- A card with no picture has no image element and no empty box. A picture that
+  fails to load is removed by the existing handler in `planner.js`, which
+  leaves the same plain card.
+- The picture does not take the pointer (`pointer-events: none`), so pressing
+  on it is pressing on the card: a click opens the activity, a drag moves the
+  card, and the browser never starts dragging the image itself. The card's
+  click and drag code is unchanged.
+- Pictures are stored once, at up to 800 px, and the picture route has no size
+  option, so the band loads the same file as the phone thumbnail (typically 30
+  to 120 KB). A smaller rendition would need a route or storage change.
+- The offline shell cache is `waypoint-shell-v41`.
+
+Checks: `tests/card-thumbnails.test.mjs` (the layout tests run the real
+stylesheet in a browser and are skipped where Playwright is not installed) and
+`scripts/check-card-pictures-browser.cjs` against the local dev server at 1440,
+1280, 1000, 800 and 844×390 px and on an emulated phone. Before and after
+pictures are in `docs/design/card-thumbnails/`.
 
 ## Limits and things to know
 

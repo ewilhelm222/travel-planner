@@ -782,17 +782,26 @@ button.lodging { padding-left: 8px; }
 .flick-prev .agenda-day[data-selected=true] { animation: waypoint-flick-prev .18s ease-out; }
 @media print { .insert-here { display: none !important; } }
 
-/* Pictures on cards. Full width at the top of a roomy card; a small thumbnail on a phone; left out where cards
-   are compact (week view, sideways phone, the ideas column beside the days) and in print. */
-.card-image { display: block; width: calc(100% + 40px); max-width: none; margin: -20px -20px 16px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius) var(--radius) 0 0; background: #e9dcc8; }
+/* Pictures on cards. Full width at the top of a roomy card; a shorter band across the top of a compact one
+   (week view, the ideas column beside the days), so the title keeps the card's full width; a small thumbnail
+   on a phone; left out on a sideways phone, where height is short, and in print. The shape is fixed, so a
+   card does not change size when its picture arrives, and a picture that fails is removed (planner.js),
+   which leaves the plain card. The picture never takes the pointer: a press on it is a press on the card. */
+.card-image { display: block; width: calc(100% + 40px); max-width: none; margin: -20px -20px 16px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius) var(--radius) 0 0; background: #e9dcc8; pointer-events: none; -webkit-user-drag: none; user-select: none; }
 .activity.rendezvous .card-image { margin-top: -28px; }
-.board-wrap > .ideas .card-image { display: none; }
+@media (min-width: 761px), (min-width: 560px) and (orientation: landscape) {
+  .board-wrap > .ideas .card-image { width: calc(100% + 32px); margin: -14px -16px 12px; aspect-ratio: 2 / 1; border-radius: 18px 18px 0 0; }
+  .board-wrap > .ideas .activity.rendezvous .card-image { margin-top: -28px; }
+}
 @media (max-width: 559px), (max-width: 760px) and (orientation: portrait) {
   .schedule-first .activity:has(.card-image) { position: relative; padding-right: 86px; min-height: 84px; }
   .schedule-first .activity .card-image { position: absolute; top: 12px; right: 14px; width: 60px; height: 60px; margin: 0; aspect-ratio: 1; border-radius: 12px; flex: none; }
   .schedule-first .ideas .card-image { display: block; }
 }
-@media (min-width: 1000px) { .dense .card-image { display: none; } }
+@media (min-width: 1000px) {
+  .dense .card-image, .dense .board-wrap > .ideas .card-image { width: calc(100% + 24px); margin: -10px -12px 8px; aspect-ratio: 2 / 1; border-radius: 14px 14px 0 0; }
+  .dense .activity.rendezvous .card-image, .dense .board-wrap > .ideas .activity.rendezvous .card-image { margin-top: -18px; }
+}
 @media (min-width: 761px) and (max-height: 520px), (min-width: 560px) and (max-height: 520px) and (orientation: landscape) { .card-image { display: none; } }
 @media print { .card-image { display: none; } }
 .picture-field { margin: 8px 0 0; }
