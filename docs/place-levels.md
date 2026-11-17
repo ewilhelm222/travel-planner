@@ -21,6 +21,10 @@ What changes on screen:
 
 - The board still has one section per area for each day. A plan at a venue sits
   in its area's section and its card says **At (venue)**.
+  A plan placed at the area itself says **At (area)** (since November 17; before
+  that it had no line, which left such an idea in the Ideas column with no
+  location at all). A plan with no place has no line.
+  ![Before and after, with made-up data](design/place-levels/area-location-before-after.jpg)
 - Place lists show venues under their area, written "Area › Venue".
 - Ideas are grouped by area.
 - The guest link shows the same grouping and venue names (names only, as
