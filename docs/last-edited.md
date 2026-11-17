@@ -1,7 +1,8 @@
 # "Last edited by" on an activity
 
-Status: November 17, 2026. Built and checked locally with synthetic data; not
-deployed. No database migration and no new stored data.
+Status: deployed November 17, 2026 (America/Los_Angeles), Sites version 18.
+See [release provenance](multi-events.md#release-provenance) for checks and limits;
+live browser checks were unavailable. Built and checked locally with synthetic data. No database migration and no new stored data.
 
 History lists every change, but most people want to see an edit where they are
 looking: on the activity. This adds a short note there that leads to the exact

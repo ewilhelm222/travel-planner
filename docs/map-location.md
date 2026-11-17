@@ -1,7 +1,8 @@
 # Location for the map: an address or coordinates
 
-Status: November 17, 2026. Built and checked locally with synthetic data; not
-deployed. No database migration. **It makes no claim about China readiness**:
+Status: deployed November 17, 2026 (America/Los_Angeles), Sites version 18.
+See [release provenance](multi-events.md#release-provenance) for checks and limits;
+live browser checks were unavailable. Built and checked locally with synthetic data. No database migration. **It makes no claim about China readiness**:
 no map link was opened from a phone or from mainland China.
 
 ## For planners

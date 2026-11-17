@@ -1,9 +1,9 @@
 # Maps: schematic trip and day views
 
-Status: November 17, 2026. The first pass (November 16) is in `main`; see
-[multi-events.md](multi-events.md) for what is deployed. The November 17
-additions below are built and checked locally with synthetic data and not
-deployed. No database migration. This is the maps part of plan
+Status: November 17 additions deployed November 17, 2026
+(America/Los_Angeles), Sites version 18. The first pass was deployed earlier.
+See [release provenance](multi-events.md#release-provenance) for checks and limits;
+live browser checks were unavailable. Built and checked locally with synthetic data. No database migration. This is the maps part of plan
 milestone 4. **It makes no claim about China readiness**: no map provider, link
 or network was tested from a phone or from mainland China.
 
