@@ -5,7 +5,8 @@
     const { fieldChanges } = await import('/history.mjs');
     const { baseFor, recordKey } = await import('/revisions.mjs');
     const { previewStayMove, daysBetween } = await import('/stay-move.mjs');
-    const { tripMap, dayMap, mapSvg, mapCaption, reviewedLinks, appleSearchUrl, COORD_SYSTEMS, COORD_LABELS, parseLocation, locationInput, describeLocation, searchLinks } = await import('/maps.mjs');
+    const { appleSearchUrl, COORD_SYSTEMS, COORD_LABELS, parseLocation, locationInput, describeLocation } = await import('/maps.mjs');
+    const { mapBodyHtml, mapSectionHtml, followPin } = await import('/map-panel.mjs');
     const { isSnapshot, restoreFromSnapshot } = await import('/backup.mjs');
     const { placeReferences, placeReferenceSummary, parseLinks, formatLinks, LEG_MODES, parseImageDataUrl, imageUrl } = await import('/structure.mjs');
     const { responsePolicy } = await import('/reading-copy.mjs');
@@ -107,7 +108,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v42');
+            const cache = await caches.open('waypoint-shell-v43');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/activity-view.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -294,29 +295,10 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
         render();
     }
     // ---- Maps: tile-free schematics drawn from the same filtered records as the board ----
-    // The saved map location in words: coordinates with their system and source, or the address as typed.
-    const coordText = p => { const l = describeLocation(p); return l.kind === 'coordinates' ? `${escape(l.text)} · ${escape(l.note)}${p.coordSource ? ` · source: ${escape(p.coordSource)}` : ''}` : l.kind === 'address' ? `Map address: ${escape(l.text)} · not positioned on the drawing` : 'No location for the map yet'; };
-    // Searches for a typed address, kept visibly apart from links a person has opened and checked.
-    const searchLinksHtml = p => { const links = searchLinks(p); return links.length ? `<span class="map-links map-search"><span class="map-search-label">Search this address in</span>${links.map(l => `<a class="map-link search" href="${escape(l.url)}" target="_blank" rel="noopener noreferrer">${escape(l.label)} ↗<span class="sr-only"> search for the address of ${escape(p.name)}, not a checked link</span></a>`).join('')}</span>` : ''; };
-    function placeLines(p) {
-        const links = reviewedLinks(p);
-        return `${p.localName ? `<span lang="zh-Hans" class="map-local">${escape(p.localName)}</span>` : ''}${p.address || p.localAddress ? `<small>${escape(p.address)}${p.address && p.localAddress ? ' · ' : ''}<span lang="zh-Hans">${escape(p.localAddress)}</span></small>` : ''}<small>${coordText(p)}</small>${searchLinksHtml(p)}<span class="map-links">${links.map(l => `<a class="map-link" href="${escape(l.url)}" target="_blank" rel="noopener noreferrer">${escape(l.label)} ↗<span class="sr-only"> for ${escape(p.name)}, reviewed link</span></a>`).join('') || '<small>No reviewed map link yet</small>'}<button type="button" class="text-button" data-place-edit="${escape(p.id)}" aria-label="Edit place ${escape(p.name)}">Edit place</button></span>`;
-    }
-    function mapsBody(t) {
-        const trip = state.mapView === 'trip', who = state.filter === 'all' ? 'everyone' : (participantRecord(t, state.filter)?.name || 'the selected travelers');
-        const model = trip ? tripMap(t, { filter: state.filter, compact: phone() }) : dayMap(t, { filter: state.filter, day: state.day, compact: phone() });
-        const title = trip ? `Whole trip for ${who}: ${model.nodes.length} places` : `${dayName(state.day)} for ${who}: ${model.stops.length} stops`;
-        const empty = trip ? 'No stays or journeys for this selection yet. Add them under “Places, stays & journeys”.' : `Nothing with a place on ${dayName(state.day)} for this selection.`;
-        const list = trip
-            ? model.nodes.map(n => `<li><span class="map-stop" aria-hidden="true">${n.n}</span><div><strong>${escape(n.name)}</strong>${n.detail ? `<small>Staying ${escape(n.detail)}</small>` : ''}${placeLines(n.place)}</div></li>`).join('')
-            : model.stops.map(s => `<li><span class="map-stop" aria-hidden="true">${s.n}</span><div><strong>${escape(s.name)}</strong><small>${s.activities.map(a => `${escape(a.time || 'Time to confirm')} · ${escape(a.title)}`).join('<br>')}</small>${placeLines(s.place)}</div></li>`).join('');
-        const loose = !trip && model.unplaced.length ? `<p class="map-unplaced"><strong>Location to confirm (${model.unplaced.length}):</strong> ${model.unplaced.map(a => escape(a.title)).join(' · ')}. These are in the day’s plan but cannot be drawn until they have a place.</p>` : trip && model.missing ? `<p class="map-unplaced">${model.missing} stay${model.missing === 1 ? '' : 's'} or journey${model.missing === 1 ? '' : 's'} for this selection ${model.missing === 1 ? 'has' : 'have'} a place still to confirm and ${model.missing === 1 ? 'is' : 'are'} not drawn.</p>` : '';
-        return `<p class="map-title" id="map-view-title">${escape(title)}</p>${model.nodes.length ? `${model.nodes.length > 1 ? `${mapSvg(model, `${title}. ${mapCaption(model)}`, { scale: phone() ? 1.7 : 1 })}<p class="map-caption">${escape(mapCaption(model))}${model.reason ? ` ${escape(model.reason)}` : ''}</p>` : `<p class="map-caption map-nothing">Nothing to draw yet: a map needs at least two places${trip ? '' : ' on this day'}. A place is positioned from its coordinates. A typed address is used for map-app searches, not for the drawing. Use Edit place to add either.</p>`}<ol class="map-list" aria-label="${trip ? 'Places in plan order' : 'Stops in itinerary order'}">${list}</ol>` : `<p class="empty-lane">${escape(empty)}</p>`}${loose}`;
-    }
-    function mapsSection(t) {
-        const tab = (view, label) => `<button type="button" class="secondary" data-map-view="${view}" aria-pressed="${(state.mapView === 'trip' ? 'trip' : 'day') === view}">${label}</button>`;
-        return `<section class="maps" id="maps" aria-labelledby="maps-title"><div class="maps-head"><h2 id="maps-title">Map</h2><div class="map-tabs" role="group" aria-label="Map view">${tab('day', 'This day')}${tab('trip', 'Whole trip')}</div></div><div id="maps-body">${mapsBody(t)}</div></section>`;
-    }
+    // The panel itself is drawn by map-panel.mjs, which the guest page shares.
+    const mapOptions = () => ({ view: state.mapView === 'trip' ? 'trip' : 'day', filter: state.filter, day: state.day, compact: phone(), canEdit: true, dayName });
+    const mapsBody = t => mapBodyHtml(t, mapOptions());
+    const mapsSection = t => mapSectionHtml(t, mapOptions());
     function refreshMaps() {
         if ($('#maps-body') && state.snapshot)
             $('#maps-body').innerHTML = mapsBody(state.snapshot.trip);
@@ -1053,6 +1035,9 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
     async function sharing() { const data = await request(endpoint('/api/share')); state.shareRevision = data.shareRevision; state.sharePreview = data.preview; $('#share-body').innerHTML = `<p>${data.enabled ? 'A guest link is enabled. Replacing it disables the previous link.' : 'No guest link is enabled.'}</p><button class="primary" id="share-rotate">${data.enabled ? 'Replace guest link' : 'Enable guest link'}</button>${data.enabled ? '<button class="secondary" id="share-revoke">Disable guest link</button>' : ''}<details><summary>Preview exactly what guests will see</summary><div class="guest-preview">${board(data.preview, { day: state.day, guest: true })}<h3>Ideas · not scheduled yet</h3>${ideaCards(data.preview.activities.filter(a => !a.date), data.preview, true) || '<p>No ideas to show.</p>'}</div></details>`; for (const img of document.querySelectorAll('.guest-preview img.card-image[data-image]')) { img.src = imageUrl(state.selected, img.dataset.image); img.hidden = false; } $('#share-error').textContent = ''; $('#share-dialog').showModal(); }
     // The Manage menu closes after a choice, on a click elsewhere, and on Escape.
     document.addEventListener('click', event => {
+        // A marker on the map drawing goes to its entry in the list below.
+        if (followPin(document, event))
+            return;
         const menu = $('#manage-menu');
         if (menu?.open && !event.target.closest('#manage-menu summary') && !event.target.closest('#manage-menu .file-label'))
             menu.open = false;

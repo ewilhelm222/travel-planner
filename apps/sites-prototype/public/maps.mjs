@@ -114,6 +114,47 @@ export function appleSearchUrl(place) {
   const query = [place.localName || place.name, place.localAddress || place.address].filter(Boolean).join(" ");
   return query ? `https://maps.apple.com/?q=${encodeURIComponent(query)}` : "";
 }
+const providers = (search, q) => [{ label: "Apple Maps", url: `https://maps.apple.com/?${search ? "q" : "daddr"}=${q}` }, { label: "Google Maps", url: search ? `https://www.google.com/maps/search/?api=1&query=${q}` : `https://www.google.com/maps/dir/?api=1&destination=${q}` }];
+/** Map-app searches for any text a person typed, exactly as typed. Empty text gives no links. */
+export const textSearchLinks = value => { const t = text(value, 500); return t ? providers(true, encodeURIComponent(t)) : []; };
+/** Map-app directions to a typed address, starting wherever the map app says the person is. Never from coordinates. */
+export const textDirectionLinks = value => { const t = text(value, 500); return t ? providers(false, encodeURIComponent(t)) : []; };
+/** The address text a place has for a map app: the typed map address first, else its local-script or English address. */
+export const placeAddressText = place => locationAddress(place) || text(place?.localAddress, 500) || text(place?.address, 500);
+/**
+ * Every outside link to offer for a place, in the order to show them, each group with its own wording:
+ *   reviewed    links a person opened and checked (unchanged; when present they are the only directions offered)
+ *   search      map-app searches: of the typed map address, else of the place's address, else of its name
+ *   directions  map-app directions to the address, only when there is an address and no reviewed link
+ * Text only: nothing here is built from coordinates, and nothing is looked up by the planner.
+ * In the guest projection a place has no address or links, so guests get no groups at all (`guest`).
+ */
+export function placeLinks(place, { guest = false } = {}) {
+  if (!place || guest) return { reviewed: [], search: null, directions: null };
+  const reviewed = reviewedLinks(place), typed = locationAddress(place), address = placeAddressText(place);
+  const byName = [place.localName || place.name, address].filter(Boolean).join(" ");
+  // A typed map address is always searchable as typed. The name-based fallback is offered only when nothing better exists.
+  const search = typed ? { label: "Search this address in", kind: "address", links: textSearchLinks(typed) }
+    : reviewed.length ? null
+    : address ? { label: "Search this place and address in", kind: "place", links: textSearchLinks(byName) }
+    : place.name ? { label: "Search this place’s name in", kind: "name", links: textSearchLinks(byName) } : null;
+  const directions = address && !reviewed.length ? { label: "Directions to this address in", kind: "directions", links: textDirectionLinks(address) } : null;
+  return { reviewed, search, directions };
+}
+/** The same for an activity that has no place yet but does have its own private address. */
+export function activityLinks(activity, { guest = false } = {}) {
+  const address = guest ? "" : text(activity?.address, 500);
+  if (!address) return { reviewed: [], search: null, directions: null };
+  return { reviewed: [], search: { label: "Search this address in", kind: "address", links: textSearchLinks(address) }, directions: { label: "Directions to this address in", kind: "directions", links: textDirectionLinks(address) } };
+}
+/** The order of travel in words, for people who cannot see or use the drawing. Empty when there is nothing to say. */
+export function routeText(model) {
+  const name = id => model.nodes.find(n => n.id === id)?.name || "a place to confirm";
+  if (model.kind === "day") return model.stops.length > 1 ? `In itinerary order: ${model.stops.map(s => `${s.n}. ${s.name}`).join(" → ")}.` : "";
+  const journeys = model.edges.filter(e => e.kind === "journey");
+  if (journeys.length) return `Journeys in date order: ${journeys.map(e => `${name(e.from)} → ${name(e.to)}${e.label ? ` (${e.label})` : ""}`).join("; ")}.`;
+  return model.nodes.length > 1 ? `Places in date order: ${model.nodes.map(n => n.name).join(" → ")}. No journeys between them are entered yet.` : "";
+}
 export const hasCoordinates = place => typeof place?.lat === "number" && typeof place?.lng === "number";
 
 const byOrder = (a, b) => (a.order ?? 0) - (b.order ?? 0) || String(a.id).localeCompare(String(b.id));
@@ -195,8 +236,10 @@ export function dayMap(trip, { filter = "all", day, compact = false } = {}) {
 /**
  * Inline SVG for a model from tripMap or dayMap. No tiles, images, fonts or scripts.
  * `scale` enlarges markers and text for narrow screens, where the drawing is shown smaller.
+ * `anchors` makes each marker a same-page link to its entry in the list under the drawing (`#map-stop-N`),
+ * so a tap or the Tab key reaches the details; the only references are to the page itself.
  */
-export function mapSvg(model, title, { scale = 1 } = {}) {
+export function mapSvg(model, title, { scale = 1, anchors = false } = {}) {
   const at = id => model.nodes.find(n => n.id === id);
   const r = 16 * Math.min(scale, 1.5), font = 13 * scale, small = 11 * scale, max = Math.round(24 / scale) + 2;
   const short = s => s.length > max ? `${s.slice(0, max - 1)}…` : s;
@@ -217,8 +260,8 @@ export function mapSvg(model, title, { scale = 1 } = {}) {
     const label = e.label ? short(scale > 1 ? e.label.split(" · ")[0] : e.label) : "", lx = (a.x + b.x) / 2 + nx * bow * 0.75, ly = (a.y + b.y) / 2 + ny * bow * 0.75 + small * 0.35;
     return `<path class="map-edge ${e.kind}" d="M${s.x.toFixed(1)} ${s.y.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${t.x.toFixed(1)} ${t.y.toFixed(1)}" marker-end="url(#map-arrow)"/>${label ? `<text class="map-edge-label" font-size="${small}" x="${clamp(lx, label, small * 1.8).toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle">${escape(label)}</text>` : ""}`;
   }).join("");
-  const nodes = model.nodes.map(n => { const label = short(n.name), below = n.y <= model.height - (r + font + 14); return `<g class="map-node ${n.positioned ? "positioned" : "ordered"}"><circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r}"/><text class="map-number" font-size="${font}" x="${n.x.toFixed(1)}" y="${(n.y + font * 0.36).toFixed(1)}" text-anchor="middle">${escape(n.n)}</text><text class="map-label" font-size="${font}" x="${clamp(n.x, label, font * 1.8).toFixed(1)}" y="${(n.y + (below ? r + font + 4 : -(r + 8))).toFixed(1)}" text-anchor="middle">${escape(label)}</text></g>`; }).join("");
-  return `<svg class="schematic-map" viewBox="0 0 ${model.width} ${model.height}" role="img" aria-label="${escape(title)}"><defs><marker id="map-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z"/></marker></defs>${edges}${nodes}</svg>`;
+  const nodes = model.nodes.map(n => { const label = short(n.name), below = n.y <= model.height - (r + font + 14); const first = String(n.n).split(",")[0], open = anchors ? `<a class="map-pin" href="#map-stop-${escape(first)}" aria-label="${escape(`Stop ${n.n}: ${n.name}. Go to its details in the list.`)}">` : ""; return `${open}<g class="map-node ${n.positioned ? "positioned" : "ordered"}"><circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r}"/><text class="map-number" font-size="${font}" x="${n.x.toFixed(1)}" y="${(n.y + font * 0.36).toFixed(1)}" text-anchor="middle">${escape(n.n)}</text><text class="map-label" font-size="${font}" x="${clamp(n.x, label, font * 1.8).toFixed(1)}" y="${(n.y + (below ? r + font + 4 : -(r + 8))).toFixed(1)}" text-anchor="middle">${escape(label)}</text></g>${anchors ? "</a>" : ""}`; }).join("");
+  return `<svg class="schematic-map" viewBox="0 0 ${model.width} ${model.height}" role="${anchors ? "group" : "img"}" aria-label="${escape(title)}"><defs><marker id="map-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z"/></marker></defs>${edges}${nodes}</svg>`;
 }
 /** One plain sentence saying what kind of drawing this is. */
 export function mapCaption(model) {

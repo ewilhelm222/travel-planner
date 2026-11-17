@@ -52,7 +52,10 @@ test('the view shows every field an editor may read, with Edit and nothing destr
 test('a map link is offered only when a person has reviewed it; an idea says it has no day', () => {
     const t = fixture();
     t.places[0].navReviewed = false;
-    assert.ok(!activityViewHtml(find(t, 'campfire'), t).includes('map-link'));
+    // An unreviewed link is never shown as a link. What is offered instead is a search of the address, worded as one.
+    const unreviewed = activityViewHtml(find(t, 'campfire'), t);
+    assert.ok(!unreviewed.includes('class="map-link"') && !unreviewed.includes(t.places[0].appleMapsUrl || 'no-link'));
+    assert.ok([...unreviewed.matchAll(/class="map-link( [^"]*)?"/g)].every(m => m[0] === 'class="map-link search"'));
     const idea = { ...find(t, 'campfire'), date: null, time: '' };
     assert.match(activityViewHtml(idea, t), /An idea · no day yet/);
     const set = { ...find(t, 'campfire'), fixed: true, highlight: true };

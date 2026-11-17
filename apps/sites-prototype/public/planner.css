@@ -890,3 +890,20 @@ dialog.activity-view h2 { margin: 4px 0 10px; overflow-wrap: anywhere; outline: 
 .map-link.search { border-style: dashed; }
 .activity-view .map-search-label { color: inherit; }
 .view-where p.map-links.map-search { flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+
+/* Map panel: markers that lead to their list entry, activities that open, the route in words, plans with no place. */
+.map-pin { cursor: pointer; }
+.map-pin:focus { outline: none; }
+.map-pin:focus-visible circle, .map-pin:hover circle { stroke: var(--lagoon); stroke-width: 5; stroke-dasharray: none; }
+.map-list li:target, .map-list li:focus { outline: 3px solid var(--lagoon); outline-offset: 6px; border-radius: 12px; }
+.map-route { font-size: 14px; line-height: 1.5; color: var(--cream); max-width: 760px; margin: 8px 0 0; overflow-wrap: anywhere; }
+.map-acts { display: grid; justify-items: start; }
+.map-activity { text-align: left; min-height: 44px; padding: 4px 0; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.map-unplaced p { margin: 12px 0 4px; }
+.map-unplaced-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-width: 760px; }
+.map-unplaced-list li { display: grid; gap: 2px; justify-items: start; }
+.map-unplaced-list small { color: var(--orchid); font-size: 14px; }
+/* A phone on its side: the drawing must not be taller than the screen. */
+@media (orientation: landscape) and (max-height: 500px) { .schematic-map { max-height: 78vh; width: auto; max-width: 100%; display: block; margin: 0 auto; } }
+@media print { .map-route { color: black; } .map-link.search, .map-search-label { display: none; } }
+.map-search .map-link { padding: 0 12px; }

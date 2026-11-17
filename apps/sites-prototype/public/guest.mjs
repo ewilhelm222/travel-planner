@@ -3,8 +3,9 @@ import { escape, preferredDay, board, dayChooser, dateLabel, ideaCards, PHONE_QU
 import { VIEW_ID, viewDialog, showActivityView, focusCard, enableViewDismiss } from './activity-view.mjs';
 import { matchesSelection } from './participants.mjs';
 import { buildOfflineHtml } from './offline-export.mjs';
+import { mapSectionHtml, followPin } from './map-panel.mjs';
 const app = document.querySelector('#guest-app'), token = location.hash.slice(1);
-let trip, revision, updatedAt, day, filter = 'all';
+let trip, revision, updatedAt, day, filter = 'all', mapView = 'day';
 // A per-device reading preference; the guest page keeps nothing else.
 let allDays = false;
 try { allDays = localStorage.getItem('waypoint-guest-all-days') === '1'; } catch { }
@@ -36,14 +37,18 @@ function render() {
     const meta = `Revision ${revision} · Last updated ${escape(new Date(updatedAt).toLocaleString())}. Refresh to check for changes.`;
     const ideaList = trip.activities.filter(a => !a.date && matchesSelection(a, filter, trip));
     const ideas = ideaList.length ? `<section class="ideas" id="ideas"><h2>Ideas <span>· not scheduled yet</span></h2><div class="idea-cards">${ideaCards(ideaList, trip, true)}</div></section>` : '';
+    // The same schematic map as the planner, drawn only from what the guest link already sends: place names in
+    // plan order. No address, coordinates or map link reaches this page, so none can be shown.
+    const dayName = date => date ? dateLabel(date, { weekday: 'short', month: 'short', day: 'numeric' }) : 'Unscheduled ideas';
+    const map = mapSectionHtml(trip, { view: mapView, filter, day, compact: layout, guest: true, dayName });
     const schedule = `${dayChooser(trip, day, { ...(ideaList.length ? { ideas: ideaList.length } : {}), allDays })}<div class="board-wrap">${ideas}<div class="date-board" id="itinerary" tabindex="-1">${board(trip, { filter, day, guest: true })}</div></div>`;
     // The same read-only activity view as the planner. Guests cannot edit, so it is drawn without an Edit button.
     // The activity view shared with the planner, and a small reading dialog for a stay the organizer chose to share.
     const dialog = `${viewDialog()}<dialog id="stay-view" aria-labelledby="stay-title"><div class="dialog-heading"><span class="eyebrow">Stay</span><button type="button" class="icon-button" data-close="stay-view" aria-label="Close stay details">×</button></div><h2 id="stay-title"></h2><div id="stay-body"></div></dialog>`;
     // Phone: the schedule comes first, matching the signed-in planner; reading-copy and refresh controls follow it.
     app.innerHTML = layout
-        ? `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar slim" id="top"><span class="brand">Waypoint<span class="brand-dot">↗</span></span><span class="private-label">● Guest view · read only</span></header><main class="compact schedule-first${allDays ? ' all-days' : ''}"><section class="trip-bar" aria-label="Schedule and traveler selection"><h1 class="trip-name">${escape(trip.title)}</h1>${filterLabel}</section>${banner}${schedule}<section class="manage" id="manage" aria-labelledby="manage-title"><h2 id="manage-title">About this schedule</h2><p class="manage-trip">${escape(trip.title)} · ${escape(trip.start)} – ${escape(trip.end)} · ${escape(trip.timezone)}</p>${trip.subtitle ? `<p>${escape(trip.subtitle)}</p>` : ''}<p role="status" id="guest-status">${guide}</p><div class="manage-group"><h3>Copies &amp; updates</h3><div class="tools"><button class="secondary" id="refresh">Refresh</button><button class="secondary" id="download">Save a reading copy</button></div><p class="study-meta">${meta}</p></div><a class="jump-link back-top" href="#top">↑ Back to the schedule</a></section><footer>Read-only guest link · No account or RSVP required. Keep the link within your group.</footer></main>${dialog}`
-        : `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar"><span class="brand">Waypoint<span class="brand-dot">↗</span></span><span class="private-label">● Guest view · read only</span></header><main class="compact"><header class="trip-header"><div><span class="eyebrow">An invitation to explore</span><h1>${escape(trip.title)}<span class="title-dot">.</span></h1><p class="trip-subtitle">${escape(trip.subtitle)}</p><p class="trip-facts">${escape(trip.start)} – ${escape(trip.end)} · ${escape(trip.timezone)}</p></div></header><div class="toolbar">${filterLabel}<button class="secondary" id="refresh">Refresh</button><button class="secondary" id="download">Save a reading copy</button></div>${banner}<p role="status" id="guest-status">${guide}</p><p class="study-meta">${meta}</p>${schedule}<footer>Read-only guest link · No account or RSVP required. Keep the link within your group.</footer></main>${dialog}`;
+        ? `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar slim" id="top"><span class="brand">Waypoint<span class="brand-dot">↗</span></span><span class="private-label">● Guest view · read only</span></header><main class="compact schedule-first${allDays ? ' all-days' : ''}"><section class="trip-bar" aria-label="Schedule and traveler selection"><h1 class="trip-name">${escape(trip.title)}</h1>${filterLabel}</section>${banner}${schedule}${map}<section class="manage" id="manage" aria-labelledby="manage-title"><h2 id="manage-title">About this schedule</h2><p class="manage-trip">${escape(trip.title)} · ${escape(trip.start)} – ${escape(trip.end)} · ${escape(trip.timezone)}</p>${trip.subtitle ? `<p>${escape(trip.subtitle)}</p>` : ''}<p role="status" id="guest-status">${guide}</p><div class="manage-group"><h3>Copies &amp; updates</h3><div class="tools"><button class="secondary" id="refresh">Refresh</button><button class="secondary" id="download">Save a reading copy</button></div><p class="study-meta">${meta}</p></div><a class="jump-link back-top" href="#top">↑ Back to the schedule</a></section><footer>Read-only guest link · No account or RSVP required. Keep the link within your group.</footer></main>${dialog}`
+        : `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar"><span class="brand">Waypoint<span class="brand-dot">↗</span></span><span class="private-label">● Guest view · read only</span></header><main class="compact"><header class="trip-header"><div><span class="eyebrow">An invitation to explore</span><h1>${escape(trip.title)}<span class="title-dot">.</span></h1><p class="trip-subtitle">${escape(trip.subtitle)}</p><p class="trip-facts">${escape(trip.start)} – ${escape(trip.end)} · ${escape(trip.timezone)}</p></div></header><div class="toolbar">${filterLabel}<button class="secondary" id="refresh">Refresh</button><button class="secondary" id="download">Save a reading copy</button></div>${banner}<p role="status" id="guest-status">${guide}</p><p class="study-meta">${meta}</p>${schedule}${map}<footer>Read-only guest link · No account or RSVP required. Keep the link within your group.</footer></main>${dialog}`;
     fitColumns(document.querySelector('#itinerary'));
     showPictures();
     const selected = document.querySelector(`[data-date="${day}"]`);
@@ -87,7 +92,8 @@ window.addEventListener('scroll', () => {
         return;
     spying = requestAnimationFrame(() => { spying = 0; const date = dayInView(document); if (date && date !== day) { day = date; pressDay(document, date); } });
 }, { passive: true });
-document.addEventListener('click', async (e) => { if (e.target.closest('.skip-link')) {
+document.addEventListener('click', async (e) => { if (followPin(document, e))
+    return; if (e.target.closest('.skip-link')) {
     e.preventDefault();
     document.querySelector('#itinerary').focus();
     return;
@@ -98,6 +104,10 @@ document.addEventListener('click', async (e) => { if (e.target.closest('.skip-li
         return jumpToDay();
     render();
     document.querySelector(`.medallion[data-day="${day}"]`)?.focus();
+} if (b.dataset.mapView) {
+    mapView = b.dataset.mapView;
+    render();
+    document.querySelector(`[data-map-view="${mapView}"]`)?.focus();
 } if (b.dataset.dayMode) {
     allDays = !allDays;
     try { localStorage.setItem('waypoint-guest-all-days', allDays ? '1' : '0'); } catch { }

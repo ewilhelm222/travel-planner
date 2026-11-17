@@ -28,6 +28,8 @@ and in the form's small text box.
 - **Guests (the read-only guest link) get the same view with no Edit button.**
   It shows only what the guest link already sends: the guest description and
   meeting point, never private notes, the private address, links or map links.
+  Signed-in people also get map-app searches and directions made from the
+  place's address ([maps.md](maps.md), November 17); guests get none.
   The guest preview inside the Guest link dialog opens this guests' version too.
 - **Add activity**, "+ Add to (day)" and "+ Add an idea" still open the editor
   directly and return to the schedule.
