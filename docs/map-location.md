@@ -24,7 +24,8 @@ list coordinates read as `39.9163° N, 116.3972° E · WGS-84 · source: …`, a
 address reads as `Map address: …`.
 
 An address gives **Search this address in: Apple Maps · Google Maps** on the map
-list and in the activity view (signed-in planners only). These open the map app
+list and in the activity view (signed-in planners only). [maps.md](maps.md) lists
+the further links added the same day (directions, and searches by name). These open the map app
 or site with exactly the typed text. They have a dashed outline and are worded
 as searches, to keep them apart from the reviewed links, which are unchanged.
 

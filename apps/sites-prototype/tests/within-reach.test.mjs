@@ -46,6 +46,7 @@ test('ideas come before the map, the rail can jump to them, and an empty map is 
     const t = thanksgivingExample();
     assert.ok(!dayChooser(t, t.start).includes('ideas-stop'));
     assert.match(dayChooser(t, t.start, { ideas: 3 }), /<a class="medallion ideas-stop" href="#ideas" aria-label="Ideas, not scheduled yet: 3">/);
-    assert.match(planner, /model\.nodes\.length > 1 \? `\$\{mapSvg\(/);
-    assert.match(planner, /Nothing to draw yet: a map needs at least two places/);
+    const panel = read('../public/map-panel.mjs');
+    assert.match(panel, /if \(model\.nodes\.length > 1\) \{/);
+    assert.match(panel, /Nothing to draw yet: a map needs at least two places/);
 });

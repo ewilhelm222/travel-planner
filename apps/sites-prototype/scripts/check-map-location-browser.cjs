@@ -87,13 +87,13 @@ const ADDRESS = '12 Lantern Row, Harbour Town';
     check(`${label}: map list shows the address and both searches`, row.includes(`Map address: ${ADDRESS}`) && row.includes('https://maps.apple.com/?q=' + encodeURIComponent(ADDRESS)) && row.includes('https://www.google.com/maps/search/?api=1&amp;query=' + encodeURIComponent(ADDRESS)), row.slice(0, 300));
     const homeRow = await page.evaluate(() => { document.querySelector('[data-map-view="trip"]').click(); return [...document.querySelectorAll('#maps-body .map-list li')].find(li => li.textContent.includes('Lakeside camp'))?.textContent || ''; });
     check(`${label}: older coordinates read in words, with system and source`, homeRow.includes('45.5° N, 122.6° W · WGS-84 · source: Synthetic test value'), homeRow);
-    check(`${label}: no search link is built from coordinates`, await page.evaluate(() => ![...document.querySelectorAll('#maps-body .map-list li')].find(li => li.textContent.includes('Lakeside camp')).querySelector('a.search')));
+    check(`${label}: no link is built from coordinates; the place is searched by name instead`, await page.evaluate(() => { const li = [...document.querySelectorAll('#maps-body .map-list li')].find(li => li.textContent.includes('Lakeside camp')); return li.textContent.includes('Search this place’s name in') && [...li.querySelectorAll('a')].every(a => !/45\.5|122\.6/.test(a.href)); }));
     await page.evaluate(() => { document.querySelector('[data-map-view="day"]').click(); document.querySelector('#maps').scrollIntoView({ block: 'start' }); });
     await page.screenshot({ path: `${SHOTS}/${label}-map-list.jpg`, quality: 82 });
     check(`${label}: no sideways scroll`, await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
     await page.evaluate(() => { const c = document.querySelector('#itinerary .activity[data-detail="buns"]'); c.scrollIntoView({ block: 'center' }); c.click(); });
     await page.waitForFunction(() => document.querySelector('#activity-view')?.open);
-    check(`${label}: activity view offers the searches, marked as searches`, await page.$eval('#activity-view .view-where', (e, a) => e.textContent.includes(a) && e.textContent.includes('Search this address in') && e.querySelectorAll('a.map-link.search').length === 2, ADDRESS));
+    check(`${label}: activity view offers the searches, marked as searches`, await page.$eval('#activity-view .view-where', (e, a) => e.textContent.includes(a) && e.textContent.includes('Search this address in') && e.querySelectorAll('a.map-link.search').length === 4 && [...e.querySelectorAll('a.map-link')].every(l => l.classList.contains('search')), ADDRESS));
     await page.screenshot({ path: `${SHOTS}/${label}-activity-view.jpg`, quality: 82 });
     await page.keyboard.press('Escape');
 
