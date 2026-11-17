@@ -48,6 +48,8 @@ and in the form's small text box.
   nothing. Shift + arrow keys still move a focused card.
 - **Links.** Activities have no deep links or URL state (only `?trip=` selects
   the trip), so nothing needed deciding there.
+  Since November 17 the view carries a "Last edited by" line that links to a
+  History entry by address (`?history=`); see [last-edited.md](last-edited.md).
 
 ## Keyboard and screen readers
 

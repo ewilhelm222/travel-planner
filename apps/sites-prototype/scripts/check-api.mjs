@@ -307,3 +307,34 @@ console.log('PASS: organizer full backup download and a verified restore into a 
     assert.ok(!JSON.stringify(shown).includes('PRIVATE'));
     console.log('PASS: guests receive entered plans with guest fields only, and no examples.');
 }
+// "Last edited by": read from the change log for members only; a link finds its entry within its own trip.
+{
+    const made = await (await req('/api/trips', 'POST', { template: 'thanksgiving' })).json(), tid = made.snapshot.trip.id, tp = `/api/trip?id=${tid}`, hp = `/api/history?id=${tid}`;
+    const last = async () => (await (await req(`${hp}&last=activity`)).json()).last;
+    let l = await last();
+    assert.equal(l['option-2'].withTrip, true, 'untouched since the trip was made: the creation entry');
+    assert.equal(l['option-2'].actor, 'Seedy');
+    assert.equal((await req(tp, 'PATCH', { action: 'edit', activityId: 'option-2', patch: { notes: 'PRIVATE NOTE' }, base: { 'activity:option-2': 1 } })).status, 200);
+    const newest = (await (await req(hp)).json()).changes[0];
+    l = await last();
+    assert.deepEqual([l['option-2'].id, l['option-2'].actor, l['option-2'].added, l['option-2'].at], [newest.id, newest.actor, false, newest.at], 'the same entry, name and time History shows');
+    assert.equal(l['option-3'].withTrip, true, 'other cards are not attributed to this edit');
+    assert.equal((await req(tp, 'PATCH', { action: 'move', activityId: 'option-4', date: '2026-11-26', beforeId: 'option-2', base: { 'activity:option-4': 1 } })).status, 200);
+    l = await last();
+    assert.equal(l['option-2'].id, newest.id, 'a neighbour renumbered by a drag keeps its own last edit');
+    assert.equal(l['option-3'].withTrip, true);
+    const added = await req(tp, 'PATCH', { action: 'add', activity: { id: 'made-up', title: 'Made-up plan', date: '2026-11-26', placeId: 'home', participants: ['cedar'], order: 90 }, base: {} });
+    assert.equal(added.status, 200, await added.clone().text());
+    assert.equal((await last())['made-up'].added, true);
+    assert.equal((await (await req(`${hp}&change=${newest.id}`)).json()).linked, 'shown');
+    assert.equal((await (await req(`${hp}&change=99999999`)).json()).linked, 'missing');
+    const other = await (await req('/api/trips', 'POST', { template: 'thanksgiving' })).json();
+    const foreign = (await (await req(`/api/history?id=${other.snapshot.trip.id}`)).json()).changes[0];
+    assert.equal((await (await req(`${hp}&change=${foreign.id}`)).json()).linked, 'missing', 'an entry of another trip is never shown through this trip');
+    assert.equal((await anon(`${hp}&last=activity`)).status, 401, 'signed-out visitors get nothing');
+    const shareOn = await (await req(`/api/share?id=${tid}`, 'POST', { action: 'rotate', base: { share: 1 } })).json(), token = new URL(shareOn.url).hash.slice(1);
+    assert.equal((await anon(`${hp}&last=activity`, { headers: { Authorization: `Share ${token}` } })).status, 401, 'a guest link does not open History');
+    const guestData = JSON.stringify(await (await anon('/api/shared', { headers: { Authorization: `Share ${token}` } })).json());
+    assert.ok(!/Seedy|actor|lastEdit/.test(guestData), 'the guest view names no editor');
+    console.log('PASS: last-edited comes from the change log, ignores cards a drag only renumbered, links stay within their trip, and guests get none of it.');
+}

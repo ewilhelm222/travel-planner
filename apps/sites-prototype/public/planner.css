@@ -907,3 +907,17 @@ dialog.activity-view h2 { margin: 4px 0 10px; overflow-wrap: anywhere; outline: 
 @media (orientation: landscape) and (max-height: 500px) { .schematic-map { max-height: 78vh; width: auto; max-width: 100%; display: block; margin: 0 auto; } }
 @media print { .map-route { color: black; } .map-link.search, .map-search-label { display: none; } }
 .map-search .map-link { padding: 0 12px; }
+
+/* "Last edited by": a quiet line in the activity view and the editor, and a small mark on cards changed in the last day. */
+.last-edit { margin: 16px 0 0; padding: 4px 0 0; border-top: 1px dashed #d9cbe8; color: var(--muted); font: 500 13px/1.5 var(--font-mono); }
+.last-edit[hidden] { display: none; }
+.last-edit-link { display: inline-block; padding: 13px 0; color: inherit; text-decoration: none; overflow-wrap: anywhere; }
+.last-edit-link .last-edit-go { text-decoration: underline; text-underline-offset: 3px; }
+.last-edit-link:hover, .last-edit-link:focus-visible { text-decoration: underline; }
+#edit-form .last-edit { margin: 0; padding: 0; border: 0; color: var(--orchid); }
+.edited-mark { display: inline-block; margin-top: 6px; font: 600 11px/1.4 var(--font-mono); letter-spacing: .02em; opacity: .8; }
+.history-entry.linked { outline: 3px solid var(--magenta); outline-offset: 4px; border-radius: 12px; padding: 14px 12px; background: color-mix(in srgb, var(--magenta) 8%, transparent); }
+.history-entry:focus { outline: 3px solid var(--magenta); outline-offset: 4px; }
+.history-linked-label { display: inline-block; margin-bottom: 6px; font: 700 12px/1.4 var(--font-mono); text-transform: uppercase; letter-spacing: .06em; }
+.history-older { padding: 14px 0 4px; border-top: 1px solid #e6dcf2; color: var(--muted); font-size: 14px; }
+@media print { .last-edit, .edited-mark { display: none; } }

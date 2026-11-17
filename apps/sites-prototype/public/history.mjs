@@ -113,3 +113,45 @@ export function undoChange(trip, records, revisions) {
   }
   return next;
 }
+
+// ---- "Last edited by": a short note on an activity that leads to its entry in History ----
+const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/** "just now", "5 minutes ago", "yesterday", "3 days ago", then the date. `now` is passed in so it can be tested. */
+export function relativeTime(at, now = Date.now()) {
+  const then = Date.parse(at);
+  if (!Number.isFinite(then)) return "";
+  const minutes = Math.floor((now - then) / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+  return `on ${new Date(then).toLocaleDateString("en-US", { month: "short", day: "numeric", ...(days > 300 ? { year: "numeric" } : {}) })}`;
+}
+
+/** The address of one History entry. It opens History with that entry in view, and survives a reload. */
+export const historyHref = (tripId, changeId) => `/?trip=${encodeURIComponent(tripId)}&history=${encodeURIComponent(changeId)}`;
+
+/** The words of the note. `entry` is `{ id, actor, at, added, withTrip }` from the change log, or nothing. */
+export function lastEditText(entry, now = Date.now()) {
+  if (!entry) return "";
+  const who = entry.actor ? ` by ${entry.actor}` : "", when = relativeTime(entry.at, now);
+  return `${entry.withTrip ? "Added with this trip" : entry.added ? "Added" : "Last edited"}${who}${when ? ` · ${when}` : ""}`;
+}
+
+/**
+ * The note as a link to its History entry, or "" when nothing is known. `newTab` is for the editor,
+ * where following the link in place would throw away what is being typed.
+ */
+export function lastEditHtml(entry, tripId, { now = Date.now(), newTab = false } = {}) {
+  if (!entry || !tripId) return "";
+  const exact = Number.isFinite(Date.parse(entry.at)) ? new Date(entry.at).toLocaleString() : "";
+  return `<a class="last-edit-link" href="${escapeHtml(historyHref(tripId, entry.id))}" data-history-change="${escapeHtml(entry.id)}"${newTab ? ' target="_blank" rel="noopener"' : ""}${exact ? ` title="${escapeHtml(exact)}"` : ""}><span aria-hidden="true">✎ </span>${escapeHtml(lastEditText(entry, now))}<span class="last-edit-go"> · see this change${newTab ? " in a new tab" : ""}<span aria-hidden="true"> ›</span></span></a>`;
+}
+
+/** Whether a card gets the small "Edited" mark: changed (not merely added) within the last day. */
+export const RECENT_EDIT_MS = 24 * 60 * 60 * 1000;
+export const recentlyEdited = (entry, now = Date.now()) => !!entry && !entry.added && now - Date.parse(entry.at) < RECENT_EDIT_MS && now - Date.parse(entry.at) >= 0;

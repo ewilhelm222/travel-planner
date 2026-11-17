@@ -2,6 +2,7 @@ import { access, body, db, response, snapshot, userView, failed, transact } from
 import { editorDiffRestriction, normalizeTrip } from "../../../lib/trips.mjs";
 import { diffTrips, undoChange, undoConflicts } from "../../../public/history.mjs";
 import { advance } from "../../../public/revisions.mjs";
+import { LAST_EDITS_SQL, TRIP_CREATED_SQL, lastEdits } from "../../../lib/last-edits.mjs";
 export const dynamic = "force-dynamic";
 type Change = { id: number; revision: number; actor_name: string; at: string; action: string; summary: string; records: string; undoes: number | null };
 const parse = (c: Change) => JSON.parse(c.records) as { kind: string; id: string; before: unknown; after: unknown; rev?: number; incidental?: boolean }[];
@@ -10,9 +11,33 @@ export async function GET(request: Request) { try {
     const a = await access(request);
     if (a.error)
         return a.error;
+    const params = new URL(request.url).searchParams;
+    // "Last edited by" for every activity, read from the log itself. Members only, like the rest of History.
+    if (params.get("last") === "activity") {
+        const edits = await db().prepare(LAST_EDITS_SQL).bind(a.row!.id, "activity").all<{ id: number; actor: string; at: string; action: string; rid: string; was: string | null }>();
+        const created = await db().prepare(TRIP_CREATED_SQL).bind(a.row!.id).first<{ id: number; actor: string; at: string }>();
+        const ids = (snapshot(a.row!).trip.activities as { id: string }[]).map(x => x.id);
+        return response({ revision: a.row!.revision, last: lastEdits(edits.results, created, ids) });
+    }
     const rows = await db().prepare("SELECT id,revision,actor_name,at,action,summary,records,undoes FROM planner_changes WHERE trip_id=? ORDER BY id DESC LIMIT 100").bind(a.row!.id).all<Change>();
+    // A link to one entry (?change=) always finds it, even when it is older than the newest hundred.
+    const wanted = Number(params.get("change")), list = rows.results;
+    let linked: "shown" | "older" | "missing" | null = null;
+    if (params.has("change")) {
+        linked = list.some(c => c.id === wanted) ? "shown" : "missing";
+        if (linked === "missing" && Number.isSafeInteger(wanted)) {
+            const older = await db().prepare("SELECT id,revision,actor_name,at,action,summary,records,undoes FROM planner_changes WHERE id=? AND trip_id=?").bind(wanted, a.row!.id).first<Change>();
+            if (older) {
+                list.push(older);
+                linked = "older";
+            }
+        }
+    }
     const { trip, revisions } = snapshot(a.row!), undone = new Set(rows.results.map(c => c.undoes));
-    return response({ revision: a.row!.revision, revisions, changes: rows.results.map(c => {
+    // Whether an older entry was undone is only known from a later row that names it.
+    if (linked === "older" && await db().prepare("SELECT 1 AS x FROM planner_changes WHERE trip_id=? AND undoes=? LIMIT 1").bind(a.row!.id, wanted).first())
+        undone.add(wanted);
+    return response({ revision: a.row!.revision, revisions, linked, changes: list.map(c => {
         const records = parse(c);
         return { id: c.id, revision: c.revision, actor: c.actor_name, at: c.at, action: c.action, summary: c.summary, records, undoes: c.undoes, wasUndone: undone.has(c.id), canUndo: records.length > 0 && !undoConflicts(trip, records, revisions).length };
     }) });

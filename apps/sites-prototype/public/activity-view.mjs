@@ -17,6 +17,8 @@ const section = (label, body, cls = '') => body ? `<section class="view-section 
  * What the view says. `guest` reads the guest projection, where `notes` and `address` are already the
  * guest description and meeting point and nothing private was sent. Signed-in people see every field
  * the activity has, with the private ones named as private.
+ * Signed-in people also get an empty line for "Last edited by", which the planner fills from the change log;
+ * the guest view has no such line, because guests have no access to History.
  */
 export function activityViewHtml(a, trip, { guest = false, canEdit = false } = {}) {
     const timing = timingOf(a), example = a.sourceKind === 'synthetic', tentative = a.sourceKind === 'tentative';
@@ -43,7 +45,7 @@ export function activityViewHtml(a, trip, { guest = false, canEdit = false } = {
     const privateLinks = !guest && (a.links || []).length ? `<ul class="link-list">${a.links.map(l => `<li><a href="${escape(l.url)}" target="_blank" rel="noopener noreferrer">${escape(l.label || l.url)} ↗</a></li>`).join('')}</ul>` : '';
     const text = value => value ? `<p class="view-notes">${escape(value)}</p>` : '';
     const body = `${section(guest ? 'Notes' : 'Description <small>· shown to guests</small>', text(description))}${guest ? '' : section('Planning notes <small>· private</small>', text(a.notes))}${section('Links <small>· private</small>', privateLinks)}${description || (!guest && a.notes) ? '' : '<p class="view-empty">No notes yet.</p>'}`;
-    return `<div class="sheet-grip" aria-hidden="true"></div><div class="view-head"><div class="view-labels">${labels}${who}</div><button type="button" class="icon-button" data-close="${VIEW_ID}" aria-label="Close activity">×</button></div><h2 id="activity-view-title" tabindex="-1">${escape(a.title)}</h2><p class="view-when">${when}${firm}</p><div class="view-where">${where}</div><div class="view-body" tabindex="0" role="group" aria-label="Activity details">${picture}${body}</div><div class="dialog-actions"><button type="button" class="secondary" data-close="${VIEW_ID}">Close</button>${canEdit ? `<button type="button" class="primary" data-edit-activity="${escape(a.id)}">Edit</button>` : ''}</div>`;
+    return `<div class="sheet-grip" aria-hidden="true"></div><div class="view-head"><div class="view-labels">${labels}${who}</div><button type="button" class="icon-button" data-close="${VIEW_ID}" aria-label="Close activity">×</button></div><h2 id="activity-view-title" tabindex="-1">${escape(a.title)}</h2><p class="view-when">${when}${firm}</p><div class="view-where">${where}</div><div class="view-body" tabindex="0" role="group" aria-label="Activity details">${picture}${body}${guest ? '' : '<p class="last-edit" id="view-last-edit" hidden></p>'}</div><div class="dialog-actions"><button type="button" class="secondary" data-close="${VIEW_ID}">Close</button>${canEdit ? `<button type="button" class="primary" data-edit-activity="${escape(a.id)}">Edit</button>` : ''}</div>`;
 }
 
 /** Fill and show the view. Focus goes to the title, so a screen reader starts with what was opened. */

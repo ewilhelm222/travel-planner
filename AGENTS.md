@@ -12,7 +12,9 @@ logged and checked per record (`docs/safety-net.md`, `docs/per-record-revisions.
 illustrate proposals; they do not establish completed features or approved
 schema changes. Tapping an activity opens its read-only view; the editor opens
 only from that view's Edit button (`docs/activity-view.md`). A place's map location is an address or
-coordinates as typed; nothing is geocoded or converted (`docs/map-location.md`). Read `docs/prototype.md` for implementation status and checks.
+coordinates as typed; nothing is geocoded or converted (`docs/map-location.md`).
+"Last edited by" is read from the change log, never stored, and never shown to
+guests (`docs/last-edited.md`). Read `docs/prototype.md` for implementation status and checks.
 
 Apply the visual system incrementally while preserving authentication,
 concurrent-edit protection, exports, and the offline/session lifecycle. Keep
