@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { thanksgivingExample, applyTripChange, publicTrip } from '../lib/trips.mjs';
-import { card, board } from '../public/board.mjs';
+import { card } from '../public/board.mjs';
 import { parseImageDataUrl, imageUrl, MAX_IMAGE_BYTES } from '../public/structure.mjs';
 import { diffTrips } from '../public/history.mjs';
 import { buildOfflineHtml } from '../public/offline-export.mjs';
