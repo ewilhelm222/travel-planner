@@ -1,10 +1,12 @@
 # Weather under each date
 
-Status: November 17, 2026. Built and checked locally with a synthetic trip and a
-mocked weather service; not deployed. No database migration. **Neither outside
-service could be reached from the build environment**, so the live forecast and
-the address lookup are unverified (see "Not verified"). It makes no claim about
-working in China.
+Status: deployed November 17, 2026 (America/Los_Angeles), Sites version 19,
+from main `d3387edbfcb85fc9d81b4268ba8bd52d7f7cfce8`. See
+[release provenance](multi-events.md#release-provenance). No database migration.
+The live forecast and address lookup remain unverified: browser controls were
+unavailable for an authenticated hosted check. Local tests used synthetic data
+and mocked services; neither outside service was reachable from that build
+environment. No claim is made about working in China.
 
 ## For planners and guests
 
@@ -94,15 +96,36 @@ that has already ended there is not shown.
 
 ## Not verified
 
-- **A live forecast.** Open-Meteo's response was not seen; the parser follows
-  its published format. Its terms page could not be opened either, so confirm
-  that a private family planner counts as non-commercial use.
-- **A live address lookup**, including how well Nominatim finds rural
-  addresses, and whether its usage policy is satisfied by a generic User-Agent.
-- Whether the Sites host allows outbound requests to either service and offers
-  the edge cache; without the cache, each worker instance keeps its own.
-- A physical phone, a screen reader, the hosted Site, real trip data, and
-  anything from mainland China.
+Deployment observation, November 17, 2026: Sites reported successful version 19
+publication. Published weather assets match the pinned source, shell v45 includes
+the weather module, and signed-out private weather access returns 401 (the
+shared route without a token returns 404). These checks do not call either
+outside service. No owner or guest browser session was available and no live
+trip edit was made.
+
+[Open-Meteo's terms](https://open-meteo.com/en/terms) were read successfully on
+November 17. They explicitly include private apps without subscriptions or
+advertising as non-commercial use, so the described private family planner
+fits the free API category. Usage limits and CC-BY 4.0 attribution still apply:
+less than 10,000 requests/day, 5,000/hour and 600/minute; the terms table also
+lists 300,000/month. Availability and accuracy are not guaranteed.
+
+Still not verified:
+
+- **A live forecast from the hosted Worker.** No authenticated weather request
+  was made; no success, failed response or faint-dash behavior was observed.
+- **A live address lookup**, including resolution to the correct town, rural
+  address quality and whether Nominatim's usage policy is satisfied by the
+  generic User-Agent.
+- Outbound access from the Sites Worker to either service, or the platform
+  edge cache. Without the cache, each Worker instance keeps its own.
+- Owner trip loading and saving, Ready to read offline, forecast tooltips,
+  update note and attribution rendering, and desktop/phone column alignment
+  for this release.
+- The existing guest link's weather and absence of place names in tooltips.
+  No guest link was created, replaced, disabled or opened for this check.
+- A physical phone, a screen reader, real-trip weather behavior and anything
+  from mainland China.
 
 ## Screenshots (synthetic trip; the forecast is made up)
 
