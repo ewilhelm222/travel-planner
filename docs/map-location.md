@@ -31,7 +31,9 @@ as searches, to keep them apart from the reviewed links, which are unchanged.
 
 ## Rules
 
-- **The planner looks nothing up.** An address is never turned into a point, so
+- **The map looks nothing up.** (Since later the same day, the weather line does look an
+  address up, on the server, for the forecast only; the result is never stored on
+  the place or drawn. See [weather.md](weather.md).) An address is never turned into a point, so
   a place with only an address is listed and linked but drawn in plan order (or
   along the bottom edge), not by position. No request leaves the planner; the
   address reaches Apple or Google only when a person follows a search link.
