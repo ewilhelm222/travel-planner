@@ -18,16 +18,37 @@ own note:
   version runs unchanged against the new schema, so the migration can be
   applied first and a rollback of the app needs no database rollback.
 - No stored trip is rewritten. New fields are optional and read as empty.
-- The offline shell cache is `waypoint-shell-v39`.
+- The offline shell cache is `waypoint-shell-v40`.
 - **The guest link changes in two ways.** A stay appears only if the organizer
   ticks "Show this stay on the guest link" in it. **A picture on a card that
   guests can see is shown to guests as soon as it is saved** (the organizer's
   decision of November 17). Venue names appear on guest cards once venues
   exist. Private stay notes and addresses never reach guests.
 
+## Together with the read-only activity view
+
+A separate change merged just before these ([activity-view.md](activity-view.md)):
+tapping a card opens a read-only view, and the editor opens from its Edit
+button. The two were combined on November 17:
+
+- The view names a venue as "Area › Venue" and shows the card's picture, for
+  signed-in people and for guests.
+- "+ Add here", "+ Add to (day)" and "+ Add an idea" open the editor directly,
+  as before.
+- A sideways flick does nothing while the view is open; a downward swipe still
+  closes it on a phone.
+- The guest page uses the shared view for activities and a small separate
+  dialog for a stay the organizer chose to share.
+
 ## Combined checks
 
-- `npm test`: 151 pass (16 new across five files). Type check, lint (0 errors)
+- After combining: `npm test` 158 pass; that change's own browser check
+  (`scripts/check-activity-view-browser.cjs`) passes; and a further pass with
+  both together confirmed tap, Edit, picture upload and return to the view,
+  Add here, stay details, the guest card and guest view with a picture, flick
+  with the view open and closed, and the guest stay dialog.
+
+- Before combining: `npm test` 151 pass (16 new across five files). Type check, lint (0 errors)
   and the production build pass.
 - `npm run test:api`, `npm run test:access` and
   `scripts/check-drag-browser.cjs` pass against a local database with all five

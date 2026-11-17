@@ -79,7 +79,7 @@ What keeps this narrow:
 - The guest page's content policy now allows images created in the page
   (`img-src 'self' blob:`), which is how a picture fetched with a header is
   displayed. Scripts, styles and connections are still same-origin only.
-- The offline shell cache is `waypoint-shell-v39`.
+- The offline shell cache is `waypoint-shell-v40` in the combined release.
 
 ## Checks
 

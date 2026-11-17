@@ -1,5 +1,6 @@
 import { usefulFilterChoices, participantRecord } from "./participants.mjs";
-import { escape, preferredDay, board, dayChooser, dateLabel, ideaCards, timingOf, PHONE_QUERY, dayInView, pressDay, fitColumns, swipeStep, days } from './board.mjs';
+import { escape, preferredDay, board, dayChooser, dateLabel, ideaCards, PHONE_QUERY, dayInView, pressDay, fitColumns, swipeStep, days } from './board.mjs';
+import { VIEW_ID, viewDialog, showActivityView, focusCard, enableViewDismiss } from './activity-view.mjs';
 import { matchesSelection } from './participants.mjs';
 import { buildOfflineHtml } from './offline-export.mjs';
 const app = document.querySelector('#guest-app'), token = location.hash.slice(1);
@@ -18,7 +19,7 @@ function pictureFor(id) {
     return pictures.get(id);
 }
 function showPictures() {
-    for (const img of document.querySelectorAll('img.card-image[data-image]'))
+    for (const img of document.querySelectorAll('img[data-image]:not([src])'))
         pictureFor(img.dataset.image).then(url => { if (url) { img.src = url; img.hidden = false; } else img.remove(); });
 }
 const phone = () => window.matchMedia?.(PHONE_QUERY).matches;
@@ -36,7 +37,9 @@ function render() {
     const ideaList = trip.activities.filter(a => !a.date && matchesSelection(a, filter, trip));
     const ideas = ideaList.length ? `<section class="ideas" id="ideas"><h2>Ideas <span>· not scheduled yet</span></h2><div class="idea-cards">${ideaCards(ideaList, trip, true)}</div></section>` : '';
     const schedule = `${dayChooser(trip, day, { ...(ideaList.length ? { ideas: ideaList.length } : {}), allDays })}<div class="board-wrap">${ideas}<div class="date-board" id="itinerary" tabindex="-1">${board(trip, { filter, day, guest: true })}</div></div>`;
-    const dialog = `<dialog id="detail" aria-labelledby="detail-title"><button class="icon-button" id="close" aria-label="Close details">×</button><h2 id="detail-title"></h2><div id="detail-body"></div></dialog>`;
+    // The same read-only activity view as the planner. Guests cannot edit, so it is drawn without an Edit button.
+    // The activity view shared with the planner, and a small reading dialog for a stay the organizer chose to share.
+    const dialog = `${viewDialog()}<dialog id="stay-view" aria-labelledby="stay-title"><div class="dialog-heading"><span class="eyebrow">Stay</span><button type="button" class="icon-button" data-close="stay-view" aria-label="Close stay details">×</button></div><h2 id="stay-title"></h2><div id="stay-body"></div></dialog>`;
     // Phone: the schedule comes first, matching the signed-in planner; reading-copy and refresh controls follow it.
     app.innerHTML = layout
         ? `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar slim" id="top"><span class="brand">Waypoint<span class="brand-dot">↗</span></span><span class="private-label">● Guest view · read only</span></header><main class="compact schedule-first${allDays ? ' all-days' : ''}"><section class="trip-bar" aria-label="Schedule and traveler selection"><h1 class="trip-name">${escape(trip.title)}</h1>${filterLabel}</section>${banner}${schedule}<section class="manage" id="manage" aria-labelledby="manage-title"><h2 id="manage-title">About this schedule</h2><p class="manage-trip">${escape(trip.title)} · ${escape(trip.start)} – ${escape(trip.end)} · ${escape(trip.timezone)}</p>${trip.subtitle ? `<p>${escape(trip.subtitle)}</p>` : ''}<p role="status" id="guest-status">${guide}</p><div class="manage-group"><h3>Copies &amp; updates</h3><div class="tools"><button class="secondary" id="refresh">Refresh</button><button class="secondary" id="download">Save a reading copy</button></div><p class="study-meta">${meta}</p></div><a class="jump-link back-top" href="#top">↑ Back to the schedule</a></section><footer>Read-only guest link · No account or RSVP required. Keep the link within your group.</footer></main>${dialog}`
@@ -108,16 +111,14 @@ document.addEventListener('click', async (e) => { if (e.target.closest('.skip-li
     const s = trip.stays.find(x => x.id === b.dataset.stayView), place = trip.places.find(p => p.id === s?.placeId);
     if (s) {
         const when = d => dateLabel(d, { weekday: 'long', month: 'short', day: 'numeric' });
-        document.querySelector('#detail-title').textContent = place?.name || 'Stay';
-        document.querySelector('#detail-body').innerHTML = `<p>${escape(when(s.start))} → ${escape(when(s.end))}${s.checkOutTime ? ` · check-out ${escape(s.checkOutTime)}` : ''}</p><p>${escape(s.lodging || s.name || '')}</p><p class="guest-notes">${escape(s.groupInfo || '')}</p><p>${s.participants.map(id => escape(participantRecord(trip, id)?.name || 'Some travelers')).join(' · ')}</p>`;
-        document.querySelector('#detail').showModal();
+        document.querySelector('#stay-title').textContent = place?.name || 'Stay';
+        document.querySelector('#stay-body').innerHTML = `<p>${escape(when(s.start))} → ${escape(when(s.end))}${s.checkOutTime ? ` · check-out ${escape(s.checkOutTime)}` : ''}</p><p>${escape(s.lodging || s.name || '')}</p><p class="guest-notes">${escape(s.groupInfo || '')}</p><p>${s.participants.map(id => escape(participantRecord(trip, id)?.name || 'Some travelers')).join(' · ')}</p>`;
+        document.querySelector('#stay-view').showModal();
     }
-} if (b.id === 'close')
-    document.querySelector('#detail').close(); if (b.dataset.detail) {
-    const a = trip.activities.find(a => a.id === b.dataset.detail);
-    document.querySelector('#detail-title').textContent = a.title;
-    document.querySelector('#detail-body').innerHTML = `<p>${a.date ? `${escape(dateLabel(a.date, { weekday: 'long', month: 'short', day: 'numeric' }))} · ${escape(a.time || 'Time to confirm')}` : `An idea · no day yet${a.time ? ` · ${escape(a.time)}` : ''}`}</p>${[a.highlight && 'Whole-group activity', a.optional && 'Optional', timingOf(a) === 'set' && 'Set time', timingOf(a) === 'anytime' && a.date && 'Any day of the stay'].some(Boolean) ? `<p>${[a.highlight && 'Whole-group activity', a.optional && 'Optional', timingOf(a) === 'set' && 'Set time', timingOf(a) === 'anytime' && a.date && 'Any day of the stay'].filter(Boolean).join(' · ')}</p>` : ''}<p class="guest-notes">${escape(a.notes)}</p><p>${escape(a.address || 'Meeting point to confirm')}</p><p>${a.participants.map(id => escape(participantRecord(trip,id)?.name||'Some travelers')).join(' · ')}</p>`;
-    document.querySelector('#detail').showModal();
+} if (b.dataset.close)
+    document.getElementById(b.dataset.close)?.close(); if (b.dataset.detail) {
+    showActivityView(document, trip.activities.find(a => a.id === b.dataset.detail), trip, { guest: true, canEdit: false });
+    showPictures();
 } if (b.id === 'download') {
     const html = buildOfflineHtml({ trip, revision }, { downloadedAt: new Date().toISOString() });
     const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
@@ -127,6 +128,9 @@ document.addEventListener('click', async (e) => { if (e.target.closest('.skip-li
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 } });
+enableViewDismiss({ document, sheet: phone });
+// Closing the view (button, Escape, backdrop, swipe) hands focus back to the card it came from.
+document.addEventListener('close', e => { if (e.target.id === VIEW_ID) focusCard(document, e.target.dataset.activity); }, true);
 load();
 window.addEventListener('resize', () => fitColumns(document.querySelector('#itinerary')));
 // One-day phone view: flick left or right on the day to go to the next or previous day.
