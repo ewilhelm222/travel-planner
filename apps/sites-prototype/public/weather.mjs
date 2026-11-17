@@ -100,15 +100,30 @@ export function weatherLine(day, { units = 'metric', loading = false } = {}) {
 /** The note under the schedule saying when the forecast was fetched and where it came from. */
 export const weatherNote = () => '<p class="weather-note" id="weather-note" hidden></p>';
 
+// Why a signed-in person sees no forecast at all, in a sentence they can act on. Guests are told nothing.
+const WHY = {
+    'no-stay': () => 'No forecast: this trip has no stay to take a location from.',
+    'no-location': () => 'No forecast: the stay has no place to look up. Choose a place for the stay under Places, stays & journeys.',
+    'not-found': why => `No forecast: the weather lookup could not find “${escape(why.text || '')}”. Add an address or coordinates to that place under Places, stays & journeys.`,
+    'lookup-failed': why => `No forecast: the place lookup service did not answer${why.detail ? ` (${escape(why.detail)})` : ''}. It will be tried again in a few minutes.`,
+    'forecast-failed': why => `No forecast: the forecast service did not answer${why.detail ? ` (${escape(why.detail)})` : ''}. It will be tried again in a few minutes.`,
+    'out-of-range': () => 'No forecast yet: these dates are outside the 16-day forecast range.',
+};
+
 /**
  * Fill every weather line, day chip and the note on the page from `weather` (the server's answer, or null).
- * Nothing is redrawn around them, and the lines keep their height, so the columns do not move.
+ * Nothing is redrawn around them. The lines take up room only when some day has a forecast (the page gets
+ * the class `has-weather`); then every header keeps its line, so the columns stay level. With no forecast
+ * at all the line is given back to the schedule. `reserve` keeps the room while the answer is on its way,
+ * for a trip that had a forecast last time, so the columns do not jump when it arrives.
  */
-export function applyWeather(document, weather, { units = 'metric', loading = false, locale } = {}) {
-    const days = weather?.days || {}, updated = weather?.updatedAt ? updatedLabel(weather.updatedAt, locale) : '';
+export function applyWeather(document, weather, { units = 'metric', loading = false, reserve = false, locale } = {}) {
+    const days = weather?.days || {}, updated = weather?.updatedAt ? updatedLabel(weather.updatedAt, locale) : '', any = Object.keys(days).length > 0;
+    document.body?.classList?.toggle('has-weather', any || (loading && reserve));
     for (const line of document.querySelectorAll?.('.day-weather[data-weather]') || []) {
         const day = days[line.dataset.weather];
         line.innerHTML = weatherLine(day, { units, loading: loading && !day });
+        line.classList?.toggle('none', !day && !loading);
         // Where and when, on hover or long-press; the note under the schedule says the same for everyone.
         if (day)
             line.title = `${day.where ? `Forecast for ${day.where}. ` : ''}${updated ? `Updated ${updated}. ` : ''}Weather data by Open-Meteo.com`;
@@ -130,8 +145,9 @@ export function applyWeather(document, weather, { units = 'metric', loading = fa
     }
     const note = document.querySelector('#weather-note');
     if (note) {
-        const dates = Object.keys(days).sort();
-        note.hidden = !dates.length;
-        note.innerHTML = dates.length ? `Forecast for where each day’s stay is${updated ? `, updated ${escape(updated)}` : ''}. Days without one are outside the forecast range or have no usable stay location. Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</a>.` : '';
+        const why = !any && weather?.why && WHY[weather.why.reason] ? WHY[weather.why.reason](weather.why) : '';
+        note.hidden = !any && !why;
+        note.innerHTML = any ? `Forecast for where each day’s stay is${updated ? `, updated ${escape(updated)}` : ''}. Days without one are outside the forecast range or have no usable stay location. Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</a>.` : why;
     }
+    return any;
 }

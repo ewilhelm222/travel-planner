@@ -21,9 +21,18 @@ where that day's stay is.
   cream for snow and mixed); a dry day is plain quiet text.
 - Wet and snowy days also get a small icon on their day chip. Dry days and days
   with no forecast leave the chip as it was.
-- A day with no forecast shows a faint dash. That happens when the date is past
-  the 16-day forecast range or already over, the stay has no usable location,
-  or the lookup failed. Nothing is invented and no averages are shown.
+- **The line takes room only when there is a forecast.** If no day of the trip
+  has one, the line is given back and the header is as it was before. If some
+  days have one, every column keeps the line so cards stay level, and a day
+  without one shows a faint dash. One day at a time (phone, upright), a day
+  without a forecast gives its line back too.
+- A day has no forecast when the date is past the 16-day range or already over,
+  the stay has no usable location, or the lookup failed. Nothing is invented
+  and no averages are shown.
+- When the whole trip has none, signed-in people get one sentence under the
+  schedule saying why: nothing to look up, a name or address that was not
+  found, a service that did not answer (with what it answered, e.g.
+  `HTTP 429`), or dates out of range. Guests are told nothing.
 - Under the schedule a note says when the forecast was updated and credits the
   source. The same time is in each line's tooltip, and for signed-in people the
   tooltip also names the place the forecast is for.
@@ -33,7 +42,9 @@ where that day's stay is.
 
 ## Where the location comes from
 
-The stay's place is asked first, then the area it sits in. Either can give:
+The stay's place is asked first, then the area it sits in. Tried in order:
+coordinates of either, an address of either, then the area's name and the
+place's name. If one cannot be found, the next is tried.
 
 - **Coordinates** typed in "Location for the map", in any coordinate system.
   They are used as typed and never converted: the difference between systems is
@@ -44,6 +55,9 @@ The stay's place is asked first, then the area it sits in. Either can give:
   The result is cached on the server and **never written to the place**, so the
   map rules in [map-location.md](map-location.md) are unchanged: an address is
   still not positioned on the drawing.
+- **The place's name**, when there is nothing else ("Twain Harte" is enough).
+  For a looked-up address or name, the tooltip names what the lookup matched,
+  so a wrong match can be noticed.
 
 When a day has several stays, the first one (in the trip's order) with a
 forecast is used; a check-out morning uses the stay being left. The family
@@ -54,7 +68,7 @@ filter does not change it.
 | | Service | Key | Sent | Limits |
 | --- | --- | --- | --- | --- |
 | Forecast | [Open-Meteo](https://open-meteo.com/) | none | latitude and longitude rounded to two decimals (about 1 km) | 16 days; free tier is for non-commercial use with a daily request allowance and asks for attribution, which the note gives |
-| Address lookup | OpenStreetMap Nominatim public server | none | the typed address text | at most one request a second, no uptime promise, weaker on some addresses; an identifying User-Agent is asked for |
+| Address lookup | OpenStreetMap Nominatim public server | none | the typed address text, or the place name when there is no address or coordinates | at most one request a second, no uptime promise, weaker on some addresses; an identifying User-Agent is asked for |
 
 Nothing else leaves the planner: no trip name, people, notes or identifiers.
 Requests are made by the server (`lib/weather.mjs`), never by the browser.
@@ -77,23 +91,28 @@ that has already ended there is not shown.
 - `public/weather.mjs`: classification, words, icons, and filling the lines.
 - `public/board.mjs` puts an empty fixed-height line in every day header;
   `planner.js` and `guest.mjs` fill it in place when the answer arrives.
-- Offline shell cache is `waypoint-shell-v45` and includes the new module. The
+- Offline shell cache is `waypoint-shell-v46` and includes the new module. The
   reading copy does not keep weather: offline, the lines stay empty.
 
 ## Checks
 
-- `npm test`: 212 pass, 14 new in `tests/weather.test.mjs`, with the weather
+- `npm test`: 213 pass, 15 new in `tests/weather.test.mjs`, with the weather
   service mocked: rain, snow, mixed and dry rendering with precipitation first;
   no location; dates outside the range; a failed lookup; time-zone day
   boundaries; address lookup; caching; what is sent; guests.
 - `scripts/check-weather-browser.cjs` (headless Chromium, local dev server,
   synthetic trip, made-up forecast): desktop three-column and week views, phone
-  landscape and phone portrait. Header and first card are at the same height
-  loading, with and without a forecast; no sideways scroll; guest view.
+  landscape and phone portrait. No room is taken before the first forecast or
+  when there is none; with one, header and first card are at the same height
+  in every column, also while loading on a later visit; no sideways scroll;
+  guest view.
 - Type check, lint (0 errors) and production build pass.
 
 ## Not verified
 
+- **Why the first deployment showed no weather** for a stay whose area has
+  WGS-84 coordinates. The sentence under the schedule now reports the reason on
+  the live Site.
 - **A live forecast.** Open-Meteo's response was not seen; the parser follows
   its published format. Its terms page could not be opened either, so confirm
   that a private family planner counts as non-commercial use.
@@ -118,3 +137,7 @@ Desktop, larger cards and the week view (Nov 29 has no forecast):
 
 <img src="design/weather/desktop.jpg" width="700">
 <img src="design/weather/desktop-week.jpg" width="700">
+
+No forecast for any day: the line is given back.
+
+<img src="design/weather/desktop-week-none.jpg" width="700">

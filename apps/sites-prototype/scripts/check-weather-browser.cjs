@@ -38,9 +38,21 @@ const WEATHER = { days: { '2026-11-25': d(80, 31, 0, 9, 3), '2026-11-26': d(90, 
     await page.waitForSelector('#itinerary .agenda-day');
     if (dense === false) await page.evaluate(() => document.querySelector('#density[aria-pressed=true]')?.click());
     const measure = () => page.$$eval('#itinerary .agenda-day', days => days.filter(x => x.offsetParent).map(x => { const h = x.querySelector('.agenda-date').getBoundingClientRect(), w = x.querySelector('.day-weather').getBoundingClientRect(), c = x.querySelector('.agenda-city')?.getBoundingClientRect(); return { header: Math.round(h.height), line: Math.round(w.height), under: Math.round(w.top - x.querySelector('.agenda-date h2').getBoundingClientRect().bottom), city: c ? Math.round(c.top - h.top) : null, clipped: x.querySelector('.day-weather').scrollWidth > x.querySelector('.day-weather').clientWidth + 1, text: x.querySelector('.day-weather').innerText.trim() }; }));
-    const before = await measure();
-    check(`${label}: while loading, every line is empty`, before.every(x => x.text === ''), JSON.stringify(before.map(x => x.text)));
+    const first = await measure();
+    check(`${label}: before the first forecast, the line takes no room`, first.every(x => x.line === 0 && x.text === ''), JSON.stringify(first.map(x => [x.line, x.text])));
     release();
+    await page.waitForSelector('.day-weather .weather-precip');
+    // The trip is now known to have a forecast: on the next visit the room is kept while it loads, so nothing jumps.
+    let release2;
+    const held2 = new Promise(r => { release2 = r; });
+    await page.unroute('**/api/weather?*');
+    await page.route('**/api/weather?*', async route => { await held2; await route.fulfill({ json: WEATHER }); });
+    await page.reload();
+    await page.waitForSelector('#itinerary .agenda-day');
+    if (dense === false) await page.evaluate(() => document.querySelector('#density[aria-pressed=true]')?.click());
+    const before = await measure();
+    check(`${label}: while loading again, every line is empty and keeps its room`, before.every(x => x.text === '' && x.line > 0), JSON.stringify(before.map(x => [x.line, x.text])));
+    release2();
     await page.waitForSelector('.day-weather .weather-precip');
     const after = await measure();
     console.log('     ', JSON.stringify(after.map(x => x.text.replace(/\n/g, ' | '))));
@@ -51,9 +63,10 @@ const WEATHER = { days: { '2026-11-25': d(80, 31, 0, 9, 3), '2026-11-26': d(90, 
       // Phone portrait shows one day at a time: step through the days.
       for (const [date, name, want] of [['2026-11-25', 'wet', /Heavy rain 80% · 1\.2 in/], ['2026-11-26', 'snowy', /Snow 90% · 4 in/], ['2026-11-28', 'dry', /^Dry/], ['2026-11-29', 'unavailable', /^—/]]) {
         await page.click(`.medallion[data-day="${date}"]`);
-        await page.waitForSelector(`.agenda-day[data-date="${date}"][data-selected=true] .day-weather > *`);
+        await page.waitForSelector(`.agenda-day[data-date="${date}"][data-selected=true] .day-weather > *`, { state: 'attached' });
         const text = await page.$eval(`.agenda-day[data-date="${date}"] .day-weather`, e => e.innerText.trim());
         check(`${label}: ${name} day reads "${text.replace(/\n/g, ' | ')}"`, want.test(text));
+        if (name === 'unavailable') check(`${label}: a day with no forecast gives its line back`, await page.$eval(`.agenda-day[data-date="${date}"] .day-weather`, e => e.getBoundingClientRect().height === 0));
         await page.evaluate(() => scrollTo(0, 0));
         await page.screenshot({ path: `${SHOTS}/${label}-${name}.jpg`, quality: 85 });
       }
@@ -76,6 +89,21 @@ const WEATHER = { days: { '2026-11-25': d(80, 31, 0, 9, 3), '2026-11-26': d(90, 
     check(`${label}: the line carries when the forecast was updated`, /Updated Nov 17/.test(await page.getAttribute('.day-weather[data-weather="2026-11-26"]', 'title')));
     const note = await page.$eval('#weather-note', e => ({ text: e.textContent, shown: !!e.offsetParent }));
     check(`${label}: the note under the schedule says when and from where`, /updated Nov 17.*Open-Meteo\.com/.test(note.text) && (note.shown || viewport.height <= 520), note.text);
+
+    // No forecast for any day: the line is given back in every column, and the organizer is told why.
+    await page.unroute('**/api/weather?*');
+    await page.route('**/api/weather?*', route => route.fulfill({ json: { days: {}, updatedAt: null, why: { reason: 'forecast-failed', detail: 'HTTP 429' } } }));
+    await page.reload();
+    await page.waitForFunction(() => /No forecast/.test(document.querySelector('#weather-note')?.textContent || ''));
+    if (dense === false) await page.evaluate(() => document.querySelector('#density[aria-pressed=true]')?.click());
+    const none = await measure();
+    check(`${label}: with no forecast at all the line is reclaimed in every column`, none.every(x => x.line === 0) && none.every(x => x.header === first[0].header && x.city === first[0].city), JSON.stringify(none.map(x => [x.line, x.header])));
+    check(`${label}: the organizer is told why`, /did not answer \(HTTP 429\)/.test(await page.textContent('#weather-note')));
+    if (viewport.width >= 600) {
+      await page.$eval('#itinerary', e => e.scrollIntoView({ block: 'start' }));
+      await page.evaluate(() => scrollBy(0, -150));
+    }
+    await page.screenshot({ path: `${SHOTS}/${label}-none.jpg`, quality: 85 });
 
     // The guest link shows the same line. The local, disposable trip gets a guest link for this check only.
     const share = await api('/api/share?id=' + id, { action: 'rotate', revision: await rev(), base: { share: 1 } });

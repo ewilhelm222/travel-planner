@@ -946,6 +946,10 @@ dialog.activity-view h2 { margin: 4px 0 10px; overflow-wrap: anywhere; outline: 
 .weather-none { color: var(--orchid); opacity: .45; line-height: 24px; }
 .weather-note { margin: 0 0 6px; font: 12px/1.5 var(--font-mono); color: var(--orchid); overflow-wrap: anywhere; }
 .weather-note a { color: var(--lagoon); }
+/* The line takes room only when some day has a forecast; then every header keeps it, so columns stay level.
+   One day at a time (phone, upright) there are no columns to keep level, so a day without one gives its line back. */
+body:not(.has-weather) .day-weather { display: none; }
+@media (max-width: 559px), (max-width: 760px) and (orientation: portrait) { .schedule-first .day-weather.none { display: none; } }
 /* Day chips: a small mark on wet or snowy days only, opposite the whole-group dot. */
 .medallion-weather { position: absolute; left: -3px; top: -3px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--night); color: var(--lagoon); }
 .medallion-weather.snow, .medallion-weather.mixed { background: var(--cream); color: var(--ink); }
