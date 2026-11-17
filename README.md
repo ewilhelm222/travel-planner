@@ -20,17 +20,26 @@ and restore a trip, full backup), [editing places, stays and
 journeys](docs/structure.md), [per-record
 revisions](docs/per-record-revisions.md), [moving a stay with a
 preview](docs/stay-move.md), [schematic maps](docs/maps.md), and [layout
-changes](docs/layout.md). Built on November 16 from the
-[family feedback plan](docs/feedback-2026-11-15-plan.md) and not yet deployed:
+changes](docs/layout.md). Deployed on November 16, 2026 as Sites version 13 (see
+[release provenance](docs/multi-events.md#release-provenance)), from the
+[family feedback plan](docs/feedback-2026-11-15-plan.md):
 [sign-in and read-only messages](docs/getting-in.md),
 [plain wording](docs/plain-words.md), [dark forms](docs/dark-forms.md),
 [Add and Ideas within reach](docs/within-reach.md), [Ideas beside the
 days](docs/ideas-column.md), and [one Manage menu and a sideways-phone
-layout](docs/landscape-and-menu.md). Built after that and not yet deployed:
+layout](docs/landscape-and-menu.md). Deployed together on November 16, 2026 as Sites version 15:
 [a shorter activity form](docs/quick-add.md), [timing levels](docs/timing.md),
-and [all days in one scroll on phones](docs/all-days.md). Built on November 17 and not yet deployed:
-[five additions](docs/release-nov17.md) (stay information for the group,
-two-level places, add between cards, flick between days, pictures on cards). A daily automatic backup is
+[all days in one scroll on phones](docs/all-days.md), and
+[even day columns](docs/even-columns.md). The narrower-phone landscape
+correction was deployed earlier as version 14. See
+[release provenance](docs/multi-events.md#release-provenance) for verification
+and rollback versions. Deployed together as Sites version 16: the
+[read-only activity view](docs/activity-view.md) and the
+[five November 17 additions](docs/release-nov17.md):
+[stay information for the group](docs/stay-info.md),
+[two-level places](docs/place-levels.md),
+[add between cards and flick between days](docs/insert-and-swipe.md), and
+[pictures on cards](docs/pictures.md). A daily automatic backup is
 [proposed](docs/backup-proposal.md) and not enabled.
 
 [Open the planner](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site) · [Current implementation and access status](docs/multi-events.md) · [What is deployed](docs/multi-events.md#release-provenance) · [Managing travelers](docs/travelers.md) · [Drag-and-drop](docs/drag-drop.md) · [Schedule-first phone layout](docs/schedule-first.md) · [Editors and what they may change](docs/editors.md) · [Source](apps/sites-prototype)
