@@ -159,6 +159,12 @@ export function applyTripChange(trip, change) {
                 // A map link that changes is unreviewed again unless the same save says it was checked.
                 if (noun === "place" && p.navReviewed !== true && ["amapUrl", "appleMapsUrl"].some(k => k in p && (p[k] || "").trim() !== (rows[index][k] || "")))
                     rows[index].navReviewed = false;
+                // The typed map location decides the coordinates. A page from before it existed sends
+                // latitude and longitude instead, which then replace whatever was typed earlier.
+                if (noun === "place" && "locationText" in p)
+                    rows[index].lat = rows[index].lng = null;
+                else if (noun === "place" && ("lat" in p || "lng" in p))
+                    rows[index].locationText = "";
                 Object.assign(rows[index], p);
                 checkStructure(noun, rows[index]);
             }
@@ -245,7 +251,7 @@ export function applyTripChange(trip, change) {
     }
     return normalizeTrip(next, trip.id);
 }
-const PLACE_FIELDS = ["name", "localName", "address", "localAddress", "parentId", "lat", "lng", "coordSystem", "coordSource", "amapUrl", "appleMapsUrl", "navReviewed"];
+const PLACE_FIELDS = ["name", "localName", "address", "localAddress", "parentId", "locationText", "lat", "lng", "coordSystem", "coordSource", "amapUrl", "appleMapsUrl", "navReviewed"];
 const STAY_FIELDS = ["name", "placeId", "start", "end", "lodging", "note", "groupInfo", "checkOutTime", "showOnGuest", "participants"];
 const LEG_FIELDS = ["title", "date", "arrivalDate", "time", "arrivalTime", "mode", "participants", "notes", "from", "to"];
 const structure = (key, noun, fields) => Object.fromEntries(["add", "edit", "delete"].map(op => [`${noun}-${op}`, { key, noun, idField: `${noun}Id`, fields, op }]));

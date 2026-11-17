@@ -127,7 +127,7 @@ test('map links are offered only after a person reviewed them, and only on the p
     assert.equal(mapUrl('amap', 'https://www.amap.com/place/B000A8UIN8'), 'https://www.amap.com/place/B000A8UIN8');
     assert.equal(appleSearchUrl({ name: 'Forbidden City', localName: '故宫', localAddress: '景山前街4号' }), `https://maps.apple.com/?q=${encodeURIComponent('故宫 景山前街4号')}`, 'the search helper uses names and addresses only, never coordinates');
     assert.equal(appleSearchUrl({}), '');
-    assert.deepEqual(normalizePlaceGeo({}), { lat: null, lng: null, coordSystem: '', coordSource: '', amapUrl: '', appleMapsUrl: '', navReviewed: false });
+    assert.deepEqual(normalizePlaceGeo({}), { locationText: '', lat: null, lng: null, coordSystem: '', coordSource: '', amapUrl: '', appleMapsUrl: '', navReviewed: false });
 });
 
 test('location details stay out of the guest view and are kept in the private offline copy', () => {
