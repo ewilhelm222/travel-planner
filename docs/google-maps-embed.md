@@ -1,9 +1,11 @@
 # Google Maps for the day map
 
-Status: November 18, 2026 (guest link added; first built November 17). Owner decision the same day: use the Google Maps
-Embed API for the day map. Built and checked locally with synthetic data and
-with Google stubbed out; not deployed, and **not yet seen with a real key**.
-No database migration.
+Status: November 17, 2026 (America/Los_Angeles). Deployed in saved version 22
+from GitHub main `58c170907e5445dd67d0faea41f72c53cea7b367`. A real Google
+map was seen working in the signed-in planner's **This day** frame in Chrome.
+The organizer's guest-map checkbox was present and unticked; it was left off.
+A real Google map has **not** been verified on the guest page. No database
+migration or runtime configuration change. See [release verification](releases/2026-11-17-v22.md).
 
 **Stop locations are sent to Google.** When the Google day map is shown, the
 addresses or coordinates of that day's stops go to Google in the map's address,
@@ -153,11 +155,11 @@ if a string shaped like a Google key appears anywhere in the repository.
 
 ## Not verified
 
-- **A real Google map.** Google could not be reached from the build
-  environment, so the supplied key was never accepted or refused by Google
-  here, and the frame in the screenshots is a stand-in. The link formats follow
-  Google's published Embed API from memory.
-- That the referrer restriction accepts the Site once deployed.
+- **A real Google map on the guest page.** The existing guest token was not
+  available during release verification; no link was created or rotated. The
+  planner's real Google map was verified in Chrome on November 17.
+- The synthetic screenshots below still use a stand-in; they are not evidence
+  of the live Google integration.
 - Behaviour from mainland China. The fallback is built for an unreachable
   Google, but was only exercised by simulating one.
 - A physical phone, a screen reader and real trip data.

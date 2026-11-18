@@ -1,10 +1,11 @@
 # Weather under each date
 
-Status: November 17, 2026. Built and checked locally with a synthetic trip and a
-mocked weather service; not deployed. No database migration. **Neither outside
-service could be reached from the build environment**, so the live forecast and
-the address lookup are unverified (see "Not verified"). It makes no claim about
-working in China.
+Status: November 17, 2026 (America/Los_Angeles). Deployed in saved version 22
+from GitHub main `58c170907e5445dd67d0faea41f72c53cea7b367`, with no migration
+or runtime configuration change. Live Chrome checks found the forecast service
+returning HTTP 429; see [release verification](releases/2026-11-17-v22.md).
+No live forecast was seen on desktop in this verification; phone and guest-link
+forecasts remain unverified. No China readiness claim is made.
 
 ## For planners and guests
 
@@ -128,18 +129,41 @@ that has already ended there is not shown.
 
 ## Not verified
 
-- **Why the forecast comes and goes on the live Site.** It showed on desktop,
-  not on a phone, then not on desktop. The sentence under the schedule reports
-  what the service answered; that text has not been collected yet.
-- **A live forecast.** Open-Meteo's response was not seen; the parser follows
-  its published format. Its terms page could not be opened either, so confirm
-  that a private family planner counts as non-commercial use.
-- **A live address lookup**, including how well Nominatim finds rural
-  addresses, and whether its usage policy is satisfied by a generic User-Agent.
-- Whether the Sites host allows outbound requests to either service and offers
-  the edge cache; without the cache, each worker instance keeps its own.
-- A physical phone, a screen reader, the hosted Site, real trip data, and
-  anything from mainland China.
+Five signed-in Chrome requests to `/api/weather` for the existing Camp Earnest
+trip returned **0 forecasts out of 5**. Every response had `days: {}`,
+`updatedAt: null`, `failed: true`, and
+`why: {reason: "forecast-failed", detail: "HTTP 429"}`.
+
+| Request | November 17, Pacific time | Days | Failure |
+| --- | --- | --- | --- |
+| 1 | 18:39:58 | 0 | forecast-failed / HTTP 429 |
+| 2 | 18:41:04 | 0 | forecast-failed / HTTP 429 |
+| 3 | 18:42:13 | 0 | forecast-failed / HTTP 429 |
+| 4 | 18:43:29 | 0 | forecast-failed / HTTP 429 |
+| 5 | 18:44:41 | 0 | forecast-failed / HTTP 429 |
+
+Requests were at least one minute apart. The exact sentence under the schedule
+was: “No forecast: the forecast service did not answer (HTTP 429). It will be
+tried again in a few minutes.” No weather lines appeared automatically after
+more than three minutes without reloading the planner, or by the final sample.
+
+Retries are not enough on this host in this observation. The remaining option
+already identified is a small database table shared by all server instances.
+It needs a migration and the owner's approval; it was not added. Weather absence
+was not treated as a rollback trigger.
+
+
+- A live forecast was not seen on desktop during this release check. Phone and
+  guest-link forecasts were not verified. No forecast tooltip Updated time or
+  Open-Meteo attribution note could be inspected because no line appeared.
+- The requested phone viewport override did not take effect; physical phone,
+  phone-width All days view, and screen-reader checks remain open.
+- The existing guest token was unavailable; the authorized shared-weather days
+  count and failed flag, privacy projection, and guest UI were not checked.
+- A live address lookup and Nominatim policy suitability remain unverified.
+- Outbound forecast requests reached a service that returned HTTP 429. Edge
+  cache availability and success across server instances remain unverified.
+- Anything from mainland China remains unverified.
 
 ## Screenshots (synthetic trip; the forecast is made up)
 
