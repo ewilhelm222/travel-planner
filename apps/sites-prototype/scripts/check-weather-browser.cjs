@@ -92,7 +92,14 @@ const WEATHER = { days: { '2026-11-25': d(80, 31, 0, 9, 3), '2026-11-26': d(90, 
 
     // No forecast for any day: the line is given back in every column, and the organizer is told why.
     await page.unroute('**/api/weather?*');
-    await page.route('**/api/weather?*', route => route.fulfill({ json: { days: {}, updatedAt: null, why: { reason: 'forecast-failed', detail: 'HTTP 429' } } }));
+    await page.route('**/api/weather?*', route => route.fulfill({ json: { days: {}, updatedAt: null, failed: true, why: { reason: 'forecast-failed', detail: 'HTTP 429' } } }));
+    // The service stops answering: the forecast this browser saw last stands in, with its own update time.
+    await page.evaluate(id => { const k = 'waypoint-weather:' + id, v = JSON.parse(localStorage.getItem(k)); v.data.updatedAt = new Date(Date.now() - 3600e3).toISOString(); localStorage.setItem(k, JSON.stringify(v)); }, id);
+    await page.reload();
+    await page.waitForSelector('.day-weather .weather-precip', { state: 'attached' });
+    check(`${label}: when the service does not answer, the last forecast seen is still shown`, /Snow 90%|Heavy rain 80%/.test(await page.$eval('#itinerary', e => e.textContent)) && /updated/.test(await page.textContent('#weather-note')));
+    // A browser that never saw a forecast has nothing to show.
+    await page.evaluate(id => localStorage.removeItem('waypoint-weather:' + id), id);
     await page.reload();
     await page.waitForFunction(() => /No forecast/.test(document.querySelector('#weather-note')?.textContent || ''));
     if (dense === false) await page.evaluate(() => document.querySelector('#density[aria-pressed=true]')?.click());

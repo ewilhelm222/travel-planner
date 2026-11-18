@@ -4,7 +4,7 @@ import { VIEW_ID, viewDialog, showActivityView, focusCard, enableViewDismiss } f
 import { matchesSelection } from './participants.mjs';
 import { buildOfflineHtml } from './offline-export.mjs';
 import { mapSectionHtml, followPin, watchEmbed } from './map-panel.mjs';
-import { applyWeather, weatherNote, unitsFor } from './weather.mjs';
+import { applyWeather, weatherNote, unitsFor, chooseWeather } from './weather.mjs';
 const app = document.querySelector('#guest-app'), token = location.hash.slice(1);
 let trip, revision, updatedAt, day, filter = 'all', mapView = 'day';
 // The Google day map, only when the organizer switched it on for this guest link: the server then sends a key
@@ -30,26 +30,35 @@ function showPictures() {
 }
 // The weather line under each date: the same as the planner's, fetched with the guest token in a header and
 // kept for this visit only. A failed request leaves the lines quiet.
-let weather = null, weatherFor = null;
-// Whether there was a forecast last time is remembered on this device, so the room for the line is kept while it loads.
-function showWeather() {
-    let reserve = false;
-    try { reserve = localStorage.getItem('waypoint-guest-weather') === '1'; } catch { }
-    const any = applyWeather(document, weather, { units: unitsFor(navigator.language), loading: weatherFor !== revision, reserve });
-    if (weatherFor === revision)
-        try { localStorage.setItem('waypoint-guest-weather', any ? '1' : '0'); } catch { }
-}
+// The last answer with a forecast is kept on this device: it holds the room for the line while loading, and stands
+// in (with its own update time) when a weather service does not answer. It holds the forecast only, no place.
+let weather = null, weatherFor = null, weatherRetries = 0;
+const KEPT = 'waypoint-guest-weather';
+const keptWeather = () => { try { const k = JSON.parse(localStorage.getItem(KEPT)); return k?.data && k.trip === `${trip.start}|${trip.title}` ? k : null; } catch { return null; } };
+const showWeather = () => applyWeather(document, weather, { units: unitsFor(navigator.language), loading: weatherFor !== revision, reserve: !!keptWeather() });
 async function loadWeather() {
-    let data = null;
+    let answer = null;
     try {
         const r = await fetch('/api/shared-weather', { headers: { Authorization: `Share ${token}` }, cache: 'no-store', credentials: 'omit' });
         if (r.ok)
-            data = await r.json();
+            answer = await r.json();
     }
     catch { /* no weather */ }
-    weather = data;
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: trip.timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const chosen = chooseWeather(answer, keptWeather(), { today });
+    try {
+        if (chosen.keep)
+            localStorage.setItem(KEPT, JSON.stringify({ ...chosen.keep, trip: `${trip.start}|${trip.title}` }));
+        else
+            localStorage.removeItem(KEPT);
+    }
+    catch { }
+    weather = chosen.data;
     weatherFor = revision;
     showWeather();
+    // A service did not answer: ask again in a couple of minutes, a few times.
+    if (chosen.retry && weatherRetries++ < 6)
+        setTimeout(loadWeather, 2.5 * 60 * 1000);
 }
 const phone = () => window.matchMedia?.(PHONE_QUERY).matches;
 let layout;

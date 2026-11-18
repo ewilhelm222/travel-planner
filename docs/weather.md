@@ -73,7 +73,25 @@ filter does not change it.
 Nothing else leaves the planner: no trip name, people, notes or identifiers.
 Requests are made by the server (`lib/weather.mjs`), never by the browser.
 A forecast is reused for an hour per location, a looked-up address for 30 days,
-and a failure is not retried for five minutes. The cache is the worker's memory
+and a failure is not retried for two minutes.
+
+**When the forecast service does not answer.** On the live Site the forecast
+came and went: the service answers some requests from the host's shared
+addresses and not others (the exact refusal was not captured). So:
+
+- The server tries a refused or failed request up to three times.
+- If a forecast has gone stale and cannot be refreshed, the server keeps using
+  the last good one for up to a day, with the time it was really fetched.
+- Each browser keeps the last forecast it saw for a trip and shows it, with its
+  own update time and without days that are over, when the server has none
+  because a service failed. It is dropped after a day, or as soon as the server
+  says there is truly no forecast. The page asks again every couple of minutes,
+  a few times. For signed-in people this copy is cleared on sign-out; for
+  guests it holds the forecast only, no place.
+- A browser that has never received a forecast still shows nothing until one
+  request succeeds. A store shared by all server instances (a database table)
+  would close that gap; it needs a migration and has not been added.
+ The cache is the worker's memory
 plus the platform's edge cache where available; nothing is stored in the trip
 or the database, and nothing goes through `commit()`/`transact()`.
 
@@ -91,12 +109,12 @@ that has already ended there is not shown.
 - `public/weather.mjs`: classification, words, icons, and filling the lines.
 - `public/board.mjs` puts an empty fixed-height line in every day header;
   `planner.js` and `guest.mjs` fill it in place when the answer arrives.
-- Offline shell cache is `waypoint-shell-v46` and includes the new module. The
+- Offline shell cache is `waypoint-shell-v48` and includes the new module. The
   reading copy does not keep weather: offline, the lines stay empty.
 
 ## Checks
 
-- `npm test`: 213 pass, 15 new in `tests/weather.test.mjs`, with the weather
+- `npm test`: 224 pass, 17 in `tests/weather.test.mjs`, with the weather
   service mocked: rain, snow, mixed and dry rendering with precipitation first;
   no location; dates outside the range; a failed lookup; time-zone day
   boundaries; address lookup; caching; what is sent; guests.
@@ -110,9 +128,9 @@ that has already ended there is not shown.
 
 ## Not verified
 
-- **Why the first deployment showed no weather** for a stay whose area has
-  WGS-84 coordinates. The sentence under the schedule now reports the reason on
-  the live Site.
+- **Why the forecast comes and goes on the live Site.** It showed on desktop,
+  not on a phone, then not on desktop. The sentence under the schedule reports
+  what the service answered; that text has not been collected yet.
 - **A live forecast.** Open-Meteo's response was not seen; the parser follows
   its published format. Its terms page could not be opened either, so confirm
   that a private family planner counts as non-commercial use.
