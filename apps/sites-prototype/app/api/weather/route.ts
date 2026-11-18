@@ -1,14 +1,14 @@
 import { access, response, snapshot, failed } from "../../../lib/trip-store";
-import { tripWeather } from "../../../lib/weather.mjs";
+import { weatherPlan } from "../../../lib/weather.mjs";
 import { weatherCache } from "../../../lib/weather-cache";
 export const dynamic = "force-dynamic";
-// The forecast for each day's stay, for anyone who can open the trip. Read-only: nothing is saved.
-// A stay with no usable location, a day outside the forecast range or a failed lookup is simply absent.
+// Where each day's weather is for (rounded coordinates), for anyone who can open the trip. The browser
+// then asks the forecast service itself. Read-only: nothing is saved. A stay with no usable location is absent.
 export async function GET(request: Request) { try {
     const a = await access(request);
     if (a.error)
         return a.error;
-    return response(await tripWeather(snapshot(a.row!).trip, { cache: weatherCache, names: true }));
+    return response(await weatherPlan(snapshot(a.row!).trip, { cache: weatherCache, names: true }));
 }
 catch (e) {
     return failed(e);

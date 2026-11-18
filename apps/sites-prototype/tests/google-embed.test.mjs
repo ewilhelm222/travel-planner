@@ -170,7 +170,7 @@ test('only the organizer can switch it, it is logged and can be undone, and old 
     assert.match(sharedRoute, /mapsEmbedKey: trip\.guestMap \? mapsEmbedKey\(\) : ""/);
     assert.match(guestPage, /mapsKey = typeof data\.mapsEmbedKey === 'string' \? data\.mapsEmbedKey : '';/);
     assert.ok(!/localStorage\.setItem\([^)]*mapsKey/.test(guestPage), 'the guest page does not keep the key');
-    assert.match(view, /connect-src 'self' https:\/\/www\.google\.com; frame-src https:\/\/www\.google\.com; img-src 'self' blob:;/);
+    assert.match(view, /connect-src 'self' https:\/\/www\.google\.com https:\/\/api\.open-meteo\.com; frame-src https:\/\/www\.google\.com; img-src 'self' blob:;/);
     assert.match(view, /default-src 'self'; script-src 'self'; style-src 'self';/, 'scripts and styles are still the Site\'s own only');
     assert.match(planner, /<input type="checkbox" id="guest-map" \$\{state\.snapshot\.trip\.guestMap \? 'checked' : ''\}/);
     assert.match(planner, /Anyone holding the guest link can then read those locations\./);

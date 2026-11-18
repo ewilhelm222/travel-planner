@@ -1,5 +1,7 @@
-// The weather line under each date: rules and drawing, shared by the planner and the guest view.
-// The server sends metric values per day (see lib/weather.mjs); this module only reads and draws them.
+// The weather line under each date: fetching, rules and drawing, shared by the planner and the guest view.
+// The server says where each day's weather is for (rounded coordinates, see lib/weather.mjs); the reader's own
+// browser asks the forecast service, Open-Meteo, because that service refuses the host's shared addresses.
+// Only the rounded coordinates go to it. Values are metric and converted for display.
 // Precipitation comes first: rain, snow, mixed or dry, the chance, and the amount when it matters.
 // Temperature follows, smaller. A day with no forecast shows a quiet dash, never a guess.
 import { escape } from './board.mjs';
@@ -106,7 +108,7 @@ const WHY = {
     'no-location': () => 'No forecast: the stay has no place to look up. Choose a place for the stay under Places, stays & journeys.',
     'not-found': why => `No forecast: the weather lookup could not find “${escape(why.text || '')}”. Add an address or coordinates to that place under Places, stays & journeys.`,
     'lookup-failed': why => `No forecast: the place lookup service did not answer${why.detail ? ` (${escape(why.detail)})` : ''}. It will be tried again in a few minutes.`,
-    'forecast-failed': why => `No forecast: the forecast service did not answer${why.detail ? ` (${escape(why.detail)})` : ''}. It will be tried again in a few minutes.`,
+    'forecast-failed': why => `No forecast: the forecast service did not answer this device${why.detail ? ` (${escape(why.detail)})` : ''}. It will be tried again in a few minutes.`,
     'out-of-range': () => 'No forecast yet: these dates are outside the 16-day forecast range.',
 };
 
@@ -175,4 +177,99 @@ export function chooseWeather(answer, kept, { now = Date.now(), today = '' } = {
             return { data: { ...old, days }, keep: kept, retry: true };
     }
     return { data: answer, keep: null, retry: true };
+}
+
+export const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
+export const FORECAST_DAYS = 16;
+const FRESH_MS = 60 * 60 * 1000;
+const DAILY = ['weather_code', 'temperature_2m_max', 'temperature_2m_min', 'precipitation_probability_max', 'precipitation_sum', 'rain_sum', 'showers_sum', 'snowfall_sum'];
+/** The one request made for a point: its rounded coordinates, the daily values wanted, and "work out the time zone". */
+export const forecastUrl = point => `${FORECAST_URL}?latitude=${Number(point.lat).toFixed(2)}&longitude=${Number(point.lng).toFixed(2)}&daily=${DAILY.join(',')}&timezone=auto&forecast_days=${FORECAST_DAYS}`;
+
+/** Today's date (YYYY-MM-DD) in a time zone: the day boundary a stay's forecast is cut at. */
+export function localDate(now, timeZone) {
+    try {
+        return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+    }
+    catch {
+        return new Date(now).toISOString().slice(0, 10);
+    }
+}
+
+/** Read the forecast service's answer into `{ timezone, fetchedAt, days: { date: day } }`, or null if it is not one. */
+export function parseForecast(data, fetchedAt) {
+    const d = data?.daily, dates = d?.time;
+    if (!Array.isArray(dates) || typeof data.timezone !== 'string')
+        return null;
+    const at = (name, i) => num(d[name]?.[i]);
+    const days = {};
+    dates.forEach((date, i) => {
+        if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date))
+            return;
+        const rain = at('rain_sum', i), showers = at('showers_sum', i), snow = at('snowfall_sum', i), total = at('precipitation_sum', i);
+        // A day the service left blank is not a dry day: it is no forecast.
+        if (total === null && rain === null && snow === null)
+            return;
+        days[date] = { chance: at('precipitation_probability_max', i), rainMm: (rain ?? 0) + (showers ?? 0), snowCm: snow ?? 0, precipMm: total ?? 0, high: at('temperature_2m_max', i), low: at('temperature_2m_min', i), code: at('weather_code', i) };
+    });
+    return { timezone: data.timezone, fetchedAt, days };
+}
+
+/**
+ * Ask the forecast service for the points in the server's `plan` and answer per day:
+ *   { days: { date: { ...day, where? } }, updatedAt, why?, failed? }
+ * One request per point, sent without a referrer; a point asked within the last hour is answered from
+ * `memo` (a Map kept by the page). Days are each point's own local days: a day that has ended there, a day
+ * past the forecast range, and a point whose request failed are simply absent. With no day at all, `why`
+ * says so (the plan's own reason, or "forecast-failed" with what the service answered, or "out-of-range")
+ * and `failed` says it is worth asking again. This never throws.
+ */
+export async function fetchWeather(plan, { fetch: fetchFn = globalThis.fetch, now = () => new Date(), memo = new Map() } = {}) {
+    const result = { days: {}, updatedAt: null };
+    const points = Array.isArray(plan?.points) ? plan.points : [];
+    if (!points.length) {
+        if (plan?.failed)
+            result.failed = true;
+        if (plan?.why)
+            result.why = plan.why;
+        return result;
+    }
+    let detail = '';
+    const forecasts = await Promise.all(points.map(async point => {
+        const url = forecastUrl(point), hit = memo.get(url);
+        if (hit && now().getTime() - hit.at < FRESH_MS)
+            return hit.forecast;
+        try {
+            const response = await fetchFn(url, { referrerPolicy: 'no-referrer', credentials: 'omit', cache: 'no-store', signal: globalThis.AbortSignal?.timeout?.(10000) });
+            if (!response.ok)
+                throw Object.assign(new Error('refused'), { detail: `HTTP ${response.status}` });
+            const forecast = parseForecast(await response.json(), now().toISOString());
+            if (!forecast)
+                throw Object.assign(new Error('unreadable'), { detail: 'unreadable answer' });
+            memo.set(url, { at: now().getTime(), forecast });
+            return forecast;
+        }
+        catch (e) {
+            detail ||= String(e?.detail || e?.name || 'error').slice(0, 40);
+            return null;
+        }
+    }));
+    for (const [date, i] of Object.entries(plan.dates || {})) {
+        const forecast = forecasts[i], day = forecast?.days[date];
+        // The day boundary is the stay's own: a day that has ended there is no longer forecast.
+        if (!day || date < localDate(now(), forecast.timezone))
+            continue;
+        result.days[date] = { ...day, ...(points[i].where ? { where: points[i].where } : {}) };
+        if (!result.updatedAt || forecast.fetchedAt < result.updatedAt)
+            result.updatedAt = forecast.fetchedAt;
+    }
+    if (!Object.keys(result.days).length) {
+        if (forecasts.some(f => !f)) {
+            result.failed = true;
+            result.why = { reason: 'forecast-failed', detail };
+        }
+        else
+            result.why = { reason: 'out-of-range' };
+    }
+    return result;
 }

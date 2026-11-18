@@ -14,7 +14,7 @@
     const { moveActivity, stepTarget } = await import('/move.mjs');
     const { enableDrag } = await import('/drag.mjs');
     const { VIEW_ID, viewDialog, showActivityView, focusCard, enableViewDismiss } = await import('/activity-view.mjs');
-    const { applyWeather, weatherNote, unitsFor, chooseWeather } = await import('/weather.mjs');
+    const { applyWeather, weatherNote, unitsFor, chooseWeather, fetchWeather } = await import('/weather.mjs');
     const KEY = 'waypoint-library-v2', OLD_KEY = 'waypoint-downloaded-trip-v1';
     const app = document.querySelector('#app');
     const state = { user: null, snapshot: null, library: [], archived: [], copies: {}, canCreate: false, isOwner: false, selected: new URLSearchParams(location.search).get('trip'), filter: 'all', day: null, compact: true, online: navigator.onLine, busy: false, message: '', downloadedAt: null, offlineReady: false, needsSignIn: false };
@@ -112,7 +112,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v48');
+            const cache = await caches.open('waypoint-shell-v49');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/activity-view.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs', '/weather.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -287,6 +287,7 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
     // `weather.data` answers for one saved revision of one trip. The last answer with a forecast is kept in this
     // browser per trip: it holds the room for the line while loading, and stands in (with its own update time)
     // when a weather service does not answer. It is cleared on sign-out with everything else.
+    const weatherMemo = new Map();
     let weather = { key: null, at: 0, data: null, retry: false }, weatherLoading = false, weatherRetries = 0, weatherTimer = 0;
     const weatherKey = () => state.snapshot ? `${state.snapshot.trip.id}:${state.snapshot.revision}` : null;
     const keptWeather = () => { try { const k = JSON.parse(localStorage.getItem(`waypoint-weather:${state.snapshot?.trip.id}`)); return k?.data ? k : null; } catch { return null; } };
@@ -303,8 +304,9 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
         let answer = null;
         try {
             const r = await fetch(`/api/weather?id=${encodeURIComponent(trip.id)}`, { cache: 'no-store', credentials: 'same-origin' });
+            // The server says where; this browser asks the forecast service, which refuses the server's shared address.
             if (r.ok && (r.headers.get('Content-Type') || '').includes('application/json'))
-                answer = await r.json();
+                answer = await fetchWeather(await r.json(), { memo: weatherMemo });
         }
         catch { /* no weather */ }
         const today = new Intl.DateTimeFormat('en-CA', { timeZone: trip.timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());

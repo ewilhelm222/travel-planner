@@ -3,9 +3,14 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { thanksgivingExample, applyTripChange, publicTrip } from '../lib/trips.mjs';
 import { board } from '../public/board.mjs';
-import { classify, weatherWords, weatherLine, weatherIcon, unitsFor, applyWeather, chooseWeather } from '../public/weather.mjs';
-import { tripWeather, stayLocation, stayLocations, parseForecast, localDate, memoryCache, retry, FORECAST_URL, GEOCODE_URL } from '../lib/weather.mjs';
+import { classify, weatherWords, weatherLine, weatherIcon, unitsFor, applyWeather, chooseWeather, fetchWeather, parseForecast, localDate, forecastUrl, FORECAST_URL } from '../public/weather.mjs';
+import { weatherPlan, stayLocation, stayLocations, memoryCache, retry, GEOCODE_URL } from '../lib/weather.mjs';
 retry.delayMs = 0;
+// The two halves together, as a visit runs them: the server works out where (`cache` is its lookup cache),
+// then the browser asks the forecast service (`memo` is the page's one-hour memory).
+async function tripWeather(trip, { fetch, cache = memoryCache(), now, names = false, memo = new Map() }) {
+    return fetchWeather(await weatherPlan(trip, { fetch, cache, names }), { fetch, now, memo });
+}
 
 const source = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 // Synthetic trip: Nov 25–29, one stay at "home" from Nov 25 to Nov 30. The place gets an invented location.
@@ -135,6 +140,10 @@ test('a stay with coordinates gets its forecast; only rounded coordinates are se
     assert.equal(w.days['2026-11-25'].where, trip.places[0].name);
     assert.equal('why' in w, false);
     assert.equal(w.updatedAt, '2026-11-20T18:00:00.000Z', 'when the forecast was fetched');
+    assert.deepEqual(await weatherPlan(trip, { fetch: s.fetch, names: true }), { points: [{ lat: 38.25, lng: -120.35, where: trip.places[0].name }], dates: { '2026-11-25': 0, '2026-11-26': 0, '2026-11-27': 0, '2026-11-28': 0, '2026-11-29': 0 } }, 'the server answers with rounded points only, and asks no forecast itself');
+    assert.deepEqual((await weatherPlan(trip, { fetch: s.fetch })).points, [{ lat: 38.25, lng: -120.35 }], 'guests get the rounded point and no place name');
+    assert.deepEqual({ referrerPolicy: s.calls[0].init.referrerPolicy, credentials: s.calls[0].init.credentials }, { referrerPolicy: 'no-referrer', credentials: 'omit' }, 'the browser sends no referrer and no cookies');
+    assert.equal(s.calls[0].url, forecastUrl({ lat: 38.25, lng: -120.35 }));
     assert.equal(s.calls.length, 1, 'one request for the one location');
     const url = new URL(s.calls[0].url);
     assert.equal(url.origin + url.pathname, FORECAST_URL);
@@ -146,16 +155,16 @@ test('a stay with coordinates gets its forecast; only rounded coordinates are se
     assert.deepEqual({ ...w.days['2026-11-26'], where: undefined }, { ...guest.days['2026-11-26'], where: undefined }, 'guests see the same forecast');
 });
 
-test('forecasts are cached per location, and a different location is fetched separately', async () => {
+test('a page asks once an hour per location, and a different location is asked separately', async () => {
     let clock = NOW().getTime();
-    const now = () => new Date(clock), trip = withCoordinates(), s = service({ forecast: forecastBody('2026-11-20', {}) }), cache = memoryCache(() => clock);
-    await tripWeather(trip, { fetch: s.fetch, cache, now });
-    await tripWeather(trip, { fetch: s.fetch, cache, now });
-    assert.equal(s.calls.length, 1, 'the second request is answered from the cache');
+    const now = () => new Date(clock), trip = withCoordinates(), s = service({ forecast: forecastBody('2026-11-20', {}) }), memo = new Map();
+    await tripWeather(trip, { fetch: s.fetch, now, memo });
+    await tripWeather(trip, { fetch: s.fetch, now, memo });
+    assert.equal(s.calls.length, 1, 'the second request is answered from the page’s memory');
     clock += 61 * 60 * 1000;
-    await tripWeather(trip, { fetch: s.fetch, cache, now });
+    await tripWeather(trip, { fetch: s.fetch, now, memo });
     assert.equal(s.calls.length, 2, 'after an hour the forecast is fetched again');
-    await tripWeather(located({ locationText: '39.5, -120.2', coordSystem: 'WGS84' }), { fetch: s.fetch, cache, now });
+    await tripWeather(located({ locationText: '39.5, -120.2', coordSystem: 'WGS84' }), { fetch: s.fetch, now, memo });
     assert.equal(s.calls.length, 3);
 });
 
@@ -169,7 +178,7 @@ test('a stay with only an address is looked up for the weather, and the result i
     assert.deepEqual(s.calls.map(c => new URL(c.url).searchParams.get('q') || new URL(c.url).searchParams.get('latitude')), ['12 Lantern Row, Pine Flat, CA', 'Pine Flat, CA', '38.25'], 'the full address first, then the part after the first comma, then the forecast');
     assert.ok(s.calls.slice(0, 2).every(c => c.url.startsWith(GEOCODE_URL) && !/api_?key|token/i.test(c.url) && !c.url.includes(encodeURIComponent(trip.title))), 'the lookup carries the address and no key or trip detail');
     assert.equal(JSON.stringify(trip), before, 'the trip is untouched: no coordinates are written to the place');
-    await tripWeather(trip, { fetch: s.fetch, cache, now: NOW });
+    await weatherPlan(trip, { fetch: s.fetch, cache });
     assert.equal(s.calls.length, 3, 'the looked-up point is cached');
     // An older place with only its address field, and coordinates in another system, are used as they are.
     assert.deepEqual(stayLocation(located({ address: '5 Mill Lane, Pine Flat' }), trip.stays[0]), { kind: 'address', text: '5 Mill Lane, Pine Flat' });
@@ -242,24 +251,30 @@ test('dates outside the forecast range have no weather, never an invented one', 
     assert.equal(parseForecast({ error: true, reason: 'bad' }, 'x'), null);
 });
 
-test('a failed lookup shows nothing, raises nothing, and is not retried at once', async () => {
-    const down = service({ fail: true }), cache = memoryCache(() => clock);
+test('a failed lookup shows nothing, raises nothing, and says it is worth asking again', async () => {
+    const down = service({ fail: true });
+    assert.deepEqual(await tripWeather(withCoordinates(), { fetch: down.fetch, now: NOW }), { days: {}, updatedAt: null, failed: true, why: { reason: 'forecast-failed', detail: 'Error' } });
+    assert.equal(down.calls.length, 1);
+    assert.deepEqual(await tripWeather(withCoordinates(), { fetch: async () => new Response('busy', { status: 429 }), now: NOW }), { days: {}, updatedAt: null, failed: true, why: { reason: 'forecast-failed', detail: 'HTTP 429' } }, 'what the service answered is kept');
+    assert.deepEqual((await tripWeather(withCoordinates(), { fetch: async () => new Response('<html>', { headers: { 'Content-Type': 'text/html' } }), now: NOW })).days, {});
+    assert.equal((await tripWeather(withCoordinates(), { fetch: async () => Response.json({ error: true }), now: NOW })).why.detail, 'unreadable answer');
+    // The address lookup, on the server: tried three times, then left alone for a couple of minutes.
     let clock = 0;
-    assert.deepEqual(await tripWeather(withCoordinates(), { fetch: down.fetch, cache, now: NOW }), { days: {}, updatedAt: null, failed: true });
-    assert.deepEqual((await tripWeather(withCoordinates(), { fetch: down.fetch, cache: memoryCache(), now: NOW, names: true })).why, { reason: 'forecast-failed', detail: 'Error' });
-    assert.deepEqual((await tripWeather(located({ locationText: '1 Mill Lane, Pine Flat' }), { fetch: down.fetch, cache: memoryCache(), now: NOW, names: true })).why, { reason: 'lookup-failed', detail: 'Error' });
+    const cache = memoryCache(() => clock), addressed = located({ locationText: '1 Mill Lane, Pine Flat' });
+    const plan = await weatherPlan(addressed, { fetch: down.fetch, cache, names: true });
+    assert.deepEqual(plan, { points: [], dates: {}, failed: true, why: { reason: 'lookup-failed', detail: 'Error' } });
+    assert.deepEqual(await fetchWeather(plan, { fetch: down.fetch, now: NOW }), { days: {}, updatedAt: null, failed: true, why: { reason: 'lookup-failed', detail: 'Error' } });
     const asked = down.calls.length;
-    await tripWeather(withCoordinates(), { fetch: down.fetch, cache, now: NOW });
-    assert.equal(down.calls.length, asked, 'the failure is remembered for a few minutes');
+    await weatherPlan(addressed, { fetch: down.fetch, cache });
+    assert.equal(down.calls.length, asked, 'the failure is remembered for a couple of minutes');
     clock = 3 * 60 * 1000;
-    const up = service({ forecast: forecastBody('2026-11-20', {}) });
-    assert.equal(Object.keys((await tripWeather(withCoordinates(), { fetch: up.fetch, cache, now: NOW })).days).length, 5, 'then it is tried again');
-    assert.deepEqual((await tripWeather(withCoordinates(), { fetch: async () => new Response('busy', { status: 429 }), cache: memoryCache(), now: NOW, names: true })).why, { reason: 'forecast-failed', detail: 'HTTP 429' }, 'the organizer is told what the service answered');
-    const refused = { fetch: async () => new Response('busy', { status: 429 }) }, garbled = { fetch: async () => new Response('<html>', { headers: { 'Content-Type': 'text/html' } }) };
-    for (const s of [refused, garbled])
-        assert.deepEqual((await tripWeather(withCoordinates(), { fetch: s.fetch, cache: memoryCache(), now: NOW })).days, {});
+    const up = service({ forecast: forecastBody('2026-11-20', {}), places: { '1 Mill Lane, Pine Flat': [38.25, -120.35] } });
+    assert.equal((await weatherPlan(addressed, { fetch: up.fetch, cache })).points.length, 1, 'then it is tried again');
     const broken = { get: async () => { throw new Error('cache down'); }, put: async () => { throw new Error('cache down'); } };
-    assert.equal(Object.keys((await tripWeather(withCoordinates(), { fetch: up.fetch, cache: broken, now: NOW })).days).length, 5, 'a broken cache does not stop the forecast');
+    assert.equal(Object.keys((await tripWeather(addressed, { fetch: up.fetch, cache: broken, now: NOW })).days).length, 5, 'a broken cache does not stop the forecast');
+    let n = 0;
+    await weatherPlan(addressed, { fetch: async () => { n++; return new Response('busy', { status: 429 }); }, cache: memoryCache() });
+    assert.ok(n >= 3, 'a refused lookup is tried again before giving up');
 });
 
 test('day boundaries are the stay’s local days, not the server’s', async () => {
@@ -289,40 +304,9 @@ test('a check-out morning uses the stay being left; the weather routes change no
     assert.match(guest, /share_token_hash = \? AND archived_at IS NULL/, 'guests: the same token check as the guest schedule');
     assert.ok(!/names: true/.test(guest), 'guests get no place name');
     for (const code of [member, guest, await source('lib/weather.mjs'), await source('lib/weather-cache.ts')])
-        assert.ok(!/commit\(|transact\(|api_?key|apikey|wgs2gcj|gcj2wgs/i.test(code), 'nothing is saved, no key is used and nothing is converted');
+        assert.ok(!/commit\(|transact\(|api_?key|apikey|wgs2gcj|gcj2wgs|open-meteo\.com\/v1/i.test(code), 'nothing is saved, no key is used, nothing is converted, and the server asks for no forecast');
     const sw = await source('public/sw.js');
     assert.match(sw, /"\/weather\.mjs"/, 'the offline shell carries the module');
-});
-
-test('a refused request is tried again, and the last good forecast stands in when the service stays down', async () => {
-    // Refused twice, then answered: one visit still gets its forecast.
-    let n = 0;
-    const flaky = async () => ++n < 3 ? new Response('busy', { status: 429 }) : Response.json(forecastBody('2026-11-20', { 5: 'snow' }));
-    const got = await tripWeather(withCoordinates(), { fetch: flaky, cache: memoryCache(), now: NOW });
-    assert.equal(classify(got.days['2026-11-25']).kind, 'snow');
-    assert.equal(n, 3);
-    n = 0;
-    await tripWeather(withCoordinates(), { fetch: async () => { n++; return new Response('no', { status: 400 }); }, cache: memoryCache(), now: NOW });
-    assert.equal(n, 1, 'a refusal that will not change is not asked again');
-    // A good forecast, then the service goes down for hours: the forecast is kept, with its real update time.
-    let clock = Date.parse('2026-11-20T18:00:00Z');
-    const now = () => new Date(clock), cache = memoryCache(() => clock);
-    const up = service({ forecast: forecastBody('2026-11-20', { 5: 'rain' }) }), down = service({ fail: true });
-    await tripWeather(withCoordinates(), { fetch: up.fetch, cache, now });
-    clock += 3 * 60 * 60 * 1000;
-    const stale = await tripWeather(withCoordinates(), { fetch: down.fetch, cache, now, names: true });
-    assert.equal(classify(stale.days['2026-11-25']).kind, 'rain', 'the last good forecast is shown');
-    assert.equal(stale.updatedAt, '2026-11-20T18:00:00.000Z', 'with the time it was really fetched');
-    assert.equal('failed' in stale, false);
-    const asked = down.calls.length;
-    await tripWeather(withCoordinates(), { fetch: down.fetch, cache, now });
-    assert.equal(down.calls.length, asked, 'and the service is left alone for a couple of minutes');
-    clock += 22 * 60 * 60 * 1000;
-    const gone = await tripWeather(withCoordinates(), { fetch: down.fetch, cache, now, names: true });
-    assert.deepEqual(gone.days, {}, 'after a day it is no longer shown');
-    assert.equal(gone.failed, true);
-    assert.equal((await tripWeather(withCoordinates(), { fetch: down.fetch, cache: memoryCache(), now })).failed, true, 'guests are told to ask again, but not why');
-    assert.equal('failed' in await tripWeather({ ...thanksgivingExample(), stays: [] }, { fetch: down.fetch, cache: memoryCache(), now }), false);
 });
 
 test('the browser keeps the last forecast it saw and shows it when the service does not answer', () => {
@@ -338,4 +322,17 @@ test('the browser keeps the last forecast it saw and shows it when the service d
     assert.deepEqual(chooseWeather(failed, null, { now }), { data: failed, keep: null, retry: true });
     const none = { days: {}, updatedAt: null, why: { reason: 'out-of-range' } };
     assert.deepEqual(chooseWeather(none, { data: good }, { now, today: '2026-11-20' }), { data: none, keep: null, retry: false }, 'a real “no forecast” replaces the kept one');
+});
+
+test('the forecast is asked for by the reader’s browser, and the guest page is allowed to', async () => {
+    const view = await source('public/view.html'), guest = await source('public/guest.mjs'), planner = await source('public/planner.js');
+    assert.match(view, /connect-src 'self' https:\/\/www\.google\.com https:\/\/api\.open-meteo\.com;/, 'the guest page may connect to the forecast service and nothing else new');
+    assert.match(view, /<meta name="referrer" content="no-referrer">/);
+    assert.match(guest, /answer = await fetchWeather\(await r\.json\(\), \{ memo: weatherMemo \}\);\s+delete answer\.why;/, 'guests are never told why there is no forecast');
+    assert.match(planner, /answer = await fetchWeather\(await r\.json\(\), \{ memo: weatherMemo \}\);/);
+    assert.ok(FORECAST_URL.startsWith('https://api.open-meteo.com/'));
+    // Nothing but the rounded point and the fixed list of values is in the request.
+    assert.equal(forecastUrl({ lat: 38.012595, lng: -120.227007 }), 'https://api.open-meteo.com/v1/forecast?latitude=38.01&longitude=-120.23&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,rain_sum,showers_sum,snowfall_sum&timezone=auto&forecast_days=16');
+    assert.deepEqual(await fetchWeather({ points: [], dates: {}, why: { reason: 'no-location' } }, { fetch: async () => { throw new Error('not asked'); } }), { days: {}, updatedAt: null, why: { reason: 'no-location' } });
+    assert.deepEqual(await fetchWeather(null, {}), { days: {}, updatedAt: null });
 });

@@ -9,9 +9,13 @@ const O = process.argv[3] || 'http://127.0.0.1:5173', SHOTS = process.argv[2] ||
 if (!['127.0.0.1', 'localhost'].includes(new URL(O).hostname)) throw new Error('Only run against disposable loopback data.');
 let failed = 0;
 const check = (name, ok, extra = '') => { if (!ok) failed++; console.log(ok ? 'ok   ' : 'FAIL ', name, extra); };
-// Nov 25 rain, Nov 26 snow, Nov 27 rain and snow, Nov 28 dry, Nov 29 no forecast. Metric, as the server sends it.
-const d = (chance, rainMm, snowCm, high, low) => ({ chance, rainMm, snowCm, precipMm: rainMm + snowCm, high, low, code: 3, where: 'Pine Flat cabin (made up)' });
-const WEATHER = { days: { '2026-11-25': d(80, 31, 0, 9, 3), '2026-11-26': d(90, 0, 11, 0, -6), '2026-11-27': d(70, 6, 3, 3, -1), '2026-11-28': d(5, 0, 0, 12, 1) }, updatedAt: '2026-11-17T20:10:00Z' };
+// Nov 25 rain, Nov 26 snow, Nov 27 rain and snow, Nov 28 dry, Nov 29 no forecast. The server's answer (where
+// to ask) and the forecast service's answer are both made up here; the browser does the rest.
+const DATES = ['2026-11-25', '2026-11-26', '2026-11-27', '2026-11-28'];
+const ROWS = [[80, 31, 0, 9, 3], [90, 0, 11, 0, -6], [70, 6, 3, 3, -1], [5, 0, 0, 12, 1]];
+const FORECAST = { timezone: 'America/Los_Angeles', daily: { time: DATES, weather_code: ROWS.map(() => 3), precipitation_probability_max: ROWS.map(r => r[0]), precipitation_sum: ROWS.map(r => r[1] + r[2]), rain_sum: ROWS.map(r => r[1]), showers_sum: ROWS.map(() => 0), snowfall_sum: ROWS.map(r => r[2]), temperature_2m_max: ROWS.map(r => r[3]), temperature_2m_min: ROWS.map(r => r[4]) } };
+const PLAN = { points: [{ lat: 38.25, lng: -120.35, where: 'Pine Flat cabin (made up)' }], dates: Object.fromEntries([...DATES, '2026-11-29'].map(d => [d, 0])) };
+const METEO = 'https://api.open-meteo.com/**';
 (async () => {
   const browser = await chromium.launch();
   async function run(label, viewport, { dense } = {}) {
@@ -27,13 +31,13 @@ const WEATHER = { days: { '2026-11-25': d(80, 31, 0, 9, 3), '2026-11-26': d(90, 
 
     // The real route: reachable or not, the weather service never produces an error for the page.
     const real = await api('/api/weather?id=' + id);
-    check(`${label}: the weather route answers 200 with a days object`, real.status === 200 && real.json && typeof real.json.days === 'object', JSON.stringify(real.json).slice(0, 120));
-    console.log(`     (${Object.keys(real.json.days || {}).length} days came back from the real service in this run)`);
+    check(`${label}: the weather route answers with one rounded point for the five days, and asks no forecast itself`, real.status === 200 && JSON.stringify(real.json) === JSON.stringify(PLAN), JSON.stringify(real.json).slice(0, 200));
 
     // Before any answer: measure the header while the forecast is still on its way.
     let release;
     const held = new Promise(r => { release = r; });
-    await page.route('**/api/weather?*', async route => { await held; await route.fulfill({ json: WEATHER }); });
+    const asked = [];
+    await page.route(METEO, async route => { asked.push(route.request()); await held; await route.fulfill({ json: FORECAST, headers: { 'Access-Control-Allow-Origin': '*' } }); });
     await page.goto(O + '/?trip=' + id);
     await page.waitForSelector('#itinerary .agenda-day');
     if (dense === false) await page.evaluate(() => document.querySelector('#density[aria-pressed=true]')?.click());
@@ -45,8 +49,9 @@ const WEATHER = { days: { '2026-11-25': d(80, 31, 0, 9, 3), '2026-11-26': d(90, 
     // The trip is now known to have a forecast: on the next visit the room is kept while it loads, so nothing jumps.
     let release2;
     const held2 = new Promise(r => { release2 = r; });
-    await page.unroute('**/api/weather?*');
-    await page.route('**/api/weather?*', async route => { await held2; await route.fulfill({ json: WEATHER }); });
+    check(`${label}: the browser asked the forecast service for the rounded point only, with no referrer or cookie`, asked.length === 1 && /latitude=38\.25&longitude=-120\.35&daily=/.test(asked[0].url()) && !asked[0].headers().referer && !asked[0].headers().cookie, asked.map(r => r.url()).join(' '));
+    await page.unroute(METEO);
+    await page.route(METEO, async route => { await held2; await route.fulfill({ json: FORECAST, headers: { 'Access-Control-Allow-Origin': '*' } }); });
     await page.reload();
     await page.waitForSelector('#itinerary .agenda-day');
     if (dense === false) await page.evaluate(() => document.querySelector('#density[aria-pressed=true]')?.click());
@@ -86,13 +91,13 @@ const WEATHER = { days: { '2026-11-25': d(80, 31, 0, 9, 3), '2026-11-26': d(90, 
     check(`${label}: wet and snowy days are marked on the day chips, dry and unknown days are not`, await page.$$eval('.medallion[data-day]', chips => chips.map(c => c.querySelector('.medallion-weather')?.className.split(' ')[1] || '').join(',')) === 'rain,snow,mixed,,');
     check(`${label}: the chip says it in words`, /Forecast: snow, 90 percent/.test(await page.getAttribute('.medallion[data-day="2026-11-26"]', 'aria-label')));
     check(`${label}: no sideways page scroll`, await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
-    check(`${label}: the line carries when the forecast was updated`, /Updated Nov 17/.test(await page.getAttribute('.day-weather[data-weather="2026-11-26"]', 'title')));
+    check(`${label}: the line carries when the forecast was updated`, /Forecast for Pine Flat cabin \(made up\)\. Updated /.test(await page.getAttribute('.day-weather[data-weather="2026-11-26"]', 'title')));
     const note = await page.$eval('#weather-note', e => ({ text: e.textContent, shown: !!e.offsetParent }));
-    check(`${label}: the note under the schedule says when and from where`, /updated Nov 17.*Open-Meteo\.com/.test(note.text) && (note.shown || viewport.height <= 520), note.text);
+    check(`${label}: the note under the schedule says when and from where`, /updated .*Open-Meteo\.com/.test(note.text) && (note.shown || viewport.height <= 520), note.text);
 
     // No forecast for any day: the line is given back in every column, and the organizer is told why.
-    await page.unroute('**/api/weather?*');
-    await page.route('**/api/weather?*', route => route.fulfill({ json: { days: {}, updatedAt: null, failed: true, why: { reason: 'forecast-failed', detail: 'HTTP 429' } } }));
+    await page.unroute(METEO);
+    await page.route(METEO, route => route.fulfill({ status: 429, body: 'busy', headers: { 'Access-Control-Allow-Origin': '*' } }));
     // The service stops answering: the forecast this browser saw last stands in, with its own update time.
     await page.evaluate(id => { const k = 'waypoint-weather:' + id, v = JSON.parse(localStorage.getItem(k)); v.data.updatedAt = new Date(Date.now() - 3600e3).toISOString(); localStorage.setItem(k, JSON.stringify(v)); }, id);
     await page.reload();
@@ -105,7 +110,7 @@ const WEATHER = { days: { '2026-11-25': d(80, 31, 0, 9, 3), '2026-11-26': d(90, 
     if (dense === false) await page.evaluate(() => document.querySelector('#density[aria-pressed=true]')?.click());
     const none = await measure();
     check(`${label}: with no forecast at all the line is reclaimed in every column`, none.every(x => x.line === 0) && none.every(x => x.header === first[0].header && x.city === first[0].city), JSON.stringify(none.map(x => [x.line, x.header])));
-    check(`${label}: the organizer is told why`, /did not answer \(HTTP 429\)/.test(await page.textContent('#weather-note')));
+    check(`${label}: the organizer is told why`, /did not answer this device \(HTTP 429\)/.test(await page.textContent('#weather-note')));
     if (viewport.width >= 600) {
       await page.$eval('#itinerary', e => e.scrollIntoView({ block: 'start' }));
       await page.evaluate(() => scrollBy(0, -150));
@@ -116,15 +121,24 @@ const WEATHER = { days: { '2026-11-25': d(80, 31, 0, 9, 3), '2026-11-26': d(90, 
     const share = await api('/api/share?id=' + id, { action: 'rotate', revision: await rev(), base: { share: 1 } });
     if (share.status === 200) {
       const guest = await ctx.newPage();
-      await guest.route('**/api/shared-weather', route => route.fulfill({ json: { ...WEATHER, days: Object.fromEntries(Object.entries(WEATHER.days).map(([k, v]) => [k, { ...v, where: undefined }])) } }));
+      await guest.route(METEO, route => route.fulfill({ json: FORECAST, headers: { 'Access-Control-Allow-Origin': '*' } }));
+      guest.on('console', m => { if (/Content Security Policy/i.test(m.text())) check(`${label}: guest page policy allows the forecast request: ${m.text()}`, false); });
       const realGuest = await page.evaluate(async url => { const r = await fetch('/api/shared-weather', { headers: { Authorization: 'Share ' + url.split('#')[1] } }); return { status: r.status, json: await r.json() }; }, share.json.url);
-      check(`${label}: guest weather route answers with days and no place name`, realGuest.status === 200 && typeof realGuest.json.days === 'object' && !JSON.stringify(realGuest.json).includes('Pine'));
+      check(`${label}: guest weather route answers with the rounded point and no place name`, realGuest.status === 200 && JSON.stringify(realGuest.json.points) === '[{"lat":38.25,"lng":-120.35}]' && !JSON.stringify(realGuest.json).includes('Pine'));
       check(`${label}: guest weather route refuses a wrong token`, (await page.evaluate(async () => (await fetch('/api/shared-weather', { headers: { Authorization: 'Share ' + 'A'.repeat(43) } })).status)) === 404);
       await guest.goto(share.json.url);
       await guest.waitForSelector('.day-weather .weather-precip');
       const day = viewport.width < 600 ? '2026-11-25' : '2026-11-26';
       check(`${label}: guests see the same weather line`, /Snow 90% · 4 in|Heavy rain 80%/.test(await guest.$eval(`.agenda-day[data-date="${day}"] .day-weather`, e => e.innerText)));
       check(`${label}: guests are not told the place`, !/Pine/.test(await guest.getAttribute(`.day-weather[data-weather="${day}"]`, 'title')));
+      // The forecast service refuses a guest: nothing is said about it.
+      await guest.unroute(METEO);
+      await guest.route(METEO, route => route.fulfill({ status: 429, body: 'busy', headers: { 'Access-Control-Allow-Origin': '*' } }));
+      await guest.evaluate(() => localStorage.removeItem('waypoint-guest-weather'));
+      await guest.reload();
+      await guest.waitForSelector('#itinerary .agenda-day');
+      await guest.waitForTimeout(600);
+      check(`${label}: a guest whose forecast is refused sees no line and no reason`, await guest.$eval('#weather-note', e => e.hidden) && await guest.$$eval('.day-weather', ls => ls.every(l => l.getBoundingClientRect().height === 0)));
       await guest.$eval('#itinerary', e => e.scrollIntoView({ block: 'start' }));
       await guest.evaluate(() => scrollBy(0, -150));
       await guest.screenshot({ path: `${SHOTS}/${label}-guest.jpg`, quality: 85 });

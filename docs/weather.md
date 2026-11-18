@@ -1,10 +1,11 @@
 # Weather under each date
 
-Status: November 17, 2026. Built and checked locally with a synthetic trip and a
-mocked weather service; not deployed. No database migration. **Neither outside
-service could be reached from the build environment**, so the live forecast and
-the address lookup are unverified (see "Not verified"). It makes no claim about
-working in China.
+Status: November 18, 2026. Version 22 (main `58c1709`) is live; on it the
+forecast never arrived, because the forecast service refuses the host (see
+"Why the browser asks"). This document describes the change that moves the
+forecast request to the reader's browser; it is checked locally with a
+synthetic trip and mocked services and is not deployed. No database migration.
+It makes no claim about working in China.
 
 ## For planners and guests
 
@@ -38,7 +39,8 @@ where that day's stay is.
   tooltip also names the place the forecast is for.
 - Units follow the reader's browser: °F and inches for a United States locale,
   otherwise °C, mm and cm.
-- Guests see the same line. They are not told the place, address or coordinates.
+- Guests see the same line. They are not shown the place, and their browser
+  receives only the stay's location rounded to about a kilometre.
 
 ## Where the location comes from
 
@@ -65,81 +67,97 @@ filter does not change it.
 
 ## Services and what is sent
 
-| | Service | Key | Sent | Limits |
-| --- | --- | --- | --- | --- |
-| Forecast | [Open-Meteo](https://open-meteo.com/) | none | latitude and longitude rounded to two decimals (about 1 km) | 16 days; free tier is for non-commercial use with a daily request allowance and asks for attribution, which the note gives |
-| Address lookup | OpenStreetMap Nominatim public server | none | the typed address text, or the place name when there is no address or coordinates | at most one request a second, no uptime promise, weaker on some addresses; an identifying User-Agent is asked for |
+| | Service | Asked by | Key | Sent | Limits |
+| --- | --- | --- | --- | --- | --- |
+| Forecast | [Open-Meteo](https://open-meteo.com/) | the reader's browser | none | latitude and longitude rounded to two decimals (about 1 km) | 16 days; free tier is for non-commercial use with a request allowance per address and asks for attribution, which the note gives |
+| Address lookup | OpenStreetMap Nominatim public server | the server | none | the typed address text, or the place name when there is no address or coordinates | at most one request a second, no uptime promise, weaker on some addresses |
 
-Nothing else leaves the planner: no trip name, people, notes or identifiers.
-Requests are made by the server (`lib/weather.mjs`), never by the browser.
-A forecast is reused for an hour per location, a looked-up address for 30 days,
-and a failure is not retried for two minutes.
+### Why the browser asks
 
-**When the forecast service does not answer.** On the live Site the forecast
-came and went: the service answers some requests from the host's shared
-addresses and not others (the exact refusal was not captured). So:
+On the live Site, five out of five forecast requests from the server were
+refused with `HTTP 429`, each after three tries. The Site runs on addresses
+shared with many other apps, and the forecast service's free allowance is
+counted per address. A request from a reader's own connection is not affected.
+The owner chose this on November 18, 2026, for signed-in people and guests.
 
-- The server tries a refused or failed request up to three times.
-- If a forecast has gone stale and cannot be refreshed, the server keeps using
-  the last good one for up to a day, with the time it was really fetched.
-- Each browser keeps the last forecast it saw for a trip and shows it, with its
-  own update time and without days that are over, when the server has none
-  because a service failed. It is dropped after a day, or as soon as the server
-  says there is truly no forecast. The page asks again every couple of minutes,
-  a few times. For signed-in people this copy is cleared on sign-out; for
-  guests it holds the forecast only, no place.
-- A browser that has never received a forecast still shows nothing until one
-  request succeeds. A store shared by all server instances (a database table)
-  would close that gap; it needs a migration and has not been added.
- The cache is the worker's memory
-plus the platform's edge cache where available; nothing is stored in the trip
-or the database, and nothing goes through `commit()`/`transact()`.
+So the work is split:
+
+1. The server (`/api/weather`, `/api/shared-weather`) answers **where**: one
+   point per stay location, rounded to two decimals, and which day uses which
+   point. It asks no forecast.
+2. The browser asks Open-Meteo for each point and draws the lines.
+
+What this means for privacy:
+
+- **Guests now receive each stay's location rounded to about a kilometre**,
+  including stays not ticked for the guest link, because their browser needs
+  it to ask. They still get no place name, address or exact coordinates.
+- Open-Meteo sees the reader's network address, the rounded point and the
+  Site's web address (browsers send it as the request's origin). No referrer,
+  cookie, trip name, person, note or identifier is sent.
+- The guest page's Content-Security-Policy allows a connection to
+  `https://api.open-meteo.com` and nothing else new.
+- An address or place name is still looked up by the server only, cached there
+  for 30 days and never stored on the place. Whether that lookup answers from
+  the host has not been seen: the real trip has coordinates and needs none.
 
 Day boundaries are the stay's own: the forecast service is asked to work out the
 time zone from the location and answers in that place's local days, and a day
 that has already ended there is not shown.
 
+### When the forecast service does not answer a device
+
+- A page asks once an hour per point.
+- Each browser keeps the last forecast it saw for a trip and shows it, with its
+  own update time and without days that are over, when a request fails. It is
+  dropped after a day, or as soon as there is truly no forecast. The page asks
+  again every two and a half minutes, up to six times. For signed-in people
+  this copy is cleared on sign-out; for guests it holds the forecast only.
+- With no forecast at all the line takes no room. Signed-in people get the
+  reason under the schedule, including what the service answered; guests are
+  told nothing.
+
 ## Code
 
-- `lib/weather.mjs`: location of a stay, address lookup, forecast, caching,
-  `tripWeather()`. `lib/weather-cache.ts`: the cache used by the routes.
+- `lib/weather.mjs`: location of a stay, address lookup and its cache,
+  `weatherPlan()` (the points and their days). `lib/weather-cache.ts`: the
+  lookup cache used by the routes.
 - `app/api/weather/route.ts` (same access check as the trip) and
   `app/api/shared-weather/route.ts` (same token check as the guest schedule).
   Authorization is unchanged.
-- `public/weather.mjs`: classification, words, icons, and filling the lines.
-- `public/board.mjs` puts an empty fixed-height line in every day header;
-  `planner.js` and `guest.mjs` fill it in place when the answer arrives.
-- Offline shell cache is `waypoint-shell-v48` and includes the new module. The
-  reading copy does not keep weather: offline, the lines stay empty.
+- `public/weather.mjs`: `fetchWeather()` (the browser's forecast request),
+  parsing, classification, words, icons, the kept copy, and filling the lines.
+- `public/board.mjs` puts an empty line in every day header; `planner.js` and
+  `guest.mjs` fill it in place when the answer arrives.
+- Offline shell cache is `waypoint-shell-v49`. Offline, a forecast kept by the
+  browser is not shown; the lines stay empty.
 
 ## Checks
 
-- `npm test`: 224 pass, 17 in `tests/weather.test.mjs`, with the weather
-  service mocked: rain, snow, mixed and dry rendering with precipitation first;
-  no location; dates outside the range; a failed lookup; time-zone day
-  boundaries; address lookup; caching; what is sent; guests.
+- `npm test`: 226 pass, 17 in `tests/weather.test.mjs` with both services
+  mocked: rain, snow, mixed and dry rendering with precipitation first; no
+  location; dates outside the range; a failed or refused request; time-zone day
+  boundaries; address and name lookup; what is sent and by whom; the guest
+  page's policy; guests.
 - `scripts/check-weather-browser.cjs` (headless Chromium, local dev server,
-  synthetic trip, made-up forecast): desktop three-column and week views, phone
-  landscape and phone portrait. No room is taken before the first forecast or
-  when there is none; with one, header and first card are at the same height
-  in every column, also while loading on a later visit; no sideways scroll;
-  guest view.
+  synthetic trip, made-up forecast answered in place of the forecast service):
+  desktop three-column and week views, phone landscape and phone portrait. The
+  browser asks for the rounded point only, with no referrer or cookie; the
+  guest page is allowed to ask; a refused guest sees nothing; a refused
+  signed-in person keeps the last forecast or is told why.
 - Type check, lint (0 errors) and production build pass.
 
 ## Not verified
 
-- **Why the forecast comes and goes on the live Site.** It showed on desktop,
-  not on a phone, then not on desktop. The sentence under the schedule reports
-  what the service answered; that text has not been collected yet.
-- **A live forecast.** Open-Meteo's response was not seen; the parser follows
-  its published format. Its terms page could not be opened either, so confirm
-  that a private family planner counts as non-commercial use.
-- **A live address lookup**, including how well Nominatim finds rural
-  addresses, and whether its usage policy is satisfied by a generic User-Agent.
-- Whether the Sites host allows outbound requests to either service and offers
-  the edge cache; without the cache, each worker instance keeps its own.
-- A physical phone, a screen reader, the hosted Site, real trip data, and
-  anything from mainland China.
+- **A live forecast in a browser.** The build environment cannot reach
+  Open-Meteo, so its real answer and its cross-origin headers were not seen.
+  If a browser is refused, the sentence under the schedule says what it got.
+- **Open-Meteo's terms**: the terms page could not be opened. Confirm that a
+  private family planner counts as non-commercial use.
+- **The address lookup from the host**, including how well it finds rural
+  addresses.
+- A physical phone, a screen reader, real trip data, and anything from
+  mainland China, where the forecast service may not be reachable.
 
 ## Screenshots (synthetic trip; the forecast is made up)
 
