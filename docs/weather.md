@@ -109,7 +109,7 @@ that has already ended there is not shown.
 - `public/weather.mjs`: classification, words, icons, and filling the lines.
 - `public/board.mjs` puts an empty fixed-height line in every day header;
   `planner.js` and `guest.mjs` fill it in place when the answer arrives.
-- Offline shell cache is `waypoint-shell-v47` and includes the new module. The
+- Offline shell cache is `waypoint-shell-v48` and includes the new module. The
   reading copy does not keep weather: offline, the lines stay empty.
 
 ## Checks

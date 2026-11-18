@@ -3,7 +3,7 @@
 
 /** Record collections kept in a trip document, with the singular kind used in the log. */
 export const COLLECTIONS = [["activities", "activity"], ["stays", "stay"], ["legs", "journey"], ["places", "place"], ["people", "traveler"], ["families", "group"]];
-const TRIP_FIELDS = ["title", "subtitle", "kind", "start", "end", "timezone"];
+const TRIP_FIELDS = ["title", "subtitle", "kind", "start", "end", "timezone", "guestMap"];
 // Empty values and absent fields compare equal, so adding an optional field to the
 // trip format never makes old records look edited (in the log or to undo).
 const blank = v => v === null || v === undefined || v === "" || v === false || (Array.isArray(v) && !v.length);

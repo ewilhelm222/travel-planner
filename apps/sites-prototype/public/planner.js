@@ -6,7 +6,7 @@
     const { baseFor, recordKey } = await import('/revisions.mjs');
     const { previewStayMove, daysBetween } = await import('/stay-move.mjs');
     const { appleSearchUrl, COORD_SYSTEMS, COORD_LABELS, parseLocation, locationInput, describeLocation } = await import('/maps.mjs');
-    const { mapBodyHtml, mapSectionHtml, followPin } = await import('/map-panel.mjs');
+    const { mapBodyHtml, mapSectionHtml, followPin, watchEmbed } = await import('/map-panel.mjs');
     const { isSnapshot, restoreFromSnapshot } = await import('/backup.mjs');
     const { placeReferences, placeReferenceSummary, parseLinks, formatLinks, LEG_MODES, parseImageDataUrl, imageUrl } = await import('/structure.mjs');
     const { responsePolicy } = await import('/reading-copy.mjs');
@@ -112,7 +112,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v47');
+            const cache = await caches.open('waypoint-shell-v48');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/activity-view.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs', '/weather.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -409,46 +409,10 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
     // ---- Maps: tile-free schematics drawn from the same filtered records as the board ----
     // The panel itself is drawn by map-panel.mjs, which the guest page shares.
     // Google Maps for the day needs a configured key and a live connection; otherwise the schematic is drawn.
-    let mapsKey = '', embedFailed = false, embedTimer = 0, embedWatch = null;
+    let mapsKey = '', embedFailed = false;
     const mapOptions = () => ({ view: state.mapView === 'trip' ? 'trip' : 'day', filter: state.filter, day: state.day, compact: phone(), canEdit: true, dayName, embedKey: state.online && !state.needsSignIn ? mapsKey : '', mapStyle: state.mapStyle === 'schematic' ? 'schematic' : 'google', embedFailed });
-    const EMBED_WAIT_MS = 12000, GOOGLE_PROBE = 'https://www.google.com/maps/embed/v1/place', GOOGLE_PROBE_MS = 6000;
-    // Give the Google frame its address only when it scrolls into view, and fall back to the schematic when
-    // Google cannot be reached (offline, blocked, or unreachable as in mainland China). A frame reports
-    // "loaded" even when it only shows a network error, so reachability is asked first with a request that
-    // carries no key, no location, no cookie and no referrer. An error that Google draws inside its own
-    // frame (a wrong or restricted key) cannot be seen from here; "Show the schematic instead" covers that.
-    function armEmbed() {
-        clearTimeout(embedTimer);
-        embedWatch?.disconnect();
-        embedWatch = null;
-        const frame = $('#map-frame');
-        if (!frame?.dataset?.src || frame.src)
-            return;
-        const fail = () => { clearTimeout(embedTimer); if (frame.isConnected) { embedFailed = true; refreshMaps(); } };
-        const start = async () => {
-            embedWatch?.disconnect();
-            embedWatch = null;
-            const control = new AbortController(), probe = setTimeout(() => control.abort(), GOOGLE_PROBE_MS);
-            try {
-                await fetch(GOOGLE_PROBE, { mode: 'no-cors', cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer', signal: control.signal });
-            }
-            catch {
-                return fail();
-            }
-            finally {
-                clearTimeout(probe);
-            }
-            if (!frame.isConnected)
-                return;
-            embedTimer = setTimeout(fail, EMBED_WAIT_MS);
-            frame.addEventListener('load', () => clearTimeout(embedTimer), { once: true });
-            frame.src = frame.dataset.src;
-        };
-        if (!('IntersectionObserver' in window))
-            return start();
-        embedWatch = new IntersectionObserver(entries => { if (entries.some(e => e.isIntersecting)) start(); }, { rootMargin: '50px' });
-        embedWatch.observe(frame);
-    }
+    // Shared with the guest page: load the Google frame when it comes into view, fall back if Google is unreachable.
+    const armEmbed = () => watchEmbed(document, () => { embedFailed = true; refreshMaps(); });
     const mapsBody = t => mapBodyHtml(t, mapOptions());
     const mapsSection = t => mapSectionHtml(t, mapOptions());
     function refreshMaps() {
@@ -691,7 +655,7 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
     }
     // ---- Safety net: history with conditional undo, removing travelers/groups, deleting (archiving) a trip ----
     const archivedButton = (off, phoneLayout) => !state.archived.length ? '' : phoneLayout ? `<div class="manage-group"><h3>Deleted trips</h3><div class="tools"><button class="secondary wide" id="archived-open" ${off}>Archived trips (${state.archived.length})</button></div></div>` : `<button class="secondary" id="archived-open" ${off}>Archived trips (${state.archived.length})</button>`;
-    const FIELD_LABELS = { title: 'Title', name: 'Name', subtitle: 'Subtitle', date: 'Day', time: 'Time', placeId: 'Place', order: 'Position in the day', fixed: 'Set time (protected)', timing: 'Timing', optional: 'Optional', highlight: 'Whole-group activity', participants: 'Participants', notes: 'Private notes', guestNotes: 'Guest description', guestLocation: 'Guest meeting point', address: 'Address', start: 'Start', end: 'End', timezone: 'Time zone', kind: 'Kind', familyId: 'Family / group', showOnGuest: 'Shown to guests', groupInfo: 'For the group', checkOutTime: 'Check-out time', color: 'Accent', lodging: 'Lodging', note: 'Note', mode: 'Mode', from: 'From', to: 'To', arrivalDate: 'Arrival day', arrivalTime: 'Arrival time', localName: 'Local name', localAddress: 'Local address', locationText: 'Location for the map', parentId: 'Inside', sourceKind: 'Source', allTravelers: 'Whole-trip group', links: 'Links', imageId: 'Picture', lat: 'Latitude', lng: 'Longitude', coordSystem: 'Coordinate system', coordSource: 'Coordinate source', amapUrl: 'Amap link', appleMapsUrl: 'Apple Maps link', navReviewed: 'Map links reviewed' };
+    const FIELD_LABELS = { title: 'Title', name: 'Name', subtitle: 'Subtitle', date: 'Day', time: 'Time', placeId: 'Place', order: 'Position in the day', fixed: 'Set time (protected)', timing: 'Timing', optional: 'Optional', highlight: 'Whole-group activity', participants: 'Participants', notes: 'Private notes', guestNotes: 'Guest description', guestLocation: 'Guest meeting point', address: 'Address', start: 'Start', end: 'End', timezone: 'Time zone', kind: 'Kind', familyId: 'Family / group', showOnGuest: 'Shown to guests', groupInfo: 'For the group', checkOutTime: 'Check-out time', color: 'Accent', lodging: 'Lodging', note: 'Note', mode: 'Mode', from: 'From', to: 'To', arrivalDate: 'Arrival day', arrivalTime: 'Arrival time', localName: 'Local name', localAddress: 'Local address', guestMap: 'Google map on the guest link', locationText: 'Location for the map', parentId: 'Inside', sourceKind: 'Source', allTravelers: 'Whole-trip group', links: 'Links', imageId: 'Picture', lat: 'Latitude', lng: 'Longitude', coordSystem: 'Coordinate system', coordSource: 'Coordinate source', amapUrl: 'Amap link', appleMapsUrl: 'Apple Maps link', navReviewed: 'Map links reviewed' };
     function historyValue(field, value) {
         const t = state.snapshot.trip, name = id => participantRecord(t, id)?.name || 'someone since removed';
         if (value === null || value === undefined || value === '')
@@ -1200,7 +1164,7 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
     // A full backup is checked against its checksum first; then it restores as a separate new trip.
     async function importable(parsed) { return isSnapshot(parsed) ? restoreFromSnapshot(parsed) : parsed.trip || parsed; }
     function download(contents, mime, filename) { const url = URL.createObjectURL(new Blob([contents], { type: mime })); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
-    async function sharing() { const data = await request(endpoint('/api/share')); state.shareRevision = data.shareRevision; state.sharePreview = data.preview; $('#share-body').innerHTML = `<p>${data.enabled ? 'A guest link is enabled. Replacing it disables the previous link.' : 'No guest link is enabled.'}</p><button class="primary" id="share-rotate">${data.enabled ? 'Replace guest link' : 'Enable guest link'}</button>${data.enabled ? '<button class="secondary" id="share-revoke">Disable guest link</button>' : ''}<details><summary>Preview exactly what guests will see</summary><div class="guest-preview">${board(data.preview, { day: state.day, guest: true })}<h3>Ideas · not scheduled yet</h3>${ideaCards(data.preview.activities.filter(a => !a.date), data.preview, true) || '<p>No ideas to show.</p>'}</div></details>`; for (const img of document.querySelectorAll('.guest-preview img.card-image[data-image]')) { img.src = imageUrl(state.selected, img.dataset.image); img.hidden = false; } $('#share-error').textContent = ''; $('#share-dialog').showModal(); }
+    async function sharing() { const data = await request(endpoint('/api/share')); state.shareRevision = data.shareRevision; state.sharePreview = data.preview; $('#share-body').innerHTML = `<p>${data.enabled ? 'A guest link is enabled. Replacing it disables the previous link.' : 'No guest link is enabled.'}</p><button class="primary" id="share-rotate">${data.enabled ? 'Replace guest link' : 'Enable guest link'}</button>${data.enabled ? '<button class="secondary" id="share-revoke">Disable guest link</button>' : ''}<fieldset class="inline-place guest-map-choice"><legend>Map on the guest link</legend><label class="check-label"><input type="checkbox" id="guest-map" ${state.snapshot.trip.guestMap ? 'checked' : ''} ${writable() ? '' : 'disabled'}> Show the Google day map to guests</label><p class="form-hint">Off: guests see the schematic, drawn from place names only. On: for each stop on a shared day, guests’ browsers are given the one line the map needs (the map address you typed, or WGS-84 coordinates, or the place’s address) and send it to Google. Anyone holding the guest link can then read those locations. ${mapsKey ? '' : '<strong>No Google Maps key is configured for this Site yet, so guests will keep the schematic until one is.</strong> '}It does not load in mainland China.</p><p id="guest-map-message" role="status"></p></fieldset><details><summary>Preview exactly what guests will see</summary><div class="guest-preview">${board(data.preview, { day: state.day, guest: true })}<h3>Ideas · not scheduled yet</h3>${ideaCards(data.preview.activities.filter(a => !a.date), data.preview, true) || '<p>No ideas to show.</p>'}</div></details>`; for (const img of document.querySelectorAll('.guest-preview img.card-image[data-image]')) { img.src = imageUrl(state.selected, img.dataset.image); img.hidden = false; } $('#share-error').textContent = ''; $('#share-dialog').showModal(); }
     // The Manage menu closes after a choice, on a click elsewhere, and on Escape.
     document.addEventListener('click', event => {
         // A marker on the map drawing goes to its entry in the list below.
@@ -1593,6 +1557,24 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
         }
     });
     document.addEventListener('change', async (event) => {
+        // Organizer only (the server refuses it from an editor): whether guests get the Google day map.
+        if (event.target.id === 'guest-map') {
+            const box = event.target, on = box.checked;
+            try {
+                const result = await request(endpoint('/api/trip'), 'PATCH', { action: 'metadata', base: base('trip'), patch: { guestMap: on } });
+                state.snapshot = result.snapshot;
+                remember();
+                render();
+                await sharing();
+                $('#guest-map-message').textContent = on ? 'Saved. Guests now get the Google day map, where a key is configured and every stop has a location.' : 'Saved. Guests see the schematic and are sent no locations.';
+                $('#guest-map')?.focus();
+            }
+            catch (e) {
+                box.checked = !on;
+                $('#guest-map-message').textContent = e.message;
+            }
+            return;
+        }
         const el = event.target;
         try {
             if (el.id === 'trip-select') {

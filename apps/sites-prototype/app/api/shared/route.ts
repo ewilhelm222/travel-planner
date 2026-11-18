@@ -1,4 +1,4 @@
-import { db, response, snapshot, failed, type Row } from "../../../lib/trip-store";
+import { db, response, snapshot, failed, mapsEmbedKey, type Row } from "../../../lib/trip-store";
 import { publicTrip, tokenHash } from "../../../lib/trips.mjs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) { try {
@@ -8,7 +8,9 @@ export async function GET(request: Request) { try {
     const r = await db().prepare("SELECT * FROM planner_trips WHERE share_token_hash = ? AND archived_at IS NULL").bind(await tokenHash(token)).first<Row>();
     if (!r)
         return response({ error: "This guest link is unavailable or has been disabled." }, 404);
-    return response({ trip: publicTrip(snapshot(r).trip), revision: r.revision, updatedAt: r.updated_at });
+    const trip = publicTrip(snapshot(r).trip);
+    // The Google key goes to a guest link only when the organizer switched the Google day map on for guests.
+    return response({ trip, revision: r.revision, updatedAt: r.updated_at, mapsEmbedKey: trip.guestMap ? mapsEmbedKey() : "" });
 }
 catch (e) {
     return failed(e);

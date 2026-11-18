@@ -3,10 +3,14 @@ import { escape, preferredDay, board, dayChooser, dateLabel, ideaCards, PHONE_QU
 import { VIEW_ID, viewDialog, showActivityView, focusCard, enableViewDismiss } from './activity-view.mjs';
 import { matchesSelection } from './participants.mjs';
 import { buildOfflineHtml } from './offline-export.mjs';
-import { mapSectionHtml, followPin } from './map-panel.mjs';
+import { mapSectionHtml, followPin, watchEmbed } from './map-panel.mjs';
 import { applyWeather, weatherNote, unitsFor, chooseWeather } from './weather.mjs';
 const app = document.querySelector('#guest-app'), token = location.hash.slice(1);
 let trip, revision, updatedAt, day, filter = 'all', mapView = 'day';
+// The Google day map, only when the organizer switched it on for this guest link: the server then sends a key
+// and, per stop, the one line of text Google needs. Otherwise there is no key here and the schematic is drawn.
+let mapsKey = '', embedFailed = false, mapStyle = 'google';
+try { mapStyle = localStorage.getItem('waypoint-guest-map-style') === 'schematic' ? 'schematic' : 'google'; } catch { }
 // A per-device reading preference; the guest page keeps nothing else.
 let allDays = false;
 try { allDays = localStorage.getItem('waypoint-guest-all-days') === '1'; } catch { }
@@ -73,7 +77,7 @@ function render() {
     // The same schematic map as the planner, drawn only from what the guest link already sends: place names in
     // plan order. No address, coordinates or map link reaches this page, so none can be shown.
     const dayName = date => date ? dateLabel(date, { weekday: 'short', month: 'short', day: 'numeric' }) : 'Unscheduled ideas';
-    const map = mapSectionHtml(trip, { view: mapView, filter, day, compact: layout, guest: true, dayName });
+    const map = mapSectionHtml(trip, { view: mapView, filter, day, compact: layout, guest: true, dayName, embedKey: navigator.onLine === false ? '' : mapsKey, mapStyle, embedFailed });
     const schedule = `${dayChooser(trip, day, { ...(ideaList.length ? { ideas: ideaList.length } : {}), allDays })}<div class="board-wrap">${ideas}<div class="date-board" id="itinerary" tabindex="-1">${board(trip, { filter, day, guest: true })}</div></div>${weatherNote()}`;
     // The same read-only activity view as the planner. Guests cannot edit, so it is drawn without an Edit button.
     // The activity view shared with the planner, and a small reading dialog for a stay the organizer chose to share.
@@ -84,6 +88,7 @@ function render() {
         : `<a class="skip-link" href="#itinerary">Skip to itinerary</a><header class="topbar"><span class="brand">Waypoint<span class="brand-dot">↗</span></span><span class="private-label">● Guest view · read only</span></header><main class="compact"><header class="trip-header"><div><span class="eyebrow">An invitation to explore</span><h1>${escape(trip.title)}<span class="title-dot">.</span></h1><p class="trip-subtitle">${escape(trip.subtitle)}</p><p class="trip-facts">${escape(trip.start)} – ${escape(trip.end)} · ${escape(trip.timezone)}</p></div></header><div class="toolbar">${filterLabel}<button class="secondary" id="refresh">Refresh</button><button class="secondary" id="download">Save a reading copy</button></div>${banner}<p role="status" id="guest-status">${guide}</p><p class="study-meta">${meta}</p>${schedule}${map}<footer>Read-only guest link · No account or RSVP required. Keep the link within your group.</footer></main>${dialog}`;
     fitColumns(document.querySelector('#itinerary'));
     showPictures();
+    watchEmbed(document, () => { embedFailed = true; render(); });
     showWeather();
     const selected = document.querySelector(`[data-date="${day}"]`);
     if (selected)
@@ -99,6 +104,7 @@ async function load() { try {
     if (!r.ok)
         throw new Error(data.error);
     ({ trip, revision, updatedAt } = data);
+    mapsKey = typeof data.mapsEmbedKey === 'string' ? data.mapsEmbedKey : '';
     day = preferredDay(trip, day);
     render();
     loadWeather();
@@ -139,6 +145,12 @@ document.addEventListener('click', async (e) => { if (followPin(document, e))
         return jumpToDay();
     render();
     document.querySelector(`.medallion[data-day="${day}"]`)?.focus();
+} if (b.dataset.mapStyle) {
+    mapStyle = b.dataset.mapStyle === 'schematic' ? 'schematic' : 'google';
+    embedFailed = false;
+    try { localStorage.setItem('waypoint-guest-map-style', mapStyle); } catch { }
+    render();
+    document.querySelector('#maps-body [data-map-style]')?.focus();
 } if (b.dataset.mapView) {
     mapView = b.dataset.mapView;
     render();

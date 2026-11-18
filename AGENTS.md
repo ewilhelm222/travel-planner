@@ -14,8 +14,9 @@ schema changes. Tapping an activity opens its read-only view; the editor opens
 only from that view's Edit button (`docs/activity-view.md`). A place's map location is an address or
 coordinates as typed; nothing is geocoded or converted (`docs/map-location.md`).
 The day map uses Google Maps Embed when `GOOGLE_MAPS_EMBED_KEY` is set in runtime
-configuration, and the schematic otherwise; the key is never committed
-(`docs/google-maps-embed.md`).
+configuration, and the schematic otherwise; the key is never committed. Guests
+get the Google map, and the stop locations it needs, only if the organizer ticks
+it on the guest link (`docs/google-maps-embed.md`).
 The weather line under each date is fetched by the server for the stay's location;
 an address is looked up for the weather only and never stored (`docs/weather.md`).
 "Last edited by" is read from the change log, never stored, and never shown to
