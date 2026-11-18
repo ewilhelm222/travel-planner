@@ -1,10 +1,12 @@
 # Weather under each date
 
-Status: November 17, 2026. Built and checked locally with a synthetic trip and a
-mocked weather service; not deployed. No database migration. **Neither outside
-service could be reached from the build environment**, so the live forecast and
-the address lookup are unverified (see "Not verified"). It makes no claim about
-working in China.
+Status: deployed November 17, 2026 (America/Los_Angeles), Sites version 21,
+from main `9de4d3f1ed1fd54f0b5079c8a9c2e141dfa4891f`. See
+[release provenance](multi-events.md#release-provenance). No database migration.
+Live forecast success and the cause of the earlier missing weather remain
+unverified: browser controls were unavailable for the owner-session check.
+Local weather tests use synthetic data and mocked responses. No claim is made
+about working in China.
 
 ## For planners and guests
 
@@ -110,18 +112,37 @@ that has already ended there is not shown.
 
 ## Not verified
 
-- **Why the first deployment showed no weather** for a stay whose area has
-  WGS-84 coordinates. The sentence under the schedule now reports the reason on
-  the live Site.
-- **A live forecast.** Open-Meteo's response was not seen; the parser follows
-  its published format. Its terms page could not be opened either, so confirm
-  that a private family planner counts as non-commercial use.
-- **A live address lookup**, including how well Nominatim finds rural
-  addresses, and whether its usage policy is satisfied by a generic User-Agent.
-- Whether the Sites host allows outbound requests to either service and offers
-  the edge cache; without the cache, each worker instance keeps its own.
-- A physical phone, a screen reader, the hosted Site, real trip data, and
-  anything from mainland China.
+Deployment observation, November 17, 2026: version 21 publication succeeded.
+Published weather assets match main, shell v46 is served, the private weather
+route refuses signed-out requests with 401, and the shared route without a
+token returns 404. These checks do not call either outside service.
+
+Browser controls were unavailable. No authenticated owner weather response,
+exact No forecast sentence or `why` value was obtained, so none is quoted.
+The diagnostic was requested from the owner after deployment, but no observation
+was available when this record was prepared. No trip, place or stay was edited
+to make weather appear. The earlier absence of weather is still unexplained;
+the coordinates-first change is a candidate fix, not a verified resolution.
+
+[Open-Meteo terms](https://open-meteo.com/en/terms) were successfully read on
+November 17. A private app without subscriptions or advertising fits their
+non-commercial free category, subject to attribution and usage limits (less
+than 10,000 calls/day, 5,000/hour, 600/minute; 300,000/month in the table).
+
+Still not verified:
+
+- A live forecast from the Sites Worker and whether PR 31 fixes the earlier
+  missing-weather report.
+- The exact owner-only diagnostic and `why` field if no forecast is available.
+- Whether the Worker can reach Open-Meteo or Nominatim, and whether edge caching
+  is available. No outbound-permission cause, service error or timeout was
+  established; no workaround was attempted.
+- Live address/name lookup accuracy and Nominatim User-Agent policy compliance.
+- Existing-trip loading/saving, offline-ready status, forecast tooltip/update
+  note, and column alignment at desktop and phone widths.
+- Existing guest weather or absence, omission of place names and omission of the
+  owner-only diagnostic. No guest link was created, replaced or disabled.
+- A physical phone, a screen reader and mainland-China connectivity.
 
 ## Screenshots (synthetic trip; the forecast is made up)
 
