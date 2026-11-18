@@ -14,7 +14,7 @@
     const { moveActivity, stepTarget } = await import('/move.mjs');
     const { enableDrag } = await import('/drag.mjs');
     const { VIEW_ID, viewDialog, showActivityView, focusCard, enableViewDismiss } = await import('/activity-view.mjs');
-    const { applyWeather, weatherNote, unitsFor } = await import('/weather.mjs');
+    const { applyWeather, weatherNote, unitsFor, chooseWeather } = await import('/weather.mjs');
     const KEY = 'waypoint-library-v2', OLD_KEY = 'waypoint-downloaded-trip-v1';
     const app = document.querySelector('#app');
     const state = { user: null, snapshot: null, library: [], archived: [], copies: {}, canCreate: false, isOwner: false, selected: new URLSearchParams(location.search).get('trip'), filter: 'all', day: null, compact: true, online: navigator.onLine, busy: false, message: '', downloadedAt: null, offlineReady: false, needsSignIn: false };
@@ -112,7 +112,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v46');
+            const cache = await caches.open('waypoint-shell-v47');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/activity-view.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs', '/weather.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -284,34 +284,47 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
         showLastEdits();
     }
     // ---- Weather under each date: fetched by the server for where each day's stay is; never stored ----
-    // `weather.data` answers for one saved revision of one trip. A failed request leaves the lines as they were.
-    let weather = { key: null, at: 0, data: null }, weatherLoading = false;
+    // `weather.data` answers for one saved revision of one trip. The last answer with a forecast is kept in this
+    // browser per trip: it holds the room for the line while loading, and stands in (with its own update time)
+    // when a weather service does not answer. It is cleared on sign-out with everything else.
+    let weather = { key: null, at: 0, data: null, retry: false }, weatherLoading = false, weatherRetries = 0, weatherTimer = 0;
     const weatherKey = () => state.snapshot ? `${state.snapshot.trip.id}:${state.snapshot.revision}` : null;
+    const keptWeather = () => { try { const k = JSON.parse(localStorage.getItem(`waypoint-weather:${state.snapshot?.trip.id}`)); return k?.data ? k : null; } catch { return null; } };
     function showWeather() {
         const current = weather.key === weatherKey();
-        // Whether this trip had a forecast last time is remembered, so the room for the line is kept while it loads.
-        const hint = `waypoint-weather:${state.snapshot?.trip.id}`;
-        let reserve = false;
-        try { reserve = localStorage.getItem(hint) === '1'; } catch { }
-        const any = applyWeather(document, current ? weather.data : null, { units: unitsFor(navigator.language), loading: !current && state.online && !state.needsSignIn, reserve });
-        if (current && state.snapshot)
-            try { localStorage.setItem(hint, any ? '1' : '0'); } catch { }
+        applyWeather(document, current ? weather.data : null, { units: unitsFor(navigator.language), loading: !current && state.online && !state.needsSignIn, reserve: !!keptWeather() });
     }
     async function loadWeather() {
         const key = weatherKey();
-        if (!key || !state.online || state.needsSignIn || weatherLoading || (weather.key === key && Date.now() - weather.at < 30 * 60 * 1000))
+        if (!key || !state.online || state.needsSignIn || weatherLoading || (weather.key === key && !weather.retry && Date.now() - weather.at < 30 * 60 * 1000) || (weather.key === key && weather.retry && Date.now() - weather.at < 2 * 60 * 1000))
             return;
         weatherLoading = true;
-        let data = null;
+        const trip = state.snapshot.trip;
+        let answer = null;
         try {
-            const r = await fetch(`/api/weather?id=${encodeURIComponent(state.snapshot.trip.id)}`, { cache: 'no-store', credentials: 'same-origin' });
+            const r = await fetch(`/api/weather?id=${encodeURIComponent(trip.id)}`, { cache: 'no-store', credentials: 'same-origin' });
             if (r.ok && (r.headers.get('Content-Type') || '').includes('application/json'))
-                data = await r.json();
+                answer = await r.json();
         }
         catch { /* no weather */ }
-        weather = { key, at: Date.now(), data };
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: trip.timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        const chosen = chooseWeather(answer, keptWeather(), { today });
+        try {
+            if (chosen.keep)
+                localStorage.setItem(`waypoint-weather:${trip.id}`, JSON.stringify(chosen.keep));
+            else
+                localStorage.removeItem(`waypoint-weather:${trip.id}`);
+        }
+        catch { }
+        weather = { key, at: Date.now(), data: chosen.data, retry: chosen.retry };
         weatherLoading = false;
         showWeather();
+        // A service did not answer: ask again in a couple of minutes, a few times, without anyone having to reload.
+        clearTimeout(weatherTimer);
+        if (chosen.retry && weatherRetries++ < 6)
+            weatherTimer = setTimeout(loadWeather, 2.5 * 60 * 1000);
+        else if (!chosen.retry)
+            weatherRetries = 0;
         // The plan was saved while this was on its way: ask once more for what is now on screen.
         if (weatherKey() !== key)
             loadWeather();

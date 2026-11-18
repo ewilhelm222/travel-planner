@@ -151,3 +151,28 @@ export function applyWeather(document, weather, { units = 'metric', loading = fa
     }
     return any;
 }
+
+/**
+ * What to show when the server's answer may be empty because a weather service did not answer.
+ * `answer` is what the server just said (null if the request itself failed); `kept` is `{ data }`, the last
+ * answer with a forecast that this browser saw. A kept forecast less than a day old stands in for a failed
+ * one, minus days that are over (`today`, YYYY-MM-DD where the trip is); it still carries its own update
+ * time, so it is never passed off as fresh. Returns `{ data, keep, retry }`: what to draw, what to keep for
+ * next time (null to forget), and whether to ask again shortly.
+ */
+export function chooseWeather(answer, kept, { now = Date.now(), today = '' } = {}) {
+    const has = d => !!d && Object.keys(d.days || {}).length > 0;
+    if (has(answer))
+        return { data: answer, keep: { data: answer }, retry: false };
+    const failed = !answer || answer.failed === true;
+    if (!failed)
+        // A real "no forecast" (no location, out of range): nothing is kept.
+        return { data: answer, keep: null, retry: false };
+    const old = kept?.data, age = old?.updatedAt ? now - Date.parse(old.updatedAt) : Infinity;
+    if (has(old) && age >= 0 && age < 24 * 60 * 60 * 1000) {
+        const days = Object.fromEntries(Object.entries(old.days).filter(([date]) => date >= today));
+        if (Object.keys(days).length)
+            return { data: { ...old, days }, keep: kept, retry: true };
+    }
+    return { data: answer, keep: null, retry: true };
+}

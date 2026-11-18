@@ -18,7 +18,11 @@ export const GEOCODE_URL = "https://nominatim.openstreetmap.org/search";
 export const FORECAST_DAYS = 16;
 export const FORECAST_TTL = 60 * 60;            // seconds: a forecast is reused for an hour
 export const GEOCODE_TTL = 30 * 24 * 60 * 60;   // an address keeps its looked-up point for 30 days
-export const FAILURE_TTL = 5 * 60;              // a failed lookup is not retried for five minutes
+export const STALE_TTL = 24 * 60 * 60;          // if it cannot be refreshed, the last good forecast is used for up to a day
+export const FAILURE_TTL = 2 * 60;              // a failed lookup is not retried for two minutes
+// The forecast service turns away some requests from shared hosting addresses, so a refused or failed
+// request is tried again a couple of times before giving up.
+export const retry = { attempts: 3, delayMs: 300 };
 const TIMEOUT_MS = 6000;
 const DAILY = ["weather_code", "temperature_2m_max", "temperature_2m_min", "precipitation_probability_max", "precipitation_sum", "rain_sum", "showers_sum", "snowfall_sum"];
 const num = v => typeof v === "number" && Number.isFinite(v) ? v : null;
@@ -82,32 +86,53 @@ export function stayLocations(trip, stay) {
 export const stayLocation = (trip, stay) => stayLocations(trip, stay)[0] || null;
 
 async function getJson(fetchFn, url, headers) {
-    const response = await fetchFn(url, { headers, signal: AbortSignal.timeout(TIMEOUT_MS) });
-    if (!response.ok)
-        throw Object.assign(new Error(`Weather service answered ${response.status}`), { detail: `HTTP ${response.status}` });
-    return response.json();
+    let last;
+    for (let attempt = 0; attempt < retry.attempts; attempt++) {
+        if (attempt && retry.delayMs)
+            await new Promise(done => setTimeout(done, retry.delayMs * attempt));
+        try {
+            const response = await fetchFn(url, { headers, signal: AbortSignal.timeout(TIMEOUT_MS) });
+            if (response.ok)
+                return await response.json();
+            last = Object.assign(new Error(`Weather service answered ${response.status}`), { detail: `HTTP ${response.status}` });
+            // A refusal that will not change (bad request, not found) is not asked again.
+            if (response.status < 500 && response.status !== 429 && response.status !== 403 && response.status !== 408)
+                break;
+        }
+        catch (e) {
+            last = e;
+        }
+    }
+    throw last;
 }
 
 // Cached step. `produce` returns a value, or null for "asked, and there is none". The answer is
-// `{ value }`, `{ none: true }` (remembered for an hour) or `{ failed: true, detail }` (not asked again for five minutes).
-async function cached(cache, key, ttl, produce) {
+// `{ value }`, `{ none: true }` (remembered for an hour) or `{ failed: true, detail }` (not asked again for two minutes).
+// With `keep` longer than `ttl`, a value is fresh for `ttl` seconds and kept for `keep`: when it has gone stale
+// and cannot be refreshed, the kept value is used rather than nothing.
+async function cached(cache, key, ttl, produce, { keep = ttl, clock = () => Date.now() } = {}) {
+    let old = null;
     try {
         const hit = await cache.get(key);
-        if (hit)
+        if (hit && (!hit.value || !hit.freshUntil || hit.freshUntil > clock()))
             return hit;
+        old = hit;
     }
     catch { /* a cache that cannot be read is skipped */ }
     let answer;
     try {
         const value = await produce();
-        answer = value ? { value } : { none: true };
+        answer = value ? { value, freshUntil: clock() + ttl * 1000, keepUntil: clock() + keep * 1000 } : { none: true };
     }
     catch (e) {
         // A failed lookup is no weather, never an error. What went wrong is kept in a word or two, for the organizer.
         answer = { failed: true, detail: String(e?.detail || e?.name || "error").slice(0, 40) };
+        // The last good answer stands in, and the service is left alone for a couple of minutes.
+        if (old?.value && old.keepUntil > clock())
+            answer = { ...old, freshUntil: clock() + FAILURE_TTL * 1000 };
     }
     try {
-        await cache.put(key, answer, answer.value ? ttl : answer.none ? FORECAST_TTL : FAILURE_TTL);
+        await cache.put(key, answer, answer.value ? Math.max(1, Math.round((answer.keepUntil - clock()) / 1000)) : answer.none ? FORECAST_TTL : FAILURE_TTL);
     }
     catch { /* nor is a cache that cannot be written */ }
     return answer;
@@ -160,7 +185,7 @@ export async function forecastFor(point, { fetch: fetchFn, cache, now = () => ne
         if (!parsed)
             throw new Error("Unreadable forecast");
         return parsed;
-    });
+    }, { keep: STALE_TTL, clock: () => now().getTime() });
 }
 
 /**
@@ -225,7 +250,12 @@ export async function tripWeather(trip, { fetch: fetchFn = fetch, cache = memory
         }
     }
     catch { /* no weather */ }
-    if (names && !Object.keys(result.days).length)
-        result.why = why;
+    if (!Object.keys(result.days).length) {
+        // Everyone is told that it is worth asking again; only members are told what went wrong.
+        if (why.reason === "forecast-failed" || why.reason === "lookup-failed")
+            result.failed = true;
+        if (names)
+            result.why = why;
+    }
     return result;
 }
