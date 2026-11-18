@@ -4,7 +4,7 @@ import { VIEW_ID, viewDialog, showActivityView, focusCard, enableViewDismiss } f
 import { matchesSelection } from './participants.mjs';
 import { buildOfflineHtml } from './offline-export.mjs';
 import { mapSectionHtml, followPin, watchEmbed } from './map-panel.mjs';
-import { applyWeather, weatherNote, unitsFor, chooseWeather } from './weather.mjs';
+import { applyWeather, weatherNote, unitsFor, chooseWeather, fetchWeather } from './weather.mjs';
 const app = document.querySelector('#guest-app'), token = location.hash.slice(1);
 let trip, revision, updatedAt, day, filter = 'all', mapView = 'day';
 // The Google day map, only when the organizer switched it on for this guest link: the server then sends a key
@@ -33,6 +33,7 @@ function showPictures() {
 // The last answer with a forecast is kept on this device: it holds the room for the line while loading, and stands
 // in (with its own update time) when a weather service does not answer. It holds the forecast only, no place.
 let weather = null, weatherFor = null, weatherRetries = 0;
+const weatherMemo = new Map();
 const KEPT = 'waypoint-guest-weather';
 const keptWeather = () => { try { const k = JSON.parse(localStorage.getItem(KEPT)); return k?.data && k.trip === `${trip.start}|${trip.title}` ? k : null; } catch { return null; } };
 const showWeather = () => applyWeather(document, weather, { units: unitsFor(navigator.language), loading: weatherFor !== revision, reserve: !!keptWeather() });
@@ -40,8 +41,11 @@ async function loadWeather() {
     let answer = null;
     try {
         const r = await fetch('/api/shared-weather', { headers: { Authorization: `Share ${token}` }, cache: 'no-store', credentials: 'omit' });
-        if (r.ok)
-            answer = await r.json();
+        // The server says where (rounded coordinates); this browser asks the forecast service. Guests are not told why there is none.
+        if (r.ok) {
+            answer = await fetchWeather(await r.json(), { memo: weatherMemo });
+            delete answer.why;
+        }
     }
     catch { /* no weather */ }
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: trip.timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());

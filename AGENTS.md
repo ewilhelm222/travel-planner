@@ -17,8 +17,9 @@ The day map uses Google Maps Embed when `GOOGLE_MAPS_EMBED_KEY` is set in runtim
 configuration, and the schematic otherwise; the key is never committed. Guests
 get the Google map, and the stop locations it needs, only if the organizer ticks
 it on the guest link (`docs/google-maps-embed.md`).
-The weather line under each date is fetched by the server for the stay's location;
-an address is looked up for the weather only and never stored (`docs/weather.md`).
+The weather line under each date is for the stay's location: the server sends
+rounded coordinates (to guests too) and the reader's browser asks the forecast
+service; an address is looked up for the weather only and never stored (`docs/weather.md`).
 "Last edited by" is read from the change log, never stored, and never shown to
 guests (`docs/last-edited.md`). Read `docs/prototype.md` for implementation status and checks.
 

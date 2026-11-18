@@ -1,31 +1,28 @@
-// Weather for the day headers, fetched on the server.
+// Where each day's weather is for, worked out on the server.
 //
 // For each day the forecast is for where that day's stay is. A stay's place (or the area it sits in) gives
 // the location: coordinates as typed, or an address or place name, which is looked up for the weather only.
 // The lookup result is cached here and never written to the trip, so the map rules are unchanged: a place
 // with only an address is still not positioned on the map, and its coordinates are still never converted.
 //
-// Only this leaves the planner: rounded coordinates to the forecast service, and the typed address text to
-// the address lookup. No trip name, person, date range of the trip, note or identifier is sent.
+// The server answers with points only: coordinates rounded to two decimals (about a kilometre) and the days
+// each is for. The reader's own browser then asks the forecast service (public/weather.mjs). The forecast
+// service refuses requests from this host's shared addresses (HTTP 429), so the server cannot ask for them;
+// the owner chose this on November 18, 2026, for signed-in people and guests, knowing that the guest page
+// therefore receives each stay's rounded location.
 //
-// Services (no key, no account):
-//   Forecast: Open-Meteo, https://open-meteo.com/ (16 days; free for non-commercial use, attribution asked).
+// From the server, only the typed address or place name goes out, to the address lookup. No trip name,
+// person, note or identifier is sent.
 //   Address lookup: OpenStreetMap Nominatim public server (at most one request a second, results cached).
 import { hasCoordinates, placeAddressText } from "../public/maps.mjs";
 
-export const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 export const GEOCODE_URL = "https://nominatim.openstreetmap.org/search";
-export const FORECAST_DAYS = 16;
-export const FORECAST_TTL = 60 * 60;            // seconds: a forecast is reused for an hour
+const NONE_TTL = 60 * 60;                       // seconds: "not found" is remembered for an hour
 export const GEOCODE_TTL = 30 * 24 * 60 * 60;   // an address keeps its looked-up point for 30 days
-export const STALE_TTL = 24 * 60 * 60;          // if it cannot be refreshed, the last good forecast is used for up to a day
 export const FAILURE_TTL = 2 * 60;              // a failed lookup is not retried for two minutes
-// The forecast service turns away some requests from shared hosting addresses, so a refused or failed
-// request is tried again a couple of times before giving up.
+// A refused or failed lookup is tried again a couple of times before giving up.
 export const retry = { attempts: 3, delayMs: 300 };
 const TIMEOUT_MS = 6000;
-const DAILY = ["weather_code", "temperature_2m_max", "temperature_2m_min", "precipitation_probability_max", "precipitation_sum", "rain_sum", "showers_sum", "snowfall_sum"];
-const num = v => typeof v === "number" && Number.isFinite(v) ? v : null;
 
 /** A small in-memory cache with expiry: `get(key)` and `put(key, value, ttlSeconds)`. */
 export function memoryCache(clock = () => Date.now(), limit = 500) {
@@ -45,16 +42,6 @@ export function memoryCache(clock = () => Date.now(), limit = 500) {
             rows.set(key, { value, until: clock() + ttl * 1000 });
         },
     };
-}
-
-/** Today's date (YYYY-MM-DD) in a time zone: the day boundary a stay's forecast is cut at. */
-export function localDate(now, timeZone) {
-    try {
-        return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-    }
-    catch {
-        return new Date(now).toISOString().slice(0, 10);
-    }
 }
 
 /**
@@ -132,7 +119,7 @@ async function cached(cache, key, ttl, produce, { keep = ttl, clock = () => Date
             answer = { ...old, freshUntil: clock() + FAILURE_TTL * 1000 };
     }
     try {
-        await cache.put(key, answer, answer.value ? Math.max(1, Math.round((answer.keepUntil - clock()) / 1000)) : answer.none ? FORECAST_TTL : FAILURE_TTL);
+        await cache.put(key, answer, answer.value ? Math.max(1, Math.round((answer.keepUntil - clock()) / 1000)) : answer.none ? NONE_TTL : FAILURE_TTL);
     }
     catch { /* nor is a cache that cannot be written */ }
     return answer;
@@ -158,56 +145,24 @@ export async function lookupAddress(text, { fetch: fetchFn, cache, tail = true }
     });
 }
 
-/** Read the forecast service's answer into `{ timezone, fetchedAt, days: { date: day } }`, or null if it is not one. */
-export function parseForecast(data, fetchedAt) {
-    const d = data?.daily, dates = d?.time;
-    if (!Array.isArray(dates) || typeof data.timezone !== "string")
-        return null;
-    const at = (name, i) => num(d[name]?.[i]);
-    const days = {};
-    dates.forEach((date, i) => {
-        if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date))
-            return;
-        const rain = at("rain_sum", i), showers = at("showers_sum", i), snow = at("snowfall_sum", i), total = at("precipitation_sum", i);
-        // A day the service left blank is not a dry day: it is no forecast.
-        if (total === null && rain === null && snow === null)
-            return;
-        days[date] = { chance: at("precipitation_probability_max", i), rainMm: (rain ?? 0) + (showers ?? 0), snowCm: snow ?? 0, precipMm: total ?? 0, high: at("temperature_2m_max", i), low: at("temperature_2m_min", i), code: at("weather_code", i) };
-    });
-    return { timezone: data.timezone, fetchedAt, days };
-}
-
-/** The forecast for a point: `{ value }`, `{ none: true }` or `{ failed: true }`. Days are the point's own local days: the service is asked to work out its time zone. */
-export async function forecastFor(point, { fetch: fetchFn, cache, now = () => new Date() }) {
-    const lat = point.lat.toFixed(2), lng = point.lng.toFixed(2);
-    return cached(cache, `forecast:${lat},${lng}`, FORECAST_TTL, async () => {
-        const parsed = parseForecast(await getJson(fetchFn, `${FORECAST_URL}?latitude=${lat}&longitude=${lng}&daily=${DAILY.join(",")}&timezone=auto&forecast_days=${FORECAST_DAYS}`), now().toISOString());
-        if (!parsed)
-            throw new Error("Unreadable forecast");
-        return parsed;
-    }, { keep: STALE_TTL, clock: () => now().getTime() });
-}
-
 /**
- * Weather for every day of a trip that has one: `{ days: { date: { ...day, where? } }, updatedAt, why? }`.
- * A day takes the first stay covering that night that has a forecast for the date, else a stay being
- * left that morning. Days already over where the stay is, days past the forecast range, stays with no
- * usable location and failed lookups are simply absent. This never throws.
- * `names` (members only; guests are not told) adds the place the forecast is for and, when no day has a
- * forecast, `why`: `{ reason, text? }` with reason "no-stay", "no-location", "not-found", "lookup-failed",
- * "forecast-failed" or "out-of-range"; the two failures carry `detail` ("HTTP 429", "TimeoutError").
+ * Where to ask the weather for, for every day of a trip:
+ *   { points: [{ lat, lng, where? }], dates: { "2026-11-22": 0, ... }, why?, failed? }
+ * `dates` gives each day the index of its point. A day takes the first stay covering that night that has a
+ * point, else a stay being left that morning. Coordinates are rounded to two decimals. This never throws.
+ * `names` (members only) adds the place each point is for and, when there is no point at all, `why`:
+ * `{ reason, text?, detail? }` with reason "no-stay", "no-location", "not-found" or "lookup-failed".
+ * `failed` says a lookup service did not answer, so it is worth asking again.
  */
-export async function tripWeather(trip, { fetch: fetchFn = fetch, cache = memoryCache(), now = () => new Date(), names = false } = {}) {
-    const result = { days: {}, updatedAt: null };
+export async function weatherPlan(trip, { fetch: fetchFn = fetch, cache = memoryCache(), names = false } = {}) {
+    const result = { points: [], dates: {} };
     let why = { reason: "no-stay" };
     try {
-        const stays = (trip?.stays || []).map(stay => ({ stay }));
-        // One forecast per distinct point. Lookups go one after another, as the lookup service asks.
-        const forecasts = new Map();
+        const stays = (trip?.stays || []).map(stay => ({ stay })), index = new Map();
+        // Lookups go one after another, as the lookup service asks.
         for (const s of stays) {
-            const tries = stayLocations(trip, s.stay);
             s.why = { reason: "no-location" };
-            for (const t of tries) {
+            for (const t of stayLocations(trip, s.stay)) {
                 let point = t;
                 if (t.kind !== "coordinates") {
                     const found = await lookupAddress(t.text, { fetch: fetchFn, cache, tail: t.kind === "address" });
@@ -219,40 +174,29 @@ export async function tripWeather(trip, { fetch: fetchFn = fetch, cache = memory
                         continue;
                     }
                 }
-                s.key = `${point.lat.toFixed(2)},${point.lng.toFixed(2)}`;
-                s.label = point.label || "";
-                if (!forecasts.has(s.key))
-                    forecasts.set(s.key, forecastFor(point, { fetch: fetchFn, cache, now }));
+                const key = `${point.lat.toFixed(2)},${point.lng.toFixed(2)}`;
+                if (!index.has(key)) {
+                    index.set(key, result.points.length);
+                    result.points.push({ lat: Number(point.lat.toFixed(2)), lng: Number(point.lng.toFixed(2)), ...(names ? { where: point.label || trip.places?.find(p => p.id === s.stay.placeId)?.name || "" } : {}) });
+                }
+                s.point = index.get(key);
                 break;
             }
         }
-        for (const s of stays) {
-            if (!s.key)
-                continue;
-            const answer = await forecasts.get(s.key);
-            s.forecast = answer.value || null;
-            s.why = s.forecast ? { reason: "out-of-range" } : { reason: "forecast-failed", detail: answer.detail || "no data" };
-        }
         if (stays.length)
             why = stays[0].why;
-        for (let date = trip.start; date && date <= trip.end && Object.keys(result.days).length < 121;) {
-            const here = [...stays.filter(s => date >= s.stay.start && date < s.stay.end), ...stays.filter(s => s.stay.end === date)];
-            // The day boundary is the stay's own: a day that has ended there is no longer forecast.
-            const found = here.find(s => s.forecast?.days[date] && date >= localDate(now(), s.forecast.timezone));
-            if (found) {
-                result.days[date] = { ...found.forecast.days[date], ...(names ? { where: found.label || trip.places?.find(p => p.id === found.stay.placeId)?.name || "" } : {}) };
-                if (!result.updatedAt || found.forecast.fetchedAt < result.updatedAt)
-                    result.updatedAt = found.forecast.fetchedAt;
-            }
+        for (let date = trip.start, n = 0; date && date <= trip.end && n < 121; n++) {
+            const here = [...stays.filter(s => date >= s.stay.start && date < s.stay.end), ...stays.filter(s => s.stay.end === date)].find(s => s.point !== undefined);
+            if (here)
+                result.dates[date] = here.point;
             const next = new Date(`${date}T12:00:00Z`);
             next.setUTCDate(next.getUTCDate() + 1);
             date = next.toISOString().slice(0, 10);
         }
     }
     catch { /* no weather */ }
-    if (!Object.keys(result.days).length) {
-        // Everyone is told that it is worth asking again; only members are told what went wrong.
-        if (why.reason === "forecast-failed" || why.reason === "lookup-failed")
+    if (!result.points.length) {
+        if (why.reason === "lookup-failed")
             result.failed = true;
         if (names)
             result.why = why;
