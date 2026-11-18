@@ -105,7 +105,8 @@ test('the page fills lines, day chips and the note in place', () => {
     const body = el({}), document = { body, querySelectorAll: s => s.startsWith('.day-weather') ? lines : chips, querySelector: () => note };
     applyWeather(document, { days: { '2026-11-25': { ...day('snow'), where: 'Pine <Flat>' }, '2026-11-26': day('dry') }, updatedAt: '2026-11-20T18:00:00Z' }, { units: 'us', locale: 'en-US' });
     assert.match(lines[0].innerHTML, /Snow 90% · 4 in/);
-    assert.match(lines[0].title, /^Forecast for Pine <Flat>\. Updated Nov 20, .*Weather data by Open-Meteo\.com$/, 'when it was updated is on the line');
+    assert.match(lines[0].title, /^Snow 90% · 4 in · 32°\/21°\nForecast for Pine <Flat>\. Updated Nov 20, .*Weather data by Open-Meteo\.com$/, 'hovering gives the whole line, which a narrow column may cut short, then where and when');
+    assert.match(lines[1].title, /^Dry · 57°\/36°\n/);
     assert.match(lines[1].innerHTML, /weather-precip dry/);
     assert.match(lines[2].innerHTML, /weather-none/, 'a day without a forecast gets the quiet dash');
     assert.equal(lines[2].title, '');

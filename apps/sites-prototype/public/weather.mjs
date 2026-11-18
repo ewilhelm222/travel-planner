@@ -126,9 +126,12 @@ export function applyWeather(document, weather, { units = 'metric', loading = fa
         const day = days[line.dataset.weather];
         line.innerHTML = weatherLine(day, { units, loading: loading && !day });
         line.classList?.toggle('none', !day && !loading);
-        // Where and when, on hover or long-press; the note under the schedule says the same for everyone.
-        if (day)
-            line.title = `${day.where ? `Forecast for ${day.where}. ` : ''}${updated ? `Updated ${updated}. ` : ''}Weather data by Open-Meteo.com`;
+        // On hover: the whole line in words first, since a narrow column cuts it short, then where and when.
+        // The note under the schedule says where and when for everyone.
+        if (day) {
+            const w = weatherWords(day, units);
+            line.title = `${w.precip}${w.temp ? ` · ${w.temp}` : ''}\n${day.where ? `Forecast for ${day.where}. ` : ''}${updated ? `Updated ${updated}. ` : ''}Weather data by Open-Meteo.com`;
+        }
         else
             line.removeAttribute('title');
     }

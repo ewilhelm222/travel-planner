@@ -34,6 +34,8 @@ where that day's stay is.
   schedule saying why: nothing to look up, a name or address that was not
   found, a service that did not answer (with what it answered, e.g.
   `HTTP 429`), or dates out of range. Guests are told nothing.
+- Hovering a line shows all of it in words (a narrow column cuts it short),
+  then where and when. Nothing more than the line itself is added.
 - Under the schedule a note says when the forecast was updated and credits the
   source. The same time is in each line's tooltip, and for signed-in people the
   tooltip also names the place the forecast is for.
@@ -129,7 +131,7 @@ that has already ended there is not shown.
   parsing, classification, words, icons, the kept copy, and filling the lines.
 - `public/board.mjs` puts an empty line in every day header; `planner.js` and
   `guest.mjs` fill it in place when the answer arrives.
-- Offline shell cache is `waypoint-shell-v49`. Offline, a forecast kept by the
+- Offline shell cache is `waypoint-shell-v50`. Offline, a forecast kept by the
   browser is not shown; the lines stay empty.
 
 ## Checks
