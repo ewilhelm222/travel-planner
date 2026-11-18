@@ -57,7 +57,7 @@ test('no link is ever built from coordinates, and none for Amap', async () => {
     const code = await source('public/maps.mjs') + await source('public/map-panel.mjs');
     assert.ok(!/uri\.amap\.com|amap\.com\/(marker|navigation|search)|ll=|sll=|center=/.test(code));
     const panel = await source('public/map-panel.mjs');
-    assert.ok(!/fetch\(|XMLHttpRequest|<img|tile/i.test(panel), 'the panel fetches nothing itself');
+    assert.ok(!/XMLHttpRequest|<img|tile/i.test(panel) && (panel.match(/fetch\(/g) || []).length === 1, 'the panel loads nothing but the Google day map and its reachability question (tests/google-embed.test.mjs)');
     assert.equal((panel.match(/<iframe/g) || []).length, 1, 'the only frame is the Google day map, drawn when a key is configured (tests/google-embed.test.mjs)');
 });
 
@@ -166,7 +166,7 @@ test('both pages use the shared panel, and it is in the offline shell', async ()
     assert.match(planner, /mapSectionHtml\(t, mapOptions\(\)\)/);
     assert.match(planner, /canEdit: true, dayName/);
     assert.match(planner, /if \(followPin\(document, event\)\)/);
-    assert.match(guest, /mapSectionHtml\(trip, \{ view: mapView, filter, day, compact: layout, guest: true, dayName \}\)/);
+    assert.match(guest, /mapSectionHtml\(trip, \{ view: mapView, filter, day, compact: layout, guest: true, dayName, embedKey:/);
     assert.match(guest, /if \(followPin\(document, e\)\)/);
     assert.equal(guest.match(/\$\{schedule\}\$\{map\}/g).length, 2, 'under the schedule on phone and desktop');
     assert.ok(sw.includes('"/map-panel.mjs"'));

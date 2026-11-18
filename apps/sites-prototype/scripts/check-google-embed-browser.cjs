@@ -147,7 +147,56 @@ const hideKey = url => url.replace(/key=[^&]+/, 'key=…');
     await guest.waitForSelector('#itinerary .activity');
     await guest.evaluate(() => document.querySelector('#maps').scrollIntoView({ block: 'start' }));
     await guest.waitForTimeout(600);
-    check(`${label} guest: the guest page keeps the schematic and never contacts Google`, await guest.evaluate(() => !document.querySelector('iframe') && !!document.querySelector('#maps svg.schematic-map') && !/Google/.test(document.querySelector('#maps').textContent)) && google.length === count);
+    check(`${label} guest: with the switch off, the guest page keeps the schematic and never contacts Google`, await guest.evaluate(() => !document.querySelector('iframe') && !!document.querySelector('#maps svg.schematic-map') && !/Google/.test(document.querySelector('#maps').textContent)) && google.length === count);
+    const sentOff = await guest.evaluate(async t => await (await fetch('/api/shared', { headers: { Authorization: 'Share ' + t } })).text(), new URL(share.url).hash.slice(1));
+    check(`${label} guest: with the switch off the guest link carries no key and no location`, /"mapsEmbedKey":""/.test(sentOff) && !/mapQuery|Lantern Row, Harbour|Example Shore|45\.6,/.test(sentOff));
+
+    // ---------- The organizer switches the Google map on for the guest link ----------
+    await page.evaluate(() => document.querySelector('#share').click());
+    await page.waitForSelector('#guest-map');
+    check(`${label}: the guest-link dialog explains the switch before it is ticked`, await page.$eval('.guest-map-choice', e => !e.querySelector('#guest-map').checked && /Anyone holding the guest link can then read those locations/.test(e.textContent) && /does not load in mainland China/.test(e.textContent)));
+    await page.$eval('.guest-map-choice', e => e.scrollIntoView({ block: 'center' }));
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: `${SHOTS}/${label}-guest-switch.jpg`, quality: 80 });
+    await page.check('#guest-map');
+    await page.waitForFunction(() => /Saved\. Guests now get the Google day map/.test(document.querySelector('#guest-map-message')?.textContent || ''));
+    check(`${label}: ticking it saves, stays ticked and says so`, await page.$eval('#guest-map', e => e.checked) && (await api()).json.snapshot.trip.guestMap === true);
+    await page.evaluate(() => document.querySelector('#share-dialog').close());
+    await guest.reload();
+    await guest.waitForSelector('#itinerary .activity');
+    await guest.evaluate(() => document.querySelector('#maps').scrollIntoView({ block: 'start' }));
+    const gLoaded = await guest.waitForFunction(() => !!document.querySelector('#map-frame')?.getAttribute('src'), null, { timeout: 8000 }).then(() => true, () => false);
+    check(`${label} guest: switched on, the Google day map loads on the guest page`, gLoaded);
+    const gSrc = gLoaded ? await guest.$eval('#map-frame', e => e.getAttribute('src')) : '';
+    const gu = gSrc ? new URL(gSrc) : null;
+    check(`${label} guest: several stops in directions mode, in the guest's itinerary order`, !!gu && gu.pathname.endsWith('/directions') && gu.searchParams.get('origin') === '12 Lantern Row, Harbour Town' && gu.searchParams.get('destination') === '9 Beacon Lane, Harbour Town' && gu.searchParams.get('waypoints') === '45.6,-122.4', gSrc ? hideKey(gSrc) : '');
+    check(`${label} guest: the page's security policy lets the Google frame load and nothing else from outside`, await guest.evaluate(() => { try { return !!document.querySelector('#map-frame').contentWindow; } catch { return true; } }) && embeds().some(g => g.url === gSrc && g.referer === O + '/') && other.length === 0);
+    check(`${label} guest: the guest link's token is not in what Google is sent`, embeds().every(g => !g.url.includes(new URL(share.url).hash.slice(1)) && !g.referer.includes('#')));
+    check(`${label} guest: the list under the map is still names only, with no link or edit control`, await guest.$eval('#maps', e => e.querySelectorAll('.map-list li').length === 3 && !e.querySelector('a.map-link') && !e.querySelector('[data-place-edit]') && !/Map address|Harbour Town/.test(e.querySelector('.map-list').textContent)));
+    check(`${label} guest: the caption says the locations go to Google`, /sent to Google/.test(await guest.textContent('.map-google .map-caption')));
+    await guest.waitForTimeout(300);
+    await guest.screenshot({ path: `${SHOTS}/${label}-guest-google.jpg`, quality: 80 });
+    check(`${label} guest: no sideways scroll`, await guest.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+    await guest.click('[data-map-style="schematic"]');
+    check(`${label} guest: a guest can choose the schematic`, await guest.evaluate(() => !document.querySelector('#map-frame') && !!document.querySelector('#maps svg.schematic-map') && document.activeElement?.dataset?.mapStyle === 'google'));
+    await guest.click('[data-map-style="google"]');
+    await guest.waitForFunction(() => !!document.querySelector('#map-frame')?.getAttribute('src'), null, { timeout: 8000 }).catch(() => { });
+    reachable = false;
+    await guest.reload();
+    await guest.waitForSelector('#itinerary .activity');
+    await guest.evaluate(() => document.querySelector('#maps').scrollIntoView({ block: 'start' }));
+    check(`${label} guest: when Google is unreachable the guest page shows the schematic by itself`, await guest.waitForFunction(() => /Google Maps did not load, so this is the schematic/.test(document.querySelector('#maps-body')?.textContent || '') && !!document.querySelector('#maps svg.schematic-map'), null, { timeout: 10000 }).then(() => true, () => false));
+    reachable = true;
+    // Whole trip on the guest page stays as it was.
+    await guest.evaluate(() => document.querySelector('[data-map-view="trip"]').click());
+    check(`${label} guest: whole trip never uses Google`, await guest.evaluate(() => !document.querySelector('#maps-body iframe')));
+    // Switched off again: the locations and the key are withdrawn.
+    await page.evaluate(() => document.querySelector('#share').click());
+    await page.waitForSelector('#guest-map');
+    await page.uncheck('#guest-map');
+    await page.waitForFunction(() => /Guests see the schematic/.test(document.querySelector('#guest-map-message')?.textContent || ''));
+    const sentBack = await guest.evaluate(async t => await (await fetch('/api/shared', { headers: { Authorization: 'Share ' + t } })).text(), new URL(share.url).hash.slice(1));
+    check(`${label} guest: switched off again, the guest link carries no key and no location`, /"mapsEmbedKey":""/.test(sentBack) && !/mapQuery/.test(sentBack));
     check(`${label}: nothing was requested from any other site`, other.length === 0, other.join(' '));
     await ctx.close();
   }

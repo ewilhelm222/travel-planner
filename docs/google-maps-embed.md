@@ -1,6 +1,6 @@
 # Google Maps for the day map
 
-Status: November 17, 2026. Owner decision the same day: use the Google Maps
+Status: November 18, 2026 (guest link added; first built November 17). Owner decision the same day: use the Google Maps
 Embed API for the day map. Built and checked locally with synthetic data and
 with Google stubbed out; not deployed, and **not yet seen with a real key**.
 No database migration.
@@ -36,8 +36,33 @@ The schematic is drawn instead, as before, when:
 - the device is offline or the sign-in has expired;
 - the person chose the schematic.
 
-**Whole trip** is always the schematic. **Guests never get the Google map or
-the key**: the guest link carries no address or coordinates to give Google.
+**Whole trip** is always the schematic.
+
+## On the guest link (organizer's choice, November 18)
+
+By default guests keep the schematic: the guest link carries place names only,
+no location and no key, so there is nothing to give Google.
+
+The organizer can change that in **Guest link → Map on the guest link → Show
+the Google day map to guests**. Only the organizer can tick it; the change is in
+History and can be undone. While it is ticked:
+
+- the guest link is sent the key, and for each place where a shared, dated
+  activity happens, the one line of text Google is given for it (the same line
+  as in "What is sent, exactly" below). Nothing else about the place is added:
+  not its address field, the coordinate system, the source, or any link;
+- **anyone holding the guest link can read those locations**, in the page's
+  data and in the map's address, and their browser sends them to Google;
+- places used only by ideas, by stays, or by nothing shared are not included;
+- the list under the guest's map stays names only, with no map-app links;
+- the same fallbacks apply: no key configured, a stop with no usable location,
+  Google unreachable, or the guest choosing the schematic.
+
+Unticking it withdraws the key and the locations from the guest link at once.
+Copies a guest already saved cannot be recalled.
+
+The guest page's security policy now allows a frame from, and the reachability
+question to, `https://www.google.com`, and nothing else from outside the Site.
 
 ## What is sent, exactly
 
@@ -94,9 +119,10 @@ For local preview, add the same line to the ignored `.dev.vars` file. A key
 restricted to the Site's domain will be refused by Google from `127.0.0.1`
 unless that referrer is added to it; a separate local-only key is safer.
 
-The server sends the key only in `GET /api/trip`, after the trip-membership
-check. It is not in the trip list, the guest API, any stored trip, the offline
-HTML file or the copy kept on the device. `tests/google-embed.test.mjs` fails
+The server sends the key in `GET /api/trip`, after the trip-membership check,
+and in the guest API only while the organizer has the guest map switched on.
+It is not in the trip list, any stored trip, the offline HTML file or the copy
+kept on the device. `tests/google-embed.test.mjs` fails
 if a string shaped like a Google key appears anywhere in the repository.
 
 ## Limits to know about
@@ -142,6 +168,9 @@ if a string shaped like a Google key appears anywhere in the repository.
 | --- | --- | --- | --- |
 | <img src="design/google-embed/phone-directions.jpg" width="200"> | <img src="design/google-embed/phone-place.jpg" width="200"> | <img src="design/google-embed/phone-no-usable-location.jpg" width="200"> | <img src="design/google-embed/phone-unreachable.jpg" width="200"> |
 
+Guest link: [the organizer's switch](design/google-embed/phone-guest-switch.jpg) ·
+[guest page, phone](design/google-embed/phone-guest-google.jpg) ·
+[guest page, desktop](design/google-embed/desktop-guest-google.jpg).
 Desktop: [several stops](design/google-embed/desktop-directions.jpg) ·
 [one stop](design/google-embed/desktop-place.jpg) ·
 [no usable location](design/google-embed/desktop-no-usable-location.jpg) ·

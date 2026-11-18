@@ -338,18 +338,35 @@ console.log('PASS: organizer full backup download and a verified restore into a 
     assert.ok(!/Seedy|actor|lastEdit/.test(guestData), 'the guest view names no editor');
     console.log('PASS: last-edited comes from the change log, ignores cards a drag only renumbered, links stay within their trip, and guests get none of it.');
 }
-// Google Maps Embed key: from runtime configuration, to trip members only. The value is never printed.
+// Google Maps Embed key: from runtime configuration, to trip members; to a guest link only when the
+// organizer switched the Google day map on for guests. The value is never printed.
 {
-    const made = await (await req('/api/trips', 'POST', { template: 'thanksgiving' })).json(), tid = made.snapshot.trip.id;
-    const member = await (await req(`/api/trip?id=${tid}`)).json();
-    assert.equal(typeof member.mapsEmbedKey, 'string', 'members are told the key, or an empty string when none is configured');
-    assert.ok(member.mapsEmbedKey === '' || /^[A-Za-z0-9_-]{30,60}$/.test(member.mapsEmbedKey));
-    const blocked = async r => { const text = await r.text(); assert.ok(!text.includes('mapsEmbedKey') && (!member.mapsEmbedKey || !text.includes(member.mapsEmbedKey))); };
-    await blocked(await anon(`/api/trip?id=${tid}`));
-    await blocked(await req('/api/trips'));
+    const made = await (await req('/api/trips', 'POST', { template: 'thanksgiving' })).json(), tid = made.snapshot.trip.id, tp = `/api/trip?id=${tid}`;
+    const member = await (await req(tp)).json(), key = member.mapsEmbedKey;
+    assert.equal(typeof key, 'string', 'members are told the key, or an empty string when none is configured');
+    assert.ok(key === '' || /^[A-Za-z0-9_-]{30,60}$/.test(key));
+    const without = async r => { const text = await r.text(); assert.ok(!text.includes('mapsEmbedKey') && (!key || !text.includes(key))); };
+    await without(await anon(tp));
+    await without(await req('/api/trips'));
+    assert.equal((await req(tp, 'PATCH', { action: 'place-edit', placeId: 'home', patch: { locationText: '1 Example Shore Road, Harbour Town', address: 'PRIVATE ADDRESS' }, base: { 'place:home': 1 } })).status, 200);
+    assert.equal((await req(tp, 'PATCH', { action: 'add', activity: { id: 'made-up', title: 'Made-up plan', date: '2026-11-26', placeId: 'home', participants: ['cedar'], order: 90, sourceKind: 'entered' }, base: {} })).status, 200);
     const shareOn = await (await req(`/api/share?id=${tid}`, 'POST', { action: 'rotate', base: { share: 1 } })).json();
-    await blocked(await anon('/api/shared', { headers: { Authorization: `Share ${new URL(shareOn.url).hash.slice(1)}` } }));
-    const saved = await req(`/api/trip?id=${tid}`, 'PATCH', { action: 'edit', activityId: 'option-2', patch: { notes: 'x' }, base: { 'activity:option-2': 1 } });
-    assert.ok(!JSON.stringify((await saved.json()).snapshot).includes('mapsEmbedKey'), 'the key is never part of a trip');
-    console.log(`PASS: the Google Maps key (${member.mapsEmbedKey ? 'configured' : 'not configured'}) reaches trip members only, never guests, signed-out visitors or stored trips.`);
+    const guest = async () => { const r = await anon('/api/shared', { headers: { Authorization: `Share ${new URL(shareOn.url).hash.slice(1)}` } }); return { json: await r.clone().json(), text: await r.text() }; };
+    let g = await guest();
+    assert.equal(g.json.mapsEmbedKey, '', 'off by default: a guest link is sent no key');
+    assert.ok(!/Example Shore|mapQuery|PRIVATE/.test(g.text) && (!key || !g.text.includes(key)) && g.json.trip.guestMap === false, 'and no location');
+    const on = await req(tp, 'PATCH', { action: 'metadata', patch: { guestMap: true }, base: { trip: 1 } });
+    assert.equal(on.status, 200, await on.clone().text());
+    assert.ok(!JSON.stringify((await on.json()).snapshot).includes('mapsEmbedKey'), 'the key is never part of a trip');
+    g = await guest();
+    assert.equal(g.json.mapsEmbedKey, key, 'switched on: the guest link is sent the key, if one is configured');
+    assert.equal(g.json.trip.places.find(p => p.id === 'home').mapQuery, '1 Example Shore Road, Harbour Town', 'and the one line Google needs for a stop on a shared day');
+    assert.ok(!/PRIVATE|locationText|coordSystem/.test(g.text), 'but not the address field or anything else about the place');
+    const history = (await (await req(`/api/history?id=${tid}`)).json()).changes[0];
+    assert.ok(history.records.length === 1 && history.records[0].kind === 'trip' && history.records[0].after.guestMap === true, 'the switch is in History');
+    const undo = await req(`/api/history?id=${tid}`, 'POST', { action: 'undo', changeId: history.id });
+    assert.equal(undo.status, 200, await undo.clone().text());
+    g = await guest();
+    assert.ok(g.json.mapsEmbedKey === '' && !g.text.includes('mapQuery'), 'undone: guests are back to no key and no location');
+    console.log(`PASS: the Google Maps key (${key ? 'configured' : 'not configured'}) reaches trip members, and a guest link only while the organizer has the guest map switched on; never signed-out visitors or stored trips.`);
 }
