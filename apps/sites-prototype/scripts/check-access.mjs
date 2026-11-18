@@ -143,7 +143,7 @@ console.log('PASS: editors add/edit/move/delete through revisioned saves; non-me
 {
     const made = await json(await seedy('/api/trips', 'POST', { template: 'thanksgiving' })), tid = made.snapshot.trip.id, t = `/api/trip?id=${tid}`, h = `/api/history?id=${tid}`;
     await seedy(`/api/editors?id=${tid}`, 'POST', { action: 'add', email: 'edie@sites.test' });
-    for (const patch of [{ title: 'Editor rename' }, { end: '2026-11-30' }, { subtitle: 'x' }, { timezone: 'Asia/Tokyo' }]) {
+    for (const patch of [{ title: 'Editor rename' }, { end: '2026-11-30' }, { subtitle: 'x' }, { timezone: 'Asia/Tokyo' }, { guestMap: true }]) {
         const refused = await edie(t, 'PATCH', { action: 'metadata', patch, base: { trip: 1 } });
         assert.equal(refused.status, 400);
         assert.match((await json(refused)).error, /Only the organizer changes the trip's name/);

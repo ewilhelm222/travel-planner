@@ -109,9 +109,12 @@ under each drawing says which kind it is:
   by name and address) and, since November 17, Apple Maps and Google Maps
   searches for an address typed as the map location.
 - Coordinates, their source, addresses and map links are private. The guest
-  view does not receive them. Since November 17 it has a Map panel drawn from
-  what it does receive: place names, in plan order, never by position, with no
-  link of any kind. Journeys are not shared, and a stay appears on the guest's
+  view does not receive them, with one exception the organizer controls: with
+  "Show the Google day map to guests" ticked, each shared day's stops are sent
+  as the one line Google needs ([google-maps-embed.md](google-maps-embed.md)).
+  Otherwise, since November 17, it has a Map panel drawn from what it does
+  receive: place names, in plan order, never by position, with no link of any
+  kind. Journeys are not shared, and a stay appears on the guest's
   whole-trip view only if the organizer chose to share it. The private offline
   HTML file lists locations as text.
 

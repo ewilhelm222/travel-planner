@@ -3,7 +3,7 @@ import { moveActivity, FIXED_MOVE_ERROR } from "../public/move.mjs";
 import { timingOf, TIMINGS } from "../public/board.mjs";
 import { normalizeLinks, placeReferences, placeReferenceSummary } from "../public/structure.mjs";
 import { applyStayMove } from "../public/stay-move.mjs";
-import { normalizePlaceGeo } from "../public/maps.mjs";
+import { normalizePlaceGeo, embedLocation } from "../public/maps.mjs";
 const text = (v, max = 4000) => typeof v === "string" ? v.trim().slice(0, max) : "";
 export const validDate = v => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
 const id = v => typeof v === "string" && /^[a-zA-Z0-9_-]{1,80}$/.test(v);
@@ -86,7 +86,7 @@ export function normalizeTrip(input, tripId) {
             throw new Error("A journey needs a day within this trip.");
         return { id: l.id, title: text(l.title, 160), date: l.date, arrivalDate: validDate(l.arrivalDate) ? l.arrivalDate : l.date, time: text(l.time, 80), arrivalTime: text(l.arrivalTime, 80), mode: text(l.mode, 40), participants: participants(l.participants), notes: text(l.notes), from: place(l.from), to: place(l.to) };
     }));
-    return { schemaVersion: 2, id: tripId, title: text(input.title, 160), subtitle: text(input.subtitle, 500), kind: input.kind === "event" ? "event" : "trip", start: input.start, end: input.end, timezone: input.timezone, families, people: roster, places, stays, legs, activities };
+    return { schemaVersion: 2, id: tripId, title: text(input.title, 160), subtitle: text(input.subtitle, 500), kind: input.kind === "event" ? "event" : "trip", start: input.start, end: input.end, timezone: input.timezone, guestMap: input.guestMap === true, families, people: roster, places, stays, legs, activities };
 }
 export function applyTripChange(trip, change) {
     const next = structuredClone(trip);
@@ -202,7 +202,7 @@ export function applyTripChange(trip, change) {
         }
     }
     else if (change.action === "metadata") {
-        for (const key of ["title", "subtitle", "start", "end", "timezone", "kind"])
+        for (const key of ["title", "subtitle", "start", "end", "timezone", "kind", "guestMap"])
             if (key in (change.patch || {}))
                 next[key] = change.patch[key];
     }
@@ -321,7 +321,7 @@ export const STAY_GUEST_RULE = "Only the organizer chooses whether a stay is sho
 // The same rule for a whole before/after pair, used where there is no single request to inspect (undo).
 export function editorDiffRestriction(before, after) {
     const shown = trip => JSON.stringify((trip.people || []).filter(p => p.showOnGuest === true).map(p => p.id).sort());
-    const details = trip => JSON.stringify(["title", "subtitle", "start", "end", "timezone", "kind"].map(k => trip[k] ?? null));
+    const details = trip => JSON.stringify([...["title", "subtitle", "start", "end", "timezone", "kind"].map(k => trip[k] ?? null), trip.guestMap === true]);
     if (details(before) !== details(after))
         return EDITOR_TRIP_DETAILS;
     const stays = trip => JSON.stringify((trip.stays || []).filter(s => s.showOnGuest === true).map(s => s.id).sort());
@@ -356,7 +356,11 @@ export function publicTrip(trip) {
     // Unscheduled ideas are shared too (decided November 16, 2026), with the same limited fields.
     const activities = trip.activities.filter(a => a.sourceKind !== "synthetic").map(a => ({ id: a.id, title: a.title, date: a.date, placeId: a.placeId, time: a.time, order: a.order, fixed: timingOf(a) === "set", timing: timingOf(a), optional: a.optional, highlight: a.highlight, participants: [...new Set(a.participants.map(guestId))], notes: a.guestNotes, address: a.guestLocation, imageId: a.imageId || "", sourceKind: a.sourceKind }));
     return { schemaVersion: 2, id: 'guest-view', title: trip.title, subtitle: trip.subtitle, kind: trip.kind, start: trip.start, end: trip.end, timezone: trip.timezone,
-        families, people, places: trip.places.map(p => ({ id: p.id, name: p.name, localName: p.localName, parentId: p.parentId || null })),
+        families, people, guestMap: trip.guestMap === true,
+        // A place's map location reaches guests only when the organizer switched the Google day map on for the
+        // guest link, only for places a shared, dated activity happens at, and only as the one line of text
+        // Google is given (docs/google-maps-embed.md). Its address, coordinates' system and links stay private.
+        places: trip.places.map(p => ({ id: p.id, name: p.name, localName: p.localName, parentId: p.parentId || null, ...(trip.guestMap === true && activities.some(a => a.date && a.placeId === p.id) && embedLocation(p) ? { mapQuery: embedLocation(p) } : {}) })),
         // A stay is shared only when the organizer ticked it, and then without its private note.
         stays: (trip.stays || []).filter(s => s.showOnGuest === true).map(s => ({ id: s.id, name: s.name, placeId: s.placeId, start: s.start, end: s.end, lodging: s.lodging, groupInfo: s.groupInfo, checkOutTime: s.checkOutTime, showOnGuest: true, participants: [...new Set((s.participants || []).map(guestId))] })),
         legs: [], activities };

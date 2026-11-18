@@ -3,7 +3,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { applyTripChange, publicTrip, thanksgivingExample } from '../lib/trips.mjs';
+import { applyTripChange, publicTrip, thanksgivingExample, normalizeTrip, editorRestriction, editorDiffRestriction, EDITOR_TRIP_DETAILS } from '../lib/trips.mjs';
+import { diffTrips, fieldChanges, undoChange } from '../public/history.mjs';
 import { parallelTrip } from './fixtures/parallel-trip.mjs';
 import { dayMap, tripMap, dayEmbed, embedUrl, embedLocation, validEmbedKey, EMBED_MAX_WAYPOINTS } from '../public/maps.mjs';
 import { mapBodyHtml, mapSectionHtml } from '../public/map-panel.mjs';
@@ -106,19 +107,74 @@ test('the Google map keeps the numbered list, the route in words and the links u
     assert.ok(!/<iframe[^>]* src=/.test(html), 'the frame has no address until the page gives it one, so nothing is sent before it is in view');
 });
 
-test('the whole-trip view and the guest page never use Google', () => {
+test('the whole-trip view never uses Google, and guests do only when the organizer switched it on', () => {
     const trip = usable();
     const whole = mapSectionHtml(trip, { view: 'trip', embedKey: KEY, canEdit: true });
     assert.ok(whole.includes('<svg') && !/<iframe|google\.com\/maps\/embed/.test(whole));
-    // Guests are sent no address or coordinates, so there is nothing to give Google; and no key either.
-    const shared = publicTrip(trip);
-    assert.equal(dayEmbed(dayMap(shared, { day: DAY })).ok, false);
-    const guest = mapSectionHtml(shared, { view: 'day', day: DAY, guest: true, embedKey: KEY });
-    assert.ok(guest.includes('<svg') && !/<iframe|Google|data-map-style/.test(guest) && !guest.includes(KEY));
-    const guestPage = read('../public/guest.mjs');
-    assert.ok(!/embedKey|mapsEmbedKey|maps\/embed/.test(guestPage), 'the guest page has no key and never asks for one');
-    assert.ok(!/mapsEmbedKey|GOOGLE_MAPS/.test(read('../app/api/shared/route.ts')), 'the guest API does not send the key');
     assert.equal(tripMap(trip).kind, 'trip');
+    // Off, which is how every existing trip reads: guests are sent no location, so there is nothing to give Google.
+    assert.equal(trip.guestMap, false);
+    const shared = publicTrip(trip);
+    assert.equal(shared.guestMap, false);
+    assert.ok(shared.places.every(p => !('mapQuery' in p)));
+    assert.ok(!/Lantern|34\.6937|mapQuery/.test(JSON.stringify(shared)));
+    assert.equal(dayEmbed(dayMap(shared, { day: DAY })).ok, false);
+    const off = mapSectionHtml(shared, { view: 'day', day: DAY, guest: true, embedKey: '' });
+    assert.ok(off.includes('<svg') && !/<iframe|Google|data-map-style/.test(off));
+});
+
+test('switched on by the organizer, the guest link gets the day map and only the one line per stop it needs', () => {
+    let trip = place(usable(), 'kyoto', { address: 'PRIVATE street address', coordSource: 'PRIVATE source', amapUrl: 'https://surl.amap.com/PRIVATE', navReviewed: true });
+    trip = applyTripChange(trip, { action: 'place-add', place: { id: 'unused', name: 'Not on any shared day', locationText: 'PRIVATE unused address' } });
+    trip = applyTripChange(trip, { action: 'place-add', place: { id: 'idea-place', name: 'Idea place', locationText: 'PRIVATE idea address' } });
+    trip = applyTripChange(trip, { action: 'add', activity: { id: 'idea', title: 'An idea', date: null, placeId: 'idea-place', participants: ['cedar'], order: 0 } });
+    const on = applyTripChange(trip, { action: 'metadata', patch: { guestMap: true } });
+    assert.equal(on.guestMap, true);
+    const shared = publicTrip(on), byId = id => shared.places.find(p => p.id === id);
+    assert.equal(shared.guestMap, true);
+    assert.deepEqual(byId('kyoto'), { id: 'kyoto', name: byId('kyoto').name, localName: byId('kyoto').localName, parentId: null, mapQuery: '12 Lantern Row, Harbour Town' }, 'the typed map address, and nothing else new');
+    assert.equal(byId('osaka').mapQuery, '34.6937,135.5023', 'WGS-84 coordinates as entered');
+    assert.ok(!('mapQuery' in byId('unused')) && !('mapQuery' in byId('idea-place')), 'only places a shared, dated activity happens at');
+    assert.ok(!/PRIVATE|coordSystem|coordSource|amap|locationText|"lat"|"address"/.test(JSON.stringify(shared.places)), 'no address field, system, source or link');
+    // Coordinates in another system are still never sent, to guests or to Google.
+    const gcj = publicTrip(place(on, 'osaka', { locationText: '34.6937, 135.5023', coordSystem: 'GCJ02' }));
+    assert.ok(!('mapQuery' in gcj.places.find(p => p.id === 'osaka')));
+    assert.match(mapSectionHtml(gcj, { view: 'day', day: DAY, guest: true, embedKey: KEY }), /Shown as a schematic, not on Google Maps, because “Osaka” has no address or WGS-84 coordinates\.<\/p>/, 'the guest is told why, without being told to edit');
+    // The guest page draws the same embed the planner would.
+    const html = mapSectionHtml(shared, { view: 'day', day: DAY, guest: true, embedKey: KEY });
+    assert.equal(frameSrc(html), frameSrc(mapSectionHtml(on, { view: 'day', day: DAY, embedKey: KEY, canEdit: true })));
+    assert.ok(html.includes('<ol class="map-list"') && html.includes('data-map-style="schematic"'));
+    assert.ok(!/data-place-edit|Map address|Search this|Directions to this address|No reviewed map link/.test(html), 'the list under it stays the guest list: names only, no links, no edit');
+    // With the switch on but no key configured, guests keep the schematic.
+    assert.ok(!mapSectionHtml(shared, { view: 'day', day: DAY, guest: true, embedKey: '' }).includes('<iframe'));
+    // Switching it off again takes the locations back out.
+    const back = publicTrip(applyTripChange(on, { action: 'metadata', patch: { guestMap: false } }));
+    assert.ok(!JSON.stringify(back).includes('mapQuery') && back.guestMap === false);
+});
+
+test('only the organizer can switch it, it is logged and can be undone, and old trips are untouched', () => {
+    const trip = usable(), on = applyTripChange(trip, { action: 'metadata', patch: { guestMap: true } });
+    assert.equal(editorRestriction(trip, { action: 'metadata', patch: { guestMap: true } }), EDITOR_TRIP_DETAILS);
+    assert.equal(editorDiffRestriction(trip, on), EDITOR_TRIP_DETAILS, 'an editor cannot flip it through undo either');
+    const records = diffTrips(trip, on);
+    assert.deepEqual(records.map(r => r.kind), ['trip']);
+    assert.deepEqual(fieldChanges(records[0]).map(f => [f.field, f.after]), [['guestMap', true]]);
+    assert.equal(undoChange(on, records).guestMap, false);
+    // A trip stored before this field existed reads as off and is not rewritten.
+    const old = structuredClone(trip);
+    delete old.guestMap;
+    assert.deepEqual(diffTrips(old, normalizeTrip(old, old.id)), []);
+    assert.equal(normalizeTrip({ ...old, guestMap: 'yes' }, old.id).guestMap, false, 'only true is on');
+    // The key reaches a guest link only then, and the guest page is allowed to frame Google and nothing else.
+    const sharedRoute = read('../app/api/shared/route.ts'), guestPage = read('../public/guest.mjs'), view = read('../public/view.html'), planner = read('../public/planner.js');
+    assert.match(sharedRoute, /mapsEmbedKey: trip\.guestMap \? mapsEmbedKey\(\) : ""/);
+    assert.match(guestPage, /mapsKey = typeof data\.mapsEmbedKey === 'string' \? data\.mapsEmbedKey : '';/);
+    assert.ok(!/localStorage\.setItem\([^)]*mapsKey/.test(guestPage), 'the guest page does not keep the key');
+    assert.match(view, /connect-src 'self' https:\/\/www\.google\.com; frame-src https:\/\/www\.google\.com; img-src 'self' blob:;/);
+    assert.match(view, /default-src 'self'; script-src 'self'; style-src 'self';/, 'scripts and styles are still the Site\'s own only');
+    assert.match(planner, /<input type="checkbox" id="guest-map" \$\{state\.snapshot\.trip\.guestMap \? 'checked' : ''\}/);
+    assert.match(planner, /Anyone holding the guest link can then read those locations\./);
+    assert.match(planner, /action: 'metadata', base: base\('trip'\), patch: \{ guestMap: on \}/);
 });
 
 test('the key comes from runtime configuration, reaches members only, and is never kept on the device', () => {
@@ -146,17 +202,21 @@ test('no API key is committed anywhere in the repository', () => {
     assert.match(read('../.gitignore') + read('../../../.gitignore'), /\.dev\.vars|\.env/, 'local configuration files are ignored by git');
 });
 
-test('the page falls back by itself when Google does not load, and remembers the person\'s choice', () => {
-    const planner = read('../public/planner.js');
-    assert.match(planner, /const fail = \(\) => \{ clearTimeout\(embedTimer\); if \(frame\.isConnected\) \{ embedFailed = true; refreshMaps\(\); \} \};/);
-    assert.match(planner, /embedTimer = setTimeout\(fail, EMBED_WAIT_MS\);/);
+test('both pages fall back by themselves when Google does not load, and remember the person\'s choice', () => {
+    const planner = read('../public/planner.js'), guestPage = read('../public/guest.mjs'), panel = read('../public/map-panel.mjs');
+    assert.match(panel, /const fail = \(\) => \{ clearTimeout\(embedTimer\); if \(frame\.isConnected\) onFail\(\); \};/);
+    assert.match(panel, /embedTimer = setTimeout\(fail, EMBED_WAIT_MS\);/);
     // Reachability is asked first, with nothing about the trip, the key or the person in the request.
-    assert.match(planner, /await fetch\(GOOGLE_PROBE, \{ mode: 'no-cors', cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer', signal: control\.signal \}\);\s+\}\s+catch \{\s+return fail\(\);/);
-    assert.match(planner, /GOOGLE_PROBE = 'https:\/\/www\.google\.com\/maps\/embed\/v1\/place'/);
-    assert.match(planner, /frame\.addEventListener\('load', \(\) => clearTimeout\(embedTimer\), \{ once: true \}\);/);
-    assert.match(planner, /new IntersectionObserver\(entries => \{ if \(entries\.some\(e => e\.isIntersecting\)\) start\(\); \}/, 'the frame is given its address only when it comes into view');
-    assert.match(planner, /if \(!frame\?\.dataset\?\.src \|\| frame\.src\)\s+return;/);
+    assert.match(panel, /await fetch\(GOOGLE_PROBE, \{ mode: 'no-cors', cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer', signal: control\.signal \}\);\s+\}\s+catch \{\s+return fail\(\);/);
+    assert.match(panel, /GOOGLE_PROBE = 'https:\/\/www\.google\.com\/maps\/embed\/v1\/place'/);
+    assert.equal((panel.match(/fetch\(/g) || []).length, 1, 'that question is the only request the panel makes');
+    assert.match(panel, /frame\.addEventListener\('load', \(\) => clearTimeout\(embedTimer\), \{ once: true \}\);/);
+    assert.match(panel, /new IntersectionObserver\(entries => \{ if \(entries\.some\(e => e\.isIntersecting\)\) start\(\); \}/, 'the frame is given its address only when it comes into view');
+    assert.match(panel, /if \(!frame\?\.dataset\?\.src \|\| frame\.src\)\s+return;/);
+    assert.match(planner, /const armEmbed = \(\) => watchEmbed\(document, \(\) => \{ embedFailed = true; refreshMaps\(\); \}\);/);
+    assert.match(guestPage, /watchEmbed\(document, \(\) => \{ embedFailed = true; render\(\); \}\);/);
     assert.match(planner, /state\.mapStyle = b\.dataset\.mapStyle === 'schematic' \? 'schematic' : 'google';\s+embedFailed = false;\s+persist\(\);/);
+    assert.match(guestPage, /localStorage\.setItem\('waypoint-guest-map-style', mapStyle\)/);
     assert.equal(planner.match(/mapView: state\.mapView, mapStyle: state\.mapStyle,/g).length, 2);
     assert.match(read('../public/planner.css'), /\.map-frame \{ display: block; width: 100%; max-width: 760px; aspect-ratio: 16 \/ 10;/);
 });

@@ -158,6 +158,8 @@ export const validEmbedKey = key => typeof key === "string" && /^[A-Za-z0-9_-]{3
 /** The text to give Google for a place, or null when the place has nothing usable. */
 export function embedLocation(place) {
   if (!place) return null;
+  // The guest projection carries the finished text and nothing else about the location.
+  if (typeof place.mapQuery === "string") return place.mapQuery || null;
   const typed = locationAddress(place);
   if (typed) return typed;
   if (hasCoordinates(place) && place.coordSystem === "WGS84") return `${place.lat},${place.lng}`;
