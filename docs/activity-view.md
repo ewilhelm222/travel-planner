@@ -3,6 +3,10 @@
 Status: November 16, 2026. Built and checked locally with synthetic data; not
 deployed. No data, schema, API or access change.
 
+The order of the view's contents, the single Maps control and how it scrolls
+were redone on November 19: see [activity-view-layout.md](activity-view-layout.md),
+which replaces the layout described under "What happens now" below.
+
 Tapping (or clicking) an activity used to open the full editing form straight
 away. On a phone that was heavy for people who only wanted to read the plan, it
 made accidental edits easy, and a long description was clipped both on the card
