@@ -1,10 +1,9 @@
 # Stay information for the group
 
-Status: November 17, 2026. Built and checked locally with synthetic data; not
-deployed. Adds three optional fields to a stay. No database migration; no
+Status: November 17, 2026. Built and checked locally with synthetic data; deployed in version 16. Adds three optional fields to a stay. No database migration; no
 stored trip is rewritten. Step "PR 11" of the
 [feedback plan](feedback-2026-11-15-plan.md) (items S2 and S3), approved by the
-organizer on November 16.
+organizer on November 16. See [release history](releases/README.md) for dated live checks and remaining limits.
 
 ## For planners
 

@@ -8,7 +8,7 @@ current implementation and [the schedule-first phone layout](schedule-first.md)
 for the phone arrangement. Tapping an activity opens a read-only view, with
 Edit for people who sign in: see [tap to read, Edit to change](activity-view.md).
 A change of stay area is drawn as a travel bridge between the columns: see
-[travel bridges](travel-bridge.md) (not yet deployed).
+[travel bridges](travel-bridge.md) (deployed in version 26).
 The sections below preserve the initial feasibility
 proof and its verification history.
 
@@ -16,7 +16,7 @@ proof and its verification history.
 
 [Open the private prototype](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site).
 
-The working name is **Waypoint**; naming is not a confirmed product decision. All itinerary content is fictional: two sample families in the editable board, and three sample families in the read-only layout study, visiting Kyoto and Osaka. No real reservations or China trip data have been loaded, and no invitations have been sent.
+The working name is **Waypoint**; naming is not a confirmed product decision. All itinerary content is fictional: two sample families in the editable board, and three sample families in the read-only layout study, visiting Kyoto and Osaka. No real reservations or multi-area trip data have been loaded, and no invitations have been sent.
 
 The initial Site is owner-private. Its observed access mode is `custom`, with one allowed account, no groups, and no external visitors. External invitation capability is enabled for the owner. Do not make it public to work around sign-in issues.
 
@@ -80,6 +80,13 @@ still need review with the forthcoming board layout.
 At the end of the original feasibility pass, adding/deleting activities, full drag-and-drop, stay-move previews, per-person participation, family editing protections, undo/history, maps, real-data loading, and operational backup/restore were future work. Consult the current status above for features added since then.
 
 ## Source and deployment
+
+Current deployed application: **version 26**, shell **v52**, runtime revision **2**.
+See [the release index](releases/README.md), [version 26](releases/2026-11-19-v26.md)
+and the [Cloudflare-aware deployment checks](deployment-verification.md).
+Documentation commits after the pinned release do not change the live Site;
+GitHub main and the deployed app commit must be reported separately.
+
 
 - Canonical project source: `apps/sites-prototype/` in this GitHub repository.
 - Platform: the supplied Sites Vinext/Cloudflare Worker starter; managed D1 binding `DB`.

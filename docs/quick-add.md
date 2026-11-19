@@ -1,8 +1,7 @@
 # Quick add: a shorter activity form
 
-Status: November 16, 2026. Built and checked locally with synthetic data; not
-deployed. No data change: the same fields are stored as before. Step "PR 7" of
-the [feedback plan](feedback-2026-11-15-plan.md) (items C4, W2, W4).
+Status: November 16, 2026. Built and checked locally with synthetic data; deployed in version 15. No data change: the same fields are stored as before. Step "PR 7" of
+the [feedback plan](feedback-2026-11-15-plan.md) (items C4, W2, W4). See [release history](releases/README.md) for dated live checks and remaining limits.
 
 ## What changed
 

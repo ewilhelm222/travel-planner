@@ -1,8 +1,7 @@
 # Moving a stay, with a preview
 
-Status: November 16, 2026. Built and checked locally with synthetic data; not
-deployed. No database migration. This is plan milestone 3's stay-move preview,
-ported from the read-only study (`public/parallel-preview.mjs`) into the planner.
+Status: November 16, 2026. Built and checked locally with synthetic data; deployed in version 12. No database migration. This is plan milestone 3's stay-move preview,
+ported from the read-only study (`public/parallel-preview.mjs`) into the planner. See [release history](releases/README.md) for dated live checks and remaining limits.
 
 ## For planners
 

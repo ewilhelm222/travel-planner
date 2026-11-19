@@ -1,11 +1,10 @@
 # Maps: schematic trip and day views
 
-Status: November 17, 2026. The first pass (November 16) is in `main`; see
-[multi-events.md](multi-events.md) for what is deployed. The November 17
-additions below are built and checked locally with synthetic data and not
-deployed. No database migration. This is the maps part of plan
-milestone 4. **It makes no claim about China readiness**: no map provider, link
-or network was tested from a phone or from mainland China.
+Status: the schematic maps and November 17 additions are deployed (version 18
+for the latter); travel-bridge map ordering is deployed in version 26. See
+[release history](releases/README.md) for dated checks and limits. Live phone
+map-provider links and mainland-China behavior remain unverified. No database
+migration was introduced for these map features.
 
 ## Added on November 17
 

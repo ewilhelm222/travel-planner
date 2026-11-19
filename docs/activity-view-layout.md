@@ -1,7 +1,8 @@
 # Activity view: reading order, one Maps control, one scroll area
 
-Status: November 19, 2026. Built and checked locally with synthetic data; not
-deployed. No data, schema, API or access change. Follows
+Status: deployed November 19, 2026 in version 25 (PR #40); retained in live
+version 26. See [release 25](releases/2026-11-19-v25.md) for the owner-browser
+checks and outstanding phone/scroll/guest limits. No data, schema, API or access change. Follows
 [tap to read, Edit to change](activity-view.md).
 
 ## What was wrong, and where it came from

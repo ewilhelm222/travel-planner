@@ -1,7 +1,6 @@
 # Editing places, stays and journeys
 
-Status: November 16, 2026. Built and checked locally with synthetic data; not
-deployed. No database migration is needed for this step.
+Status: November 16, 2026. Built and checked locally with synthetic data; deployed in version 12. No database migration is needed for this step. See [release history](releases/README.md) for dated live checks and remaining limits.
 
 ## For planners
 

@@ -1,8 +1,7 @@
 # Safety net: history, undo, remove, delete and backup
 
-Status: November 16, 2026. Built and checked locally with synthetic data; not
-deployed. Deploying needs migration `0002_change_log_and_archive.sql`, which only
-adds a table and two columns. Existing trips are not rewritten.
+Status: November 16, 2026. Built and checked locally with synthetic data; deployed in version 12. Deploying needs migration `0002_change_log_and_archive.sql`, which only
+adds a table and two columns. Existing trips are not rewritten. See [release history](releases/README.md) for dated live checks and remaining limits.
 
 ## For the organizer, in plain language
 

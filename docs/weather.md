@@ -1,11 +1,12 @@
 # Weather under each date
 
-Status: November 18, 2026. Version 22 (main `58c1709`) is live; on it the
-forecast never arrived, because the forecast service refuses the host (see
-"Why the browser asks"). This document describes the change that moves the
-forecast request to the reader's browser; it is checked locally with a
-synthetic trip and mocked services and is not deployed. No database migration.
-It makes no claim about working in China.
+Status: browser-side forecasts deployed in version 23 (PR #37); complete
+weather title text deployed in version 24 (PR #38), persistence through card
+moves in version 25 (PR #41), and travel-day placement in version 26 (PR #43).
+A live planner forecast was seen in Chrome after an initial timeout and
+automatic retry in version 23, and again in later releases. Guest forecast
+rendering and physical-phone behavior remain unverified. See
+[release history](releases/README.md). No database migration.
 
 ## For planners and guests
 
@@ -131,7 +132,8 @@ that has already ended there is not shown.
   parsing, classification, words, icons, the kept copy, and filling the lines.
 - `public/board.mjs` puts an empty line in every day header; `planner.js` and
   `guest.mjs` fill it in place when the answer arrives.
-- Offline shell cache is `waypoint-shell-v51`. Offline, a forecast kept by the
+- Current offline shell cache is `waypoint-shell-v52`; weather persistence
+  originally shipped with v51. Offline, a forecast kept by the
   browser is not shown; the lines stay empty.
 
 ## Checks
@@ -149,17 +151,37 @@ that has already ended there is not shown.
   signed-in person keeps the last forecast or is told why.
 - Type check, lint (0 errors) and production build pass.
 
-## Not verified
+## Verification and remaining limits
 
-- **A live forecast in a browser.** The build environment cannot reach
-  Open-Meteo, so its real answer and its cross-origin headers were not seen.
-  If a browser is refused, the sentence under the schedule says what it got.
-- **Open-Meteo's terms**: the terms page could not be opened. Confirm that a
-  private family planner counts as non-commercial use.
-- **The address lookup from the host**, including how well it finds rural
-  addresses.
-- A physical phone, a screen reader, real trip data, and anything from
-  mainland China, where the forecast service may not be reachable.
+Version 22's server-side forecast requests returned empty days with
+forecast-failed / HTTP 429 on all five minute-spaced checks. In version 23, the
+reader's browser initially reported TimeoutError, then populated all six
+forecast lines automatically during the three-minute no-reload observation.
+The tooltip/update text, Open-Meteo credit and desktop column alignment were
+checked. Version 24 verified complete wet and Dry title text. Version 25
+observed weather lines but did not perform a live drag regression check. These
+are dated observations; the historical release records keep their original
+limits.
+
+The live Network panel's HTTP status, daily JSON response and actual request
+headers were not captured in version 23. Source checks confirmed the permitted
+URL parameters, no-referrer policy and omitted credentials; that is not a wire
+inspection. Captured console logs contained no CORS or CSP error.
+
+Still unverified:
+
+- Guest forecast rendering, place omission from guest tooltip text and owner-only
+  diagnostic suppression during a live forecast check. Guest read-only access
+  passed in version 26, but that does not establish its weather behavior.
+- Physical phones, phone All days weather, touch interactions and screen reader.
+  Viewport overrides repeatedly did not change the observed Chrome dimensions.
+- Address/name lookup accuracy from the host, Nominatim policy compliance and
+  mainland-China connectivity.
+
+Open-Meteo terms were read on November 17 and recorded as permitting the
+described non-commercial private app subject to attribution and usage limits.
+That dated reading is preserved in the version 19/21 history; it is not a new
+terms review. No China-readiness claim is made.
 
 ## Screenshots (synthetic trip; the forecast is made up)
 

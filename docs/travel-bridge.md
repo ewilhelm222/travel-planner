@@ -1,8 +1,11 @@
 # Travel bridges: showing a change of stay
 
-Status: November 19, 2026. Built and checked locally with made-up data; not
-deployed. No database migration and no change to the stored trip: everything
-here is read from the stays, places and journeys that already exist.
+Status: deployed November 19, 2026 as version 26. Desktop organizer bridges,
+split-day ordering, reading view and the unsaved journey form were verified.
+The single-stay board and guest read-only access passed. Phone viewport
+overrides did not apply; portrait/landscape and physical-phone behavior remain
+unverified. See [release 26](releases/2026-11-19-v26.md). No migration or stored
+trip rewrite.
 
 ## For planners
 

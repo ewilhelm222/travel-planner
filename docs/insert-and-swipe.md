@@ -1,8 +1,7 @@
 # Add between cards, and swipe between days
 
-Status: November 17, 2026. Built and checked locally with synthetic data; not
-deployed. No data change. From the [feedback plan](feedback-2026-11-15-plan.md)
-(items C3 and L2).
+Status: November 17, 2026. Built and checked locally with synthetic data; deployed in version 16. No data change. From the [feedback plan](feedback-2026-11-15-plan.md)
+(items C3 and L2). See [release history](releases/README.md) for dated live checks and remaining limits.
 
 ## Add here, between two cards
 

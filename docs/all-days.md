@@ -1,8 +1,7 @@
 # All days in one scroll (phones)
 
-Status: November 16, 2026. Built and checked locally with synthetic data; not
-deployed. No data change. Step "PR 10" of the
-[feedback plan](feedback-2026-11-15-plan.md) (item L3).
+Status: November 16, 2026. Built and checked locally with synthetic data; deployed in version 15. No data change. Step "PR 10" of the
+[feedback plan](feedback-2026-11-15-plan.md) (item L3). See [release history](releases/README.md) for dated live checks and remaining limits.
 
 On an upright phone the day rail now has an **All days** stop, next to Ideas.
 

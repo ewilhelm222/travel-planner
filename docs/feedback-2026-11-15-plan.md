@@ -53,7 +53,7 @@ Steps PR 7, PR 9 and PR 10 were built the same day, after PR 1 to PR 6 were
 deployed: [quick-add.md](quick-add.md), [timing.md](timing.md) and
 [all-days.md](all-days.md). **PR 8 (keep or remove examples, item X2) was
 built and then withdrawn at the organizer's request on November 16**: the
-examples were deleted from the Camp Earnest trip by hand, the China draft will
+examples were deleted from the single-stay event trip by hand, the multi-area draft will
 be handled directly, and no further work is wanted around whether an item is
 an example. The label, the Hide examples tick and the guest-link exclusion from
 PR 2 remain as deployed. The timing step differs
@@ -89,7 +89,7 @@ built from this plan: repeating activities (T3), people in more than one group
    gathering, and already pre-fill the selected day. Unscheduled ideas exist
    but sit roughly two screens down. These are wording and placement fixes,
    not new features.
-5. **Before Camp Earnest (November 22 to 27) only small, no-schema changes
+5. **Before the single-stay event (November 22 to 27) only small, no-schema changes
    should ship**: access messages, wording and the pink card, a dark edit form,
    and "add" and "ideas" within reach. Timing levels, shared stay information,
    place hierarchy and gestures change stored data or gestures that already
@@ -112,7 +112,7 @@ built from this plan: repeating activities (T3), people in more than one group
   landscape (844 × 390, touch) and desktop (1440 × 900), signed in as organizer,
   as an editor, as a signed-in non-member, and through the guest link.
 
-Not checked: the hosted Site, a physical phone, the real Camp Earnest data, the
+Not checked: the hosted Site, a physical phone, the real the single-stay event data, the
 ChatGPT sign-in emails themselves, and which build each participant actually
 had open. `README.md` still says pull requests 7 to 12 are "not yet deployed",
 which contradicts the release record; one of the two should be corrected.
@@ -221,7 +221,7 @@ only some screens. Item codes point to [section 4](#4-item-details).
 
 | What | Why |
 | --- | --- |
-| Invented activities in the real Camp Earnest trip (data, not code) | Strongest negative reaction in the sessions |
+| Invented activities in the real the single-stay event trip (data, not code) | Strongest negative reaction in the sessions |
 | The solid magenta card and its glow | Called too much by the adult; first reaction of a younger participant was the colour |
 | "The rendezvous", "Highlight a shared moment", "The plan, up close", "Not on the itinerary. Yet." | Called twee; meaning not obvious |
 | "○ Flexible" on every unfixed card | Misleading for things that must happen that day |
@@ -425,7 +425,7 @@ sentence instead of a tag, same place on every screen.
 **X3. Keep examples off the guest link.** Modify. Size S. Organizer decision.
 
 **Organizer action today, no code:** delete the invented items from the real
-Camp Earnest trip, or correct them, before anyone else is shown it. Deleting
+the single-stay event trip, or correct them, before anyone else is shown it. Deleting
 works now and is undoable. Principle for future trips: empty days stay empty
 ("Room to wander" already says this well); examples belong in the separate
 example trip.
@@ -621,7 +621,7 @@ changes, last deployment by about November 19, nothing new during the stay.**
 - Read through the existing unscheduled ideas, because guests will see their
   titles once PR 4 ships.
 
-### P0: can ship before Camp Earnest (no data change)
+### P0: can ship before the single-stay event (no data change)
 
 | Step | Contents | Size | Needs from the organizer |
 | --- | --- | --- | --- |
