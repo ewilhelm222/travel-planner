@@ -337,3 +337,12 @@ test('the forecast is asked for by the reader’s browser, and the guest page is
     assert.deepEqual(await fetchWeather({ points: [], dates: {}, why: { reason: 'no-location' } }, { fetch: async () => { throw new Error('not asked'); } }), { days: {}, updatedAt: null, why: { reason: 'no-location' } });
     assert.deepEqual(await fetchWeather(null, {}), { days: {}, updatedAt: null });
 });
+
+test('the weather stays on screen when the plan is saved, and is asked for again in the background', async () => {
+    const planner = await source('public/planner.js');
+    const show = planner.slice(planner.indexOf('function showWeather()'), planner.indexOf('async function loadWeather()'));
+    assert.match(show, /const have = !!state\.snapshot && weather\.trip === state\.snapshot\.trip\.id;/, 'shown for the trip, whatever its revision: moving a card does not blank the lines');
+    assert.match(show, /loadWeather\(\);\s+\}\s*$/, 'every redraw, including the one after a move, asks again if the plan has moved on');
+    const refresh = planner.slice(planner.indexOf('function refreshBoard('), planner.indexOf('function refreshBoard(') + 700);
+    assert.match(refresh, /it\.innerHTML = board\([^;]+;\s+showWeather\(\);/, 'the redraw after a move fills the lines again');
+});

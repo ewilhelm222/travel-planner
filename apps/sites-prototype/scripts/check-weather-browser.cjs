@@ -95,6 +95,22 @@ const METEO = 'https://api.open-meteo.com/**';
     const note = await page.$eval('#weather-note', e => ({ text: e.textContent, shown: !!e.offsetParent }));
     check(`${label}: the note under the schedule says when and from where`, /updated .*Open-Meteo\.com/.test(note.text) && (note.shown || viewport.height <= 520), note.text);
 
+    // Moving a card saves the plan and redraws the board: the weather must stay, and must not need a reload.
+    if (viewport.width >= 1000) {
+      const revBefore = await rev();
+      await page.focus('#itinerary .agenda-day[data-date="2026-11-26"] .activity');
+      await page.keyboard.press('Shift+ArrowRight');
+      await page.waitForFunction(r => /Revision (\d+)/.exec(document.querySelector('#status')?.textContent || '')?.[1] > r, revBefore);
+      const moved = await measure();
+      check(`${label}: after a card is moved to another day the weather lines are still there`, /^Heavy rain 80%/.test(moved[0].text) && /^Snow 90%/.test(moved[1].text) && await rev() > revBefore, JSON.stringify(moved.map(x => x.text.slice(0, 14))));
+      await page.waitForTimeout(700);
+      check(`${label}: and still there once the background check has come back`, /^Snow 90%/.test((await measure())[1].text));
+      await page.focus('#itinerary .agenda-day[data-date="2026-11-27"] .activity');
+      await page.keyboard.press('Shift+ArrowLeft');
+      await page.waitForTimeout(900);
+      check(`${label}: and after it is moved back`, /^Snow 90%/.test((await measure())[1].text));
+    }
+
     // No forecast for any day: the line is given back in every column, and the organizer is told why.
     await page.unroute(METEO);
     await page.route(METEO, route => route.fulfill({ status: 429, body: 'busy', headers: { 'Access-Control-Allow-Origin': '*' } }));
