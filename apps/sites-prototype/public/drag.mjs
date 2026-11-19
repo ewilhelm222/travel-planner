@@ -110,7 +110,7 @@ export function enableDrag(options) {
     if (!day) return null;
     const cards = [...day.querySelectorAll('.activity[data-detail]')].filter(c => c !== drag.card);
     const items = cards.map(c => { const r = c.getBoundingClientRect(); return { id: c.dataset.detail, top: r.top, height: r.height }; });
-    return { date: day.dataset.date, beforeId: beforeIdAt(items, y), zone: day };
+    return { date: day.dataset.date, beforeId: beforeIdAt(items, y), zone: day, part: day.dataset.part || null };
   }
 
   function move(x, y) {
@@ -131,7 +131,7 @@ export function enableDrag(options) {
     }
     drag.ghost.style.transform = `translate(${gx}px, ${gy}px) scale(${scale}) rotate(-1.5deg)`;
     const t = locate(x, y), d = drag;
-    const same = d.target && t && d.target.date === t.date && d.target.beforeId === t.beforeId && d.target.chip === t.chip;
+    const same = d.target && t && d.target.date === t.date && d.target.beforeId === t.beforeId && d.target.chip === t.chip && d.target.zone === t.zone;
     if (same) return;
     clearTarget();
     d.target = t;
@@ -209,7 +209,7 @@ export function enableDrag(options) {
     // Swallow only the click the browser synthesizes from this same release.
     suppressClick = true;
     setTimeout(() => { suppressClick = false; }, 0);
-    if (commit && d.target && !d.target.cancel) onDrop({ activityId: d.id, date: d.target.date, beforeId: d.target.beforeId, viaChip: !!d.target.chip });
+    if (commit && d.target && !d.target.cancel) onDrop({ activityId: d.id, date: d.target.date, beforeId: d.target.beforeId, viaChip: !!d.target.chip, part: d.target.part || null });
   }
 
   function cancelPending() { if (pending) { clearTimeout(pending.timer); pending = null; } }

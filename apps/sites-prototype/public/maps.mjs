@@ -5,6 +5,7 @@
 // Apple Maps inside mainland China) and BD09 (Baidu) differ by up to several hundred
 // metres, and there is no simple offset between them. This file contains no conversion.
 import { matchesSelection } from "./participants.mjs";
+import { travelPlan, splitDay } from "./bridges.mjs";
 
 export const COORD_SYSTEMS = ["WGS84", "GCJ02", "BD09", "unknown"];
 export const COORD_LABELS = { WGS84: "WGS-84 · GPS and most maps outside mainland China", GCJ02: "GCJ-02 · Amap, Tencent, Apple Maps in mainland China", BD09: "BD-09 · Baidu Maps", unknown: "Unknown · I am not sure where these numbers came from" };
@@ -253,13 +254,21 @@ export function tripMap(trip, { filter = "all", compact = false } = {}) {
   let edges = legs.filter(l => l.from && l.to && l.from !== l.to).map(l => ({ from: l.from, to: l.to, label: `${l.mode || "Journey"} · ${l.date}`, kind: "journey" }));
   // With no journeys entered, connect consecutive stays so the order of the trip is still visible.
   if (!edges.length) edges = stays.slice(1).map((s, i) => ({ from: stays[i].placeId, to: s.placeId, label: "", kind: "order" })).filter(e => e.from && e.to && e.from !== e.to);
+  // A change of stay area with no journey entered is a bridge on the board; draw it here too, as a planned connection.
+  else for (const m of travelPlan(trip, { filter }).moves) {
+    const from = m.fromStays[0]?.placeId, to = m.toStays[0]?.placeId;
+    if (!m.legs.length && from && to && from !== to) edges.push({ from, to, label: "", kind: "order" });
+  }
   const missing = stays.filter(s => !s.placeId).length + legs.filter(l => !l.from || !l.to).length;
   return { kind: "trip", nodes, edges, missing, ...layout(nodes, compact) };
 }
 
 /** One day: the selected travelers' activities in itinerary order, grouped into stops by place. */
 export function dayMap(trip, { filter = "all", day, compact = false } = {}) {
-  const activities = (trip.activities || []).filter(a => a.date === day && matchesSelection(a, filter, trip)).sort(byOrder);
+  let activities = (trip.activities || []).filter(a => a.date === day && matchesSelection(a, filter, trip)).sort(byOrder);
+  // A travel day is drawn in the order the board shows it: the place being left, then the place reached.
+  const moves = travelPlan(trip, { filter }).moves.filter(m => m.split === day);
+  if (moves.length) { const halves = splitDay(trip, moves, activities); activities = [...halves.before, ...halves.after]; }
   const stops = [], unplaced = [];
   for (const a of activities) {
     const n = a.placeId ? node(trip, a.placeId) : null;

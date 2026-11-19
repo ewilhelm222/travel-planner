@@ -25,6 +25,9 @@ The preview changes nothing. It shows:
 - **⚠ Overlaps another stay**: the new nights collide with another stay for
   some of the same travelers. Allowed, but shown.
 
+Travel bridges on the board ([travel-bridge.md](travel-bridge.md)) are read
+from the stays, so after a move they appear, shift or disappear to match.
+
 **Confirm move** applies the stay's new dates and only the ticked activities.
 **Cancel · change nothing** goes back. The whole move is one History entry and
 one Undo.

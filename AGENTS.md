@@ -19,6 +19,9 @@ The day map uses Google Maps Embed when `GOOGLE_MAPS_EMBED_KEY` is set in runtim
 configuration, and the schematic otherwise; the key is never committed. Guests
 get the Google map, and the stop locations it needs, only if the organizer ticks
 it on the guest link (`docs/google-maps-embed.md`).
+A change of stay to a different area is drawn as a gap with a travel bridge, and its
+travel day in two parts; this is read from stays, places and journeys, never stored
+(`docs/travel-bridge.md`).
 The weather line under each date is for the stay's location: the server sends
 rounded coordinates (to guests too) and the reader's browser asks the forecast
 service; an address is looked up for the weather only and never stored (`docs/weather.md`).

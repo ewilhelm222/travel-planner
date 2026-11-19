@@ -1,6 +1,7 @@
 (async () => {
     'use strict';
     const { escape, dateLabel, days, preferredDay, board, dayChooser, isExample, ideaCards, timingOf, TIMINGS, TIMING_LABELS, PHONE_QUERY, dayInView, pressDay, fitColumns, areaId, orderedPlaces, swipeStep } = await import('/board.mjs');
+    const { travelPlan, endOfBeforePart } = await import('/bridges.mjs');
     const { usefulFilterChoices, matchesSelection, defaultParticipants, includesPerson, peopleOf, isWholeTripGroup, participantRecord, participantReferences, referenceSummary } = await import('/participants.mjs');
     const { fieldChanges, lastEditHtml, lastEditText, recentlyEdited, historyHref } = await import('/history.mjs');
     const { baseFor, recordKey } = await import('/revisions.mjs');
@@ -112,8 +113,8 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v51');
-            state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/activity-view.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs', '/weather.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
+            const cache = await caches.open('waypoint-shell-v52');
+            state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/activity-view.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs', '/weather.mjs', '/bridges.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
         catch { }
@@ -248,7 +249,7 @@ ${t ? `<div class="toolbar"><span class="view-title">Daily plans</span>${filterS
 ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-closed' : ''}">${ideasSection(t)}<div id="itinerary" tabindex="-1" class="date-board">${board(t, { filter: state.filter, day: state.day, compact: state.compact, hideExamples: state.hideExamples })}</div></div><div class="board-notes"><p id="drag-hint" class="drag-hint"></p><p id="filter-status" role="status" aria-live="polite">${state.filter === 'all' ? 'Everyone · shared plans appear once' : 'Selected group · all shared attendee labels remain visible'}</p>${weatherNote()}${examplesToggle}${roleNote}</div>${mapsSection(t)}` : welcome()}
 <footer><span>Waypoint <span class="title-dot">×</span> Make plans. Take detours.</span><span>Guest links are optional and read-only.</span></footer></main>
 `}${viewDialog()}<dialog id="editor" class="form-dialog" aria-labelledby="edit-title"><form id="edit-form"><div class="dialog-heading"><span class="eyebrow"></span><button type="button" class="icon-button" id="close-editor" aria-label="Close activity">×</button></div><h2 id="edit-title">Activity</h2><div id="editor-fields"></div><p class="last-edit" id="edit-last-edit" hidden></p><p id="edit-message" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button" id="copy-draft" hidden>Copy my draft</button><button type="button" class="secondary" id="reload-after-conflict" hidden>Load latest plan</button><button type="button" class="text-button" id="delete">Delete activity</button><button type="submit" class="primary" id="save">Save changes</button></div></form></dialog>
-<dialog id="roster-dialog" class="form-dialog" aria-labelledby="roster-title"></dialog><dialog id="history-dialog" aria-labelledby="history-title"></dialog><dialog id="stay-view" aria-labelledby="stay-view-title"></dialog><dialog id="structure-dialog" class="form-dialog" aria-labelledby="structure-title"></dialog><dialog id="archived-dialog" aria-labelledby="archived-title"></dialog><dialog id="editors-dialog" class="form-dialog" aria-labelledby="editors-title"></dialog><dialog id="create-dialog" class="form-dialog" aria-labelledby="create-title"><form id="create-form"><h2 id="create-title">New trip or event</h2><label>Name<input name="title" required maxlength="160"></label><label>Subtitle <small>(optional; shown under the name, and to guests)</small><input name="subtitle" maxlength="500"></label><div class="field-row"><label>First day<input type="date" name="start" required></label><label>Last day<input type="date" name="end" required></label></div><label>Time zone<input name="timezone" value="America/Los_Angeles" required></label><label>Kind<select name="kind"><option value="event">Gathering / event</option><option value="trip">Trip</option></select></label><p id="create-error" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button danger" id="trip-delete" hidden>Delete this trip…</button><button type="button" class="secondary" data-close="create-dialog">Cancel</button><button class="primary" id="create-submit">Create</button></div></form></dialog>
+<dialog id="roster-dialog" class="form-dialog" aria-labelledby="roster-title"></dialog><dialog id="history-dialog" aria-labelledby="history-title"></dialog><dialog id="stay-view" aria-labelledby="stay-view-title"></dialog><dialog id="travel-view" aria-labelledby="travel-view-title"></dialog><dialog id="structure-dialog" class="form-dialog" aria-labelledby="structure-title"></dialog><dialog id="archived-dialog" aria-labelledby="archived-title"></dialog><dialog id="editors-dialog" class="form-dialog" aria-labelledby="editors-title"></dialog><dialog id="create-dialog" class="form-dialog" aria-labelledby="create-title"><form id="create-form"><h2 id="create-title">New trip or event</h2><label>Name<input name="title" required maxlength="160"></label><label>Subtitle <small>(optional; shown under the name, and to guests)</small><input name="subtitle" maxlength="500"></label><div class="field-row"><label>First day<input type="date" name="start" required></label><label>Last day<input type="date" name="end" required></label></div><label>Time zone<input name="timezone" value="America/Los_Angeles" required></label><label>Kind<select name="kind"><option value="event">Gathering / event</option><option value="trip">Trip</option></select></label><p id="create-error" role="alert"></p><div class="dialog-actions"><button type="button" class="text-button danger" id="trip-delete" hidden>Delete this trip…</button><button type="button" class="secondary" data-close="create-dialog">Cancel</button><button class="primary" id="create-submit">Create</button></div></form></dialog>
 <dialog id="import-dialog" class="form-dialog" aria-labelledby="import-title"><form id="import-form"><h2 id="import-title">Import a trip or event</h2><label>Trip JSON<textarea id="import-json" rows="14" required maxlength="250000" spellcheck="false"></textarea></label><p>Creates a separate private trip. Guest sharing starts disabled. A full backup file is checked for damage first.</p><p id="import-error" role="alert"></p><div class="dialog-actions"><button type="button" class="secondary" data-close="import-dialog">Cancel</button><button class="primary">Import trip</button></div></form></dialog><dialog id="share-dialog" aria-labelledby="share-title"><h2 id="share-title">A link for your guests</h2><p>Anyone holding this link can browse the dated activities and the unscheduled ideas, with group names, opted-in traveler display names, guest descriptions, meeting points, and the pictures on those cards. They cannot edit.</p><p>Private planning notes, journey notes, source links, and editor identities are excluded. A stay appears only if you ticked “Show this stay on the guest link” in it, and never with its private note or address. So is anything marked “Example · not a real plan”. Downloaded copies cannot be recalled.</p><div id="share-body"></div><p id="share-error" role="alert"></p><div class="dialog-actions"><button class="secondary" data-close="share-dialog">Close</button></div></dialog>`;
         status();
         fitColumns($('#itinerary'));
@@ -441,6 +442,9 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
         const it = $('#itinerary');
         for (const section of it?.querySelectorAll('.agenda-day') || [])
             section.dataset.selected = String(section.dataset.date === date);
+        // A bridge belongs with the day (or the two days) it joins.
+        for (const bridge of it?.querySelectorAll('.bridge') || [])
+            bridge.dataset.selected = String(bridge.dataset.bridgeDates.split(' ').includes(date));
         if ($('#day'))
             $('#day').value = date;
         if ($('.day-rail')) { $('.day-rail').outerHTML = rail(state.snapshot.trip, date); revealDay(); }
@@ -522,7 +526,7 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
         showLastEdits();
         loadLastEdits();
     }
-    async function moveCard({ activityId, date, beforeId = null, follow = false, focus = false }) {
+    async function moveCard({ activityId, date, beforeId = null, follow = false, focus = false, part = null }) {
         if (!writable() || !state.snapshot)
             return;
         const previous = state.snapshot, a = previous.trip.activities.find(x => x.id === activityId);
@@ -534,7 +538,14 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
             status();
             return;
         }
-        let result;
+        // A travel day is shown in two parts but has one saved order. Dropped below the last card of the part
+        // before the journey, the card is ordered so that it stays on that side when it can.
+        if (part === 'before' && beforeId === null && date) {
+            const t = previous.trip, moves = travelPlan(t, { filter: state.filter }).moves.filter(m => m.split === date);
+            if (moves.length)
+                beforeId = endOfBeforePart(t, moves, t.activities.filter(x => x.date === date && matchesSelection(x, state.filter, t) && !(state.hideExamples && isExample(x))), activityId);
+        }
+        let result, partNote = '';
         try {
             result = moveActivity(previous.trip, { activityId, date, beforeId });
         }
@@ -550,6 +561,10 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
         if (follow && date)
             state.day = date;
         refreshBoard(activityId, { focus });
+        // Which side of the journey a card sits on comes from its place, so say so when it lands on the other one.
+        const landed = document.querySelector(`#itinerary [data-detail="${CSS.escape(activityId)}"]`)?.closest('.agenda-day')?.dataset.part;
+        if (part && landed && landed !== part)
+            partNote = landed === 'after' ? ' It is shown after the journey: its place is not the one being left that day. Give it that place to show it before.' : ' It is shown before the journey, because its place is the one being left that day.';
         state.busy = true;
         state.message = `Saving: “${a.title}” → ${dayName(date)}…`;
         status();
@@ -559,7 +574,7 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
             state.snapshot = saved.snapshot;
             remember();
             const where = result.from === date ? `Reordered “${a.title}” on ${dayName(date)}.` : `Moved “${a.title}” from ${dayName(result.from)} to ${dayName(date)}.`;
-            state.message = `${where}${shared && result.from !== date ? ` One shared plan, moved for ${groupNames(a)}${state.filter !== 'all' ? ' — including travelers hidden by the “Show plans for” filter' : ''}.` : ''} Saved for everyone viewing this trip.`;
+            state.message = `${where}${shared && result.from !== date ? ` One shared plan, moved for ${groupNames(a)}${state.filter !== 'all' ? ' — including travelers hidden by the “Show plans for” filter' : ''}.` : ''}${partNote} Saved for everyone viewing this trip.`;
         }
         catch (e) {
             if (e.status === 403) { render(); return; }
@@ -874,8 +889,21 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
         structureDialog('Stay', id ? 'Edit stay' : 'Add stay', `<form id="stay-form" data-id="${escape(s.id)}" data-new="${!id}" data-base="${id ? baseAttr(recordKey('stay', id)) : '{}'}"><label>Place<select name="placeId" required ${disabled}>${placeOptions(t, s.placeId, 'Choose a place…')}</select></label>${t.places.length ? '' : '<p class="form-hint">Add a place first (Back → Add place).</p>'}<div class="field-row"><label>Check-in<input type="date" name="start" value="${escape(s.start)}" required ${disabled}></label><label>Check-out<input type="date" name="end" value="${escape(s.end)}" required ${disabled}></label></div><p class="form-hint">The stay covers each night from check-in up to, not including, check-out. Changing these dates here does not move any activities${id ? '; use “Move this stay” below to bring flexible plans along' : ''}.</p><label>Lodging<input name="lodging" value="${escape(s.lodging)}" maxlength="500" ${disabled}><small>The line shown on the board, for example the name of the house.</small></label><label>For the group<textarea name="groupInfo" rows="4" maxlength="4000" placeholder="Address, laundry, what to bring, house rules…" ${disabled}>${escape(s.groupInfo || '')}</textarea><small>For everyone on the trip. This is the text guests see if the stay is shown on the guest link. Do not put door codes or passwords here.</small></label><label>Check-out time <small>(optional)</small><input name="checkOutTime" value="${escape(s.checkOutTime || '')}" maxlength="80" placeholder="e.g. by 10:00" ${disabled}></label><label>Short label <small>(optional)</small><input name="name" value="${escape(s.name)}" maxlength="160" ${disabled}></label><label>Private note<textarea name="note" rows="3" maxlength="4000" placeholder="Door codes, Wi-Fi password, who sleeps where…" ${disabled}>${escape(s.note)}</textarea><small>Only for people who sign in. Never on the guest link, whatever is ticked below.</small></label><label class="check-label"><input type="checkbox" name="showOnGuest" ${s.showOnGuest ? 'checked' : ''} ${state.isOwner ? disabled : 'disabled'}> Show this stay on the guest link</label><p class="form-hint">${state.isOwner ? '' : 'Only the organizer changes this setting. '}When ticked, guests see the place, the dates, who is staying, the lodging line, the check-out time and the “For the group” text. They never see the private note.</p>${attendanceFields({ participants: s.participants || [] }, t, !writable(), 'Who is staying')}${id ? `<fieldset class="inline-place" id="stay-move"><legend>Move this stay</legend><p class="form-hint">Shifts check-in and check-out together and offers to bring this group’s flexible plans at this place along. You see a preview first; nothing changes until you confirm. Plans with a set time and plans shared with other travelers are never moved.</p><label>New check-in day<input type="date" name="newStart" min="${escape(t.start)}" max="${escape(t.end)}" ${disabled}></label><button type="button" class="secondary" id="stay-move-preview" data-back="${back ? 1 : ''}" ${disabled}>Preview move</button></fieldset>` : ''}${formActions('stay', !id, back)}</form>`, back);
         updateAttendance($('#stay-form'));
     }
-    function openLeg(id, back = false) {
-        const t = state.snapshot.trip, l = t.legs.find(x => x.id === id) || { id: crypto.randomUUID(), title: '', date: state.day || t.start, arrivalDate: '', time: '', arrivalTime: '', mode: 'Train', participants: defaultParticipants(t), notes: '', from: '', to: '' }, disabled = writable() ? '' : 'disabled';
+    // Reading view of a travel bridge: the move between two stay areas and the journeys that carry it.
+    // Editing is one step further, through the ordinary journey form.
+    const bridgeMove = id => travelPlan(state.snapshot.trip, { filter: state.filter }).moves.find(m => m.id === id);
+    function openTravelView(id) {
+        const m = state.snapshot && bridgeMove(id);
+        if (!m)
+            return;
+        const row = (label, value, attrs = '') => value ? `<dt>${label}</dt><dd ${attrs}>${value}</dd>` : '', off = writable() ? '' : 'disabled';
+        const legs = m.legs.map(l => `<section class="travel-leg"><h3>${escape(l.mode || 'Journey')} · ${escape(l.title)}</h3><dl class="stay-facts">${row('From', escape(l.from ? placeName(l.from) : 'Start to confirm'))}${row('To', escape(l.to ? placeName(l.to) : 'End to confirm'))}${row('Leaves', escape([dayName(l.date), l.time || 'time to confirm'].join(', ')))}${row('Arrives', escape([dayName(l.arrivalDate || l.date), l.arrivalTime || 'time to confirm'].join(', ')))}${row('Who', escape(names(l.participants)))}${row('Notes', escape(l.notes), 'class="stay-note"')}</dl><div class="dialog-actions"><button type="button" class="secondary" data-leg="${escape(l.id)}">${writable() ? 'Edit journey' : 'Open journey'}</button></div></section>`).join('');
+        const none = `<p>No transport is entered for this move yet.</p><dl class="stay-facts">${row('Leaves', escape(dayName(m.dep)))}${row('Arrives', escape(dayName(m.arr)))}${row('Who', escape(names(m.participants)))}</dl><div class="dialog-actions"><button type="button" class="primary" data-bridge-add="${escape(m.id)}" ${off}>Add how we’re travelling</button></div>`;
+        $('#travel-view').innerHTML = `<div class="dialog-heading"><span class="eyebrow">Travel between stays</span><button type="button" class="icon-button" data-close="travel-view" aria-label="Close travel details">×</button></div><h2 id="travel-view-title">${escape(placeName(m.from))} → ${escape(placeName(m.to))}</h2>${legs || none}<p class="form-hint">Journeys are private to people who sign in. They are not on the guest link.</p><div class="dialog-actions"><button type="button" class="secondary" data-close="travel-view">Close</button></div>`;
+        $('#travel-view').showModal();
+    }
+    function openLeg(id, back = false, preset = {}) {
+        const t = state.snapshot.trip, l = t.legs.find(x => x.id === id) || { id: crypto.randomUUID(), title: '', date: state.day || t.start, arrivalDate: '', time: '', arrivalTime: '', mode: 'Train', participants: defaultParticipants(t), notes: '', from: '', to: '', ...preset }, disabled = writable() ? '' : 'disabled';
         const modes = LEG_MODES.includes(l.mode) || !l.mode ? LEG_MODES : [l.mode, ...LEG_MODES];
         structureDialog('Journey', id ? 'Edit journey' : 'Add journey', `<form id="leg-form" data-id="${escape(l.id)}" data-new="${!id}" data-base="${id ? baseAttr(recordKey('journey', id)) : '{}'}"><label>Title<input name="title" value="${escape(l.title)}" maxlength="160" required placeholder="e.g. Morning train to the coast" ${disabled}></label><div class="field-row"><label>Mode<select name="mode" ${disabled}>${modes.map(m => `<option ${m === l.mode ? 'selected' : ''}>${escape(m)}</option>`).join('')}</select></label><label>Departure day<select name="date" ${disabled}>${days(t).map(d => `<option value="${d}" ${l.date === d ? 'selected' : ''}>${dateLabel(d, { weekday: 'short', month: 'short', day: 'numeric' })}</option>`).join('')}</select></label></div><div class="field-row"><label>From<select name="from" ${disabled}>${placeOptions(t, l.from, 'Start to confirm')}</select></label><label>To<select name="to" ${disabled}>${placeOptions(t, l.to, 'End to confirm')}</select></label></div><div class="field-row"><label>Departure time<input name="time" value="${escape(l.time)}" maxlength="80" ${disabled}></label><label>Arrival time<input name="arrivalTime" value="${escape(l.arrivalTime)}" maxlength="80" ${disabled}></label></div><label>Arrival day <small>(only if different, e.g. overnight)</small><input type="date" name="arrivalDate" value="${escape(l.arrivalDate && l.arrivalDate !== l.date ? l.arrivalDate : '')}" min="${escape(t.start)}" ${disabled}></label><label>Private notes<textarea name="notes" rows="3" maxlength="4000" ${disabled}>${escape(l.notes)}</textarea><small>Journeys are not shown on the guest link.</small></label>${attendanceFields({ participants: l.participants || [] }, t, !writable(), 'Who is travelling')}${formActions('leg', !id, back)}</form>`, back);
         updateAttendance($('#leg-form'));
@@ -1335,8 +1363,20 @@ ${p.overlaps.length ? section('review', `⚠ Overlaps another stay (${p.overlaps
                     $('#stay-view').close();
                 openStay(b.dataset.stay, !!b.dataset.fromList);
             }
-            if (b.dataset.leg)
+            if (b.dataset.bridge)
+                openTravelView(b.dataset.bridge);
+            if (b.dataset.bridgeAdd) {
+                // Start the ordinary journey form with what the two stays already say.
+                const m = bridgeMove(b.dataset.bridgeAdd), from = m?.fromStays[0], to = m?.toStays[0];
+                $('#travel-view').close();
+                if (m)
+                    openLeg(null, false, { from: from.placeId || '', to: to.placeId || '', date: m.dep, arrivalDate: m.arr !== m.dep ? m.arr : '', participants: m.participants });
+            }
+            if (b.dataset.leg) {
+                if ($('#travel-view')?.open)
+                    $('#travel-view').close();
                 openLeg(b.dataset.leg, !!b.dataset.fromList);
+            }
             if (b.id === 'stay-move-preview') {
                 const form = $('#stay-form'), stay = state.snapshot.trip.stays.find(x => x.id === form.dataset.id), to = form.elements.newStart.value;
                 try {

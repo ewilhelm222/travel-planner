@@ -64,6 +64,11 @@ A **Map** panel sits below the schedule, with two views:
 - **Whole trip**: the places where the selected travelers stay or travel
   between, with their journeys as arrows in date order.
 
+Since November 19 a travel day is drawn in the order the board shows it (the
+place being left, then the place reached), and a change of stay area with no
+journey entered is drawn as a plain connection; see
+[travel-bridge.md](travel-bridge.md).
+
 Both follow the **Travelers** filter and the selected day, exactly like the
 board. Under each drawing is the same information as a numbered list, with
 local-script names, addresses, coordinates and map links.

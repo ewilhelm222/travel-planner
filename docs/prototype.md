@@ -7,6 +7,8 @@ The multi-event planner is deployed with the Night Market design. See
 current implementation and [the schedule-first phone layout](schedule-first.md)
 for the phone arrangement. Tapping an activity opens a read-only view, with
 Edit for people who sign in: see [tap to read, Edit to change](activity-view.md).
+A change of stay area is drawn as a travel bridge between the columns: see
+[travel bridges](travel-bridge.md) (not yet deployed).
 The sections below preserve the initial feasibility
 proof and its verification history.
 
