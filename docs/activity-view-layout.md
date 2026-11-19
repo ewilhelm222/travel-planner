@@ -173,3 +173,44 @@ After, with Maps opened and scrolled to the end:
 ![](design/activity-view-layout/phone-portrait-toolbars-390x664-after-maps-and-end.jpg)
 ![](design/activity-view-layout/phone-landscape-toolbars-844x340-after-maps-and-end.jpg)
 ![](design/activity-view-layout/desktop-1280x600-after-maps-and-end.jpg)
+
+
+## Release
+
+Published November 19, 2026 to the existing Waypoint Site.
+
+### Provenance and scope
+
+- GitHub main: `d80fd0a9f662bf3e253f45050b3f016b1b7e6e5e`, verified as main's head before checks and publication.
+- Previous production: saved version 24, Sites source `eca3ee467861b7f667c21a91b8d61d318fb5025a`, matching GitHub `a78e4e8103f000f89f6fb653b958a99dabefdee4` app tree `df6b188fe0a0da3cafb6d52270ecb190217f21cf`; offline shell v50.
+- Every merged PR since that baseline: #41, weather remains through card moves and refreshes; #40, description-first activity view, one Maps control and one scroll area. PR #38 was already in version 24.
+- Sites source commit: `00b2bf71c7e89a013820db247de3aff7632da7b0`.
+- Matching GitHub app-subtree and Sites repository tree: `a489329e0ed488bec2850ac22b45a62775bdf9c0`. The trees match file for file.
+- Saved version 25: `appgprj_6af3ef55c4f48191940aa66a59771eb3~appgver_5bb2f8f0bea881919b3cae03ce6fb718`.
+- Deployment: `appgdep_6aff11daf130819195ad0f06d2c23a00`, succeeded.
+- Runtime environment revision: 2, unchanged. Offline shell: `waypoint-shell-v51`.
+- No migration changes (0000–0004 unchanged); none generated or manually run. No runtime configuration, ownership, audience, editors, guest tokens, guest-map setting or stored trip was changed. No invitations or emails sent.
+
+### Checks performed
+
+- Standard Node 22.16.0 used after earlier environment-only installation/build failures. No application changes were made to get checks to pass.
+- `npm ci` and `npm run install:ci`: passed.
+- `npm test`: 234 total, 231 passed, 0 failed, 3 skipped because Playwright is not installed. This is the observed count rather than the deployment prompts' older expected counts.
+- `npm run typecheck`: passed.
+- `npm run lint`: 0 errors, 5 warnings.
+- `npm run build` and the Sites build helper: passed. Sites source helper built, pushed and packaged the matching source.
+- Published `/sw.js`, `/planner.js`, `/guest.mjs`, `/weather.mjs`, `/maps.mjs` and `/map-panel.mjs`: 200, JavaScript content types, exact bytes matching the pinned source, no `AIza` prefix. Published service worker contains shell v51.
+- `/view.html` source is byte-identical to the prior release. The served HTML preserves the required `connect-src 'self' https://www.google.com https://api.open-meteo.com; frame-src https://www.google.com;` policy. Cloudflare appends a challenge-platform script to served HTML, so served HTML is not byte-identical to the source file.
+- Direct command-line requests were rejected at the hosting edge with 403. Retried with the Sites-supported service access header, which dispatch consumes and which supplies no visitor identity: `/api/trips`, `/api/trip?id=x` and `/api/weather?id=x` returned 401; `/api/shared-weather` without an Authorization header returned 404. No response contained `mapsEmbedKey`.
+- Existing owner session opened the current trip without edits: an activity with a loaded photo has description before photo before place, one collapsed Maps control, and visible Close/Edit controls. Maps expands into Search and Directions; the view was closed without saving. Trip revision remained unchanged through verification.
+- Weather lines appeared under the dates. Tooltip text starts with the full weather line, then the forecast place, update time and weather-service credit.
+- Site access policy and owner role were compared before/after and remained unchanged. No rollback performed.
+
+### Verification limits and owner follow-up
+
+- Existing guest link is enabled, but its saved URL/token was not available in the current browser. It was not replaced or regenerated. Hosted guest activity absence of Edit/Maps remains unverified in this release session; unit coverage passed.
+- Browser viewport override and zoom controls did not change the observed viewport. The chosen activity fit without overflow, so wheel scrolling with the pointer over its title could not be demonstrated. No claim is made that the short-window browser check passed.
+- The Google day-map iframe/control was present, but its rendered contents were not inspectable, so actual map rendering remains unverified.
+- No live card was moved. Owner should drag a card to another day, confirm weather stays filled, drag it back and confirm again without reloading; report if any line goes blank.
+- No real iPhone was used. Check on a phone that the sheet scrolls, swipe-down closes only from the top, and the page behind stays still. Screen-reader behavior and China readiness are not established.
+- Rollback target retained: saved version 24, `appgprj_6af3ef55c4f48191940aa66a59771eb3~appgver_1a68234d5cf0819194e09c0c5cc0e04d`. No database or runtime configuration rollback is needed for this release.
