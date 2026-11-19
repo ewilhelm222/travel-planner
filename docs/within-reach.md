@@ -1,9 +1,8 @@
 # Add and Ideas within reach
 
-Status: November 16, 2026. Built and checked locally with synthetic data; not
-deployed. No database migration and no stored trip is rewritten. Step "PR 4" of
+Status: November 16, 2026. Built and checked locally with synthetic data; deployed in version 13. No database migration and no stored trip is rewritten. Step "PR 4" of
 the [feedback plan](feedback-2026-11-15-plan.md) (items C2, M1, S1, S4, part of
-C1, and the decision that guests see ideas).
+C1, and the decision that guests see ideas). See [release history](releases/README.md) for dated live checks and remaining limits.
 
 ## What changed
 

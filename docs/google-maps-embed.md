@@ -1,9 +1,10 @@
 # Google Maps for the day map
 
-Status: November 18, 2026 (guest link added; first built November 17). Owner decision the same day: use the Google Maps
-Embed API for the day map. Built and checked locally with synthetic data and
-with Google stubbed out; not deployed, and **not yet seen with a real key**.
-No database migration.
+Status: Google day-map support deployed in version 20; the optional guest-map
+switch deployed in version 22. A real Google map was seen working in the
+signed-in planner in versions 22–24. Version 26 verified bridge ordering, not a
+fresh Google-map rendering check. A real Google map on the guest page remains
+unverified. See [release history](releases/README.md). No database migration.
 
 **Stop locations are sent to Google.** When the Google day map is shown, the
 addresses or coordinates of that day's stops go to Google in the map's address,
@@ -151,16 +152,18 @@ if a string shaped like a Google key appears anywhere in the repository.
 - Type check, lint (0 errors) and production build pass; the earlier browser
   checks still pass with and without a key.
 
-## Not verified
+## Verification and remaining limits
 
-- **A real Google map.** Google could not be reached from the build
-  environment, so the supplied key was never accepted or refused by Google
-  here, and the frame in the screenshots is a stand-in. The link formats follow
-  Google's published Embed API from memory.
-- That the referrer restriction accepts the Site once deployed.
-- Behaviour from mainland China. The fallback is built for an unreachable
-  Google, but was only exercised by simulating one.
-- A physical phone, a screen reader and real trip data.
+The planner's real Google frame worked in version 22, again in version 23 and
+version 24. This supersedes the build environment's earlier inability to reach
+Google; those synthetic screenshots below remain stand-ins. The version 20
+record preserves the owner's confirmation of API-only and Site-referrer key
+restrictions; the console itself was not independently inspected.
+
+Still not verified: a real Google map on the guest page, physical-phone map
+behavior, screen-reader behavior and mainland-China connectivity. A successful
+planner check does not establish those. See the per-release records for exact
+scope and dates.
 
 ## Screenshots (synthetic data; the grey panel is a stand-in for Google's map)
 

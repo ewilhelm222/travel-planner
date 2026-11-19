@@ -1,9 +1,8 @@
 # One Manage menu, and a phone held sideways
 
-Status: November 16, 2026. Built and checked locally with synthetic data; not
-deployed. No data change. Step "PR 6" of the
+Status: November 16, 2026. Built and checked locally with synthetic data; deployed in version 13. No data change. Step "PR 6" of the
 [feedback plan](feedback-2026-11-15-plan.md) (item L1, and "no more controls
-above the cards").
+above the cards"). The narrower landscape correction followed in version 14. See [release history](releases/README.md) for dated live checks and remaining limits.
 
 ## One Manage menu (screens wider than a phone)
 

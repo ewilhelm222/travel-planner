@@ -1,9 +1,9 @@
 # Getting in: sign-in and read-only messages
 
 Status: November 16, 2026. Built and checked locally with synthetic data and
-local test accounts; not deployed. No database migration and no change to who
+local test accounts; deployed in version 13. No database migration and no change to who
 may read or edit anything. This is step "PR 1" of the
-[feedback plan](feedback-2026-11-15-plan.md) (items A1 to A4).
+[feedback plan](feedback-2026-11-15-plan.md) (items A1 to A4). See [release history](releases/README.md) for dated live checks and remaining limits.
 
 ## What changed
 

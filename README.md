@@ -10,32 +10,25 @@ import/export, offline reading, organizer-managed guest links, and a traveler
 roster with family/group and individual activity assignments. The adopted visual
 system, also used by the published interface, is **Night Market**.
 
-Merged into `main` (November 12–15, 2026): **drag-and-drop** moves on desktop
-and phone, the **schedule-first** phone layout, and **editors** the organizer
-can add by sign-in email.
+Live application: **saved version 26**, deployed November 19, 2026, from
+GitHub app commit `3d96c4ab352196e34e5e834fb7cd6404fc4de951`; offline shell
+**v52**, runtime revision **2**. Documentation merges do not redeploy the Site.
+See [release history and verification limits](docs/releases/README.md).
 
-Merged and deployed on November 15, 2026 (Pacific time; see
-[release provenance](docs/multi-events.md#release-provenance)): [the safety net](docs/safety-net.md) (History, undo, remove, delete
-and restore a trip, full backup), [editing places, stays and
-journeys](docs/structure.md), [per-record
-revisions](docs/per-record-revisions.md), [moving a stay with a
-preview](docs/stay-move.md), [schematic maps](docs/maps.md), and [layout
-changes](docs/layout.md). Built on November 16 from the
-[family feedback plan](docs/feedback-2026-11-15-plan.md) and not yet deployed:
-[sign-in and read-only messages](docs/getting-in.md),
-[plain wording](docs/plain-words.md), [dark forms](docs/dark-forms.md),
-[Add and Ideas within reach](docs/within-reach.md), [Ideas beside the
-days](docs/ideas-column.md), and [one Manage menu and a sideways-phone
-layout](docs/landscape-and-menu.md). Built after that and not yet deployed:
-[a shorter activity form](docs/quick-add.md), [timing levels](docs/timing.md),
-and [all days in one scroll on phones](docs/all-days.md). Built on November 17 and not yet deployed:
-[five additions](docs/release-nov17.md) (stay information for the group,
-two-level places, add between cards, flick between days, pictures on cards). A daily automatic backup is
-[proposed](docs/backup-proposal.md) and not enabled.
+Deployed features include History/undo and manual backup, structure editing,
+per-record revisions, stay-move previews, maps, schedule-first phone controls,
+short activity forms, All days, pictures and two-level places. Later releases
+added browser-side weather, full weather tooltip text, the description-first
+activity view, and [travel bridges](docs/travel-bridge.md). A daily automatic
+backup remains [proposed](docs/backup-proposal.md) and is not enabled.
+
+Desktop organizer/guest checks are documented per release. Physical phones,
+touch dragging, screen-reader behavior and travel connectivity remain open;
+failed viewport overrides do not count as phone verification.
 
 [Open the planner](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site) · [Current implementation and access status](docs/multi-events.md) · [What is deployed](docs/multi-events.md#release-provenance) · [Managing travelers](docs/travelers.md) · [Drag-and-drop](docs/drag-drop.md) · [Schedule-first phone layout](docs/schedule-first.md) · [Editors and what they may change](docs/editors.md) · [Source](apps/sites-prototype)
 
-The tentative China draft and Camp Earnest event are stored in the private app,
+The tentative multi-area draft and the single-stay event are stored in the private app,
 with synthetic additions labeled. Real itinerary datasets and guest-link tokens
 are excluded from this repository. The organizer approved the public Site entry
 point; enabled guest links now work without sign-in. Private trip data and editing

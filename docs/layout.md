@@ -1,7 +1,6 @@
 # Layout: schedule on the first screen, no clipped journeys, a week view
 
-Status: November 16, 2026. Built and checked locally with synthetic data; not
-deployed. Desktop changes only; the schedule-first phone layout is unchanged.
+Status: November 16, 2026. Built and checked locally with synthetic data; deployed in version 12. Desktop changes only; the schedule-first phone layout is unchanged. See [release history](releases/README.md) for dated live checks and remaining limits.
 
 ## What changed
 

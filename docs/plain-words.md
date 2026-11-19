@@ -1,11 +1,10 @@
 # Plain words: labels, the whole-group card, examples and the filter
 
-Status: November 16, 2026. Built and checked locally with synthetic data; not
-deployed. No database migration and no change to stored trips. This is step
+Status: November 16, 2026. Built and checked locally with synthetic data; deployed in version 13. No database migration and no change to stored trips. This is step
 "PR 2" of the [feedback plan](feedback-2026-11-15-plan.md) (items W1, T1, X1,
 X3, P1, W3). The organizer approved the wording and the quieter card on
 November 16; the Night Market guide carries the
-[amendment](design-night-market.md#amendment--november-16-2026).
+[amendment](design-night-market.md#amendment--november-16-2026). See [release history](releases/README.md) for dated live checks and remaining limits.
 
 ## What changed
 

@@ -8,9 +8,9 @@ Architecture feedback is tracked in [issue #1](https://github.com/ewilhelm222/tr
 
 ## Purpose and intended users
 
-Build a private travel planner for trips that the organizer personally joins. The initial planning group includes Eric and Christy, Yang, and Dan and Daphna, with their families. Participation can change, and individuals may arrive, depart, or do activities separately.
+Build a private travel planner for trips that the organizer personally joins. The initial planning group includes the organizer, their partner, and other participating families. Participation can change, and individuals may arrive, depart, or do activities separately.
 
-The immediate group trial is Camp Earnest at Thanksgiving, with the China trip from the Google Doc as the richer planning case. Multiple trips and events are now confirmed scope. This is a personal tool for a small, trusted group. Independent organizers, public trip discovery, and commercial-scale infrastructure are not targets.
+The immediate group trial is the single-stay event at Thanksgiving, with the multi-area trip from the Google Doc as the richer planning case. Multiple trips and events are now confirmed scope. This is a personal tool for a small, trusted group. Independent organizers, public trip discovery, and commercial-scale infrastructure are not targets.
 
 Existing Trello and Google Workspace approaches have produced successful trips. Preserve their flexibility while improving rearrangement, relationships between plans, participant views, and geographic understanding.
 
@@ -192,7 +192,7 @@ Exit criterion: a traveler can find today's plan, inspect its geography, open di
 - Exercise shared edits, participant filters, changed stays, offline use, export, and recovery.
 - Resolve observed planning friction before expanding scope.
 
-Exit criterion: the organizers can use the planner for the China trip without maintaining duplicate operational itineraries elsewhere.
+Exit criterion: the organizers can use the planner for the multi-area trip without maintaining duplicate operational itineraries elsewhere.
 
 ## Deferred features
 
@@ -236,9 +236,9 @@ Service capabilities and pricing were consulted during discovery. Recheck the cu
 ## November 11 implementation update
 
 The organizer requested multiple trips/events, a Thanksgiving trial, and an
-anonymous read-only URL view. Camp Earnest uses the supplied November 22–27 range,
-with Sunday and Friday as travel days; exact times remain open. The existing China
-Doc was reviewed and its tentative route transferred privately alongside clearly
+anonymous read-only URL view. The single-stay event uses the supplied November 22–27 range,
+with Sunday and Friday as travel days; exact times remain open. The source planning
+document was reviewed and its tentative route transferred privately alongside clearly
 labeled synthetic participants and split-plan examples. Full source datasets are
 not committed. The organizer also adopted the new Departure Board visual system.
 
@@ -247,7 +247,7 @@ covers every route. Enabling anonymous viewing requires a public Site entry poin
 with server-enforced trip membership and write authorization. Automatic approval
 review initially rejected that audience change; the organizer then explicitly
 approved the public entry point with protected editing. Sites access mode is now
-public, and Camp Earnest's guest view has been verified without sign-in. China
+public, and the single-stay event's guest view has been verified without sign-in. China
 sharing remains disabled. [Current implementation status](multi-events.md)
 records the boundary, checks, and remaining device/operational work.
 

@@ -1,7 +1,8 @@
 # Five additions, November 17, 2026
 
-Built together after the organizer asked for them; not deployed. Each has its
-own note:
+Deployed together in version 16; laptop picture bands and top-level place
+labels followed in version 17. See [release history](releases/README.md) for
+provenance, the applied migration and verification limits. Each has its own note:
 
 | Addition | Note | Stored data |
 | --- | --- | --- |

@@ -57,7 +57,7 @@ are useful copies but are not automated backup or undo.
   edited synthetic people, changed a family, saved an individual-only activity,
   and verified it appeared once in that person's view. The roster panel fit a
   390 px viewport override (375 px content) without horizontal overflow.
-- Hosted verification opened Manage travelers on the existing Camp Earnest trip
+- Hosted verification opened Manage travelers on the existing the single-stay event trip
   without changing its roster. The existing anonymous guest link still loaded
   with no editable fields or roster-management controls.
 - The organizer separately reported successful phone editing and desktop/phone

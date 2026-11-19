@@ -1,9 +1,10 @@
 # Multiple trips, events, and guest schedules
 
-Status: deployed November 15, 2026 (America/Los_Angeles). The multi-event planner is deployed to the
-existing Site. The organizer explicitly approved the public entry point on
-November 11, 2026. Camp Earnest's guest link works without sign-in; private
-planning and editing remain separately protected.
+Status: version 26 deployed November 19, 2026 (America/Los_Angeles), shell v52,
+runtime revision 2. The public Site entry point is separately protected by
+server-side trip membership and write authorization. See the
+[current release index](releases/README.md) for provenance and verification
+limits; older release text below is historical.
 
 Merged into `main` since the original release: drag-and-drop (November 12),
 the schedule-first phone layout and editors (November 15), and the Night Market
@@ -28,7 +29,7 @@ on desktop and phone.
   [layout.md](layout.md).
 - A change of stay area is shown as a gap with a travel bridge carrying the
   journey, and the travel day in two parts; see
-  [travel-bridge.md](travel-bridge.md) (built November 19, not yet deployed).
+  [travel-bridge.md](travel-bridge.md) (deployed in version 26).
 - Add, edit, move to another day, and delete activities. Drag-and-drop and keyboard
   moves between days, within a day, and to/from ideas are described in
   [drag-drop.md](drag-drop.md) (merged). Independent activities
@@ -39,18 +40,18 @@ on desktop and phone.
   card with a magenta band and those words; shared attendance alone does not.
   Invented items are labelled "Example · not a real plan" and are left out of
   the guest link. See [plain-words.md](plain-words.md) and
-  [getting-in.md](getting-in.md) (built November 16, not yet deployed).
+  [getting-in.md](getting-in.md) (deployed in version 13).
 - Guest descriptions and meeting points are separate from private planning notes.
   Read the exact projection in Guest link → Preview before enabling a link.
 - Private per-trip JSON and self-contained HTML export. Device reading copies are
   stored by trip/account, with timestamps; access denial or explicit sign-out
   clears copies. Expired sign-in preserves a read-only copy.
 
-The China draft and Camp Earnest event are runtime records, not source fixtures.
-The China source dates and visits remain tentative; invented groups, splits, and
-sample bookings are labeled synthetic. Camp Earnest uses the organizer's supplied
+The multi-area draft and the single-stay event are runtime records, not source fixtures.
+The source plan’s dates and visits remain tentative; invented groups, splits, and
+sample bookings are labeled synthetic. The single-stay event uses the organizer's supplied
 range/traditions; invented alternatives and suggested date placements are labeled.
-No China guest link has been enabled. The original Japan document remains intact
+No multi-area-trip guest link has been enabled. The legacy document remains intact
 in its original table and can be recovered as a separate new-model trip.
 
 ## Access boundary
@@ -65,8 +66,8 @@ Unrecognized signed-in accounts cannot retrieve another organizer's trip.
 The initial audience change was rejected by automatic approval review. The
 organizer subsequently explicitly approved a public entry point with protected
 editing. Sites confirmed access mode `public`, access-policy revision 2. No editor
-or invitation permissions were added. The Camp Earnest guest link was verified
-in a browser without an organizer session. China sharing remains disabled.
+or invitation permissions were added. The single-stay event guest link was verified
+in a browser without an organizer session. Sharing for the multi-area draft remains disabled.
 
 Guest links use 256 random bits. Only a SHA-256 hash is stored in D1. The token is
 in the URL fragment and is sent to the read endpoint in an Authorization header,
@@ -82,7 +83,16 @@ meeting points**. Private notes/addresses, lodging records, journey notes,
 examples (items marked "not a real plan"), source fields, owner identity,
 editor lists, and token hashes are excluded. Unscheduled ideas are included
 from the "within reach" change of November 16 ([within-reach.md](within-reach.md),
-not yet deployed), with the same limited fields as dated activities. A guest token never authorizes a write or a private API read.
+deployed in version 13), with the same limited fields as dated activities. A guest token never authorizes a write or a private API read.
+
+Later map/weather releases add two explicit exceptions to that names-only
+projection: browser-side weather (version 23) gives guests rounded stay
+coordinates, without place labels, addresses or exact coordinates. When the
+organizer enables the separate guest Google-map switch (version 22), the
+guest receives the map query location and embed key for permitted shared stops.
+See [weather privacy](weather.md#why-the-browser-asks) and
+[guest map choice](google-maps-embed.md#on-the-guest-link-organizers-choice-november-18).
+Journey details and editor identities are still excluded.
 
 Anyone receiving a guest link can forward it. Revocation cannot recall a file or
 copy someone already downloaded. This is explained beside the sharing controls.
@@ -114,7 +124,7 @@ Sharing starts disabled. Existing export wrappers with a `trip` property are
 accepted. File import through the Chrome extension requires file-URL access;
 Paste JSON provides a working alternative.
 
-Card pictures (November 17, not yet deployed) live in their own table,
+Card pictures (deployed in version 16) live in their own table,
 `planner_images`, added by migration `0004_card_pictures.sql`; see
 [pictures.md](pictures.md). They are not part of the trip document, the change
 log or the exports. A guest sees the picture on a card they can see, fetched
@@ -138,7 +148,7 @@ verified locally with test accounts ([editors.md](editors.md)), not yet with a
 real second account on the hosted Site. Physical phones, actual China
 connectivity, complete 200% zoom review, and backup restore remain unverified.
 
-Hosted anonymous verification succeeded after approval: Camp Earnest loads its
+Hosted anonymous verification succeeded after approval: the single-stay event loads its
 schedule without sign-in, day selection works at a 390 px viewport override, the
 page has no input/edit controls, and activity details are read-only. There was no
 horizontal page overflow and exactly one day was visible on the phone layout.
@@ -148,6 +158,13 @@ write-authorization evidence remains the local API tests and deployed guard code
 no live write was made during the hosted checks.
 
 ## Release provenance
+
+The [release index](releases/README.md) is the current entry point. Versions
+13–21 are preserved once in [the historical archive](releases/2026-11-16-to-17-v13-v21.md);
+versions 22–26 have individual records. The original version 12 record below
+remains unchanged. Historical failures and unchecked items are not overwritten
+by later successes.
+
 
 ### November 15, 2026 release (America/Los_Angeles)
 
@@ -195,22 +212,22 @@ disposable local D1 database and synthetic accounts/data, with migrations
 
 **Verified live:**
 
-- Signed-in organizer can load Camp Earnest and the China draft.
+- Signed-in organizer can load the single-stay event and the multi-area draft.
 - Added a disposable activity, edited it, dragged it from Sunday to Monday,
   undid the move back to Sunday, and deleted it. History shows add, edit,
   move, undo and delete. The test activity is absent afterward.
-- Desktop board inspected. At a 390 px viewport, organizer Camp Earnest and
-  China, and the guest schedule, each show one selected day with no horizontal
+- Desktop board inspected. At a 390 px viewport, the organizer’s single-stay event and
+  the multi-area draft, and the guest schedule, each show one selected day with no horizontal
   page overflow (375 px content width with scrollbar). Management follows the
   schedule on phones.
-- Existing Camp Earnest guest link loads with read-only details, day navigation,
+- The existing single-stay event guest link loads with read-only details, day navigation,
   no edit inputs/controls, and no sign-in requirement. A direct API read with
   only the existing guest token and no cookies returned HTTP 200. Guest output
   had empty stay/journey arrays and no editor list.
 - A direct request to `/api/trips` without cookies or identity headers returned
   HTTP 401 with the sign-in-required error.
 - Ownership, editor lists, guest hashes and sharing timestamps were unchanged
-  before/after. The organizer made additional ordinary Camp Earnest edits
+  before/after. The organizer made additional ordinary the single-stay event edits
   during verification; final schedule equality to the earlier baseline is
   therefore not asserted.
 - The original Japan row remains in `prototype_trips`, with unchanged revision

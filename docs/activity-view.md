@@ -1,7 +1,6 @@
 # Tap to read, Edit to change
 
-Status: November 16, 2026. Built and checked locally with synthetic data; not
-deployed. No data, schema, API or access change.
+Status: November 16, 2026. Built and checked locally with synthetic data; deployed in version 16. No data, schema, API or access change. See [release history](releases/README.md) for dated live checks and remaining limits.
 
 The order of the view's contents, the single Maps control and how it scrolls
 were redone on November 19: see [activity-view-layout.md](activity-view-layout.md),

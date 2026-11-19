@@ -1,9 +1,8 @@
 # Timing levels: set time, that day, any day
 
-Status: November 16, 2026. Built and checked locally with synthetic data; not
-deployed. **The first change in this series that adds a stored field.** No
+Status: November 16, 2026. Built and checked locally with synthetic data; deployed in version 15. **The first change in this series that adds a stored field.** No
 database migration, and no stored trip is rewritten by deploying it. Step
-"PR 9" of the [feedback plan](feedback-2026-11-15-plan.md) (item T2).
+"PR 9" of the [feedback plan](feedback-2026-11-15-plan.md) (item T2). See [release history](releases/README.md) for dated live checks and remaining limits.
 
 ## For planners
 

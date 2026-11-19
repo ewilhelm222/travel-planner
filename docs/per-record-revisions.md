@@ -8,7 +8,7 @@ what was built and checked (see the end). Not deployed.
 A trip had one revision number. Any save by anyone made every other open form
 stale, so two people editing two different cards could not both save: the second
 got "another planner saved a change" and had to reload and retype. With several
-editors during Camp Earnest that would happen often, and for no good reason.
+editors during the single-stay event that would happen often, and for no good reason.
 
 ## What changes, in plain language
 

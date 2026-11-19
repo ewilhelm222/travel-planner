@@ -23,7 +23,7 @@ mistake is only noticed days later. A daily copy kept somewhere else covers that
   after the backup is present again in the restored trip.
 
 Until a schedule is approved, the dependable routine is: download a full backup
-before Camp Earnest and after any big planning session.
+before the single-stay event and after any big planning session.
 
 ## What a restore does and does not bring back
 

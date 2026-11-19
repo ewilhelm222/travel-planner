@@ -1,8 +1,7 @@
 # Ideas beside the days
 
-Status: November 16, 2026. Built and checked locally with synthetic data; not
-deployed. No data change. Step "PR 5" of the
-[feedback plan](feedback-2026-11-15-plan.md) (the rest of item C1, and L4).
+Status: November 16, 2026. Built and checked locally with synthetic data; deployed in version 13. No data change. Step "PR 5" of the
+[feedback plan](feedback-2026-11-15-plan.md) (the rest of item C1, and L4). See [release history](releases/README.md) for dated live checks and remaining limits.
 
 ## What changed (screens wider than a phone)
 

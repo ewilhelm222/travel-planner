@@ -1,9 +1,8 @@
 # Dark forms
 
-Status: November 16, 2026. Built and checked locally with synthetic data; not
-deployed. Styles only: no data, saving or access change. Step "PR 3" of the
+Status: November 16, 2026. Built and checked locally with synthetic data; deployed in version 13. Styles only: no data, saving or access change. Step "PR 3" of the
 [feedback plan](feedback-2026-11-15-plan.md) (item D1). The organizer chose
-"forms only" on November 16.
+"forms only" on November 16. See [release history](releases/README.md) for dated live checks and remaining limits.
 
 The Add activity form used to switch the whole phone screen from dark purple to
 cream. Dialogs you type into are now dark: the activity form, travelers and

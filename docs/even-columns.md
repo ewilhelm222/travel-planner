@@ -1,7 +1,6 @@
 # Even day columns
 
-Status: November 17, 2026. Built and checked locally with synthetic data; not
-deployed. Display only: no data, saving or access change.
+Status: November 17, 2026. Built and checked locally with synthetic data; deployed in version 15. Display only: no data, saving or access change. See [release history](releases/README.md) for dated live checks and remaining limits.
 
 ## The problem
 
