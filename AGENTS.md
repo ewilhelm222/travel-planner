@@ -11,7 +11,9 @@ through `commit()`/`transact()` in `apps/sites-prototype/lib/trip-store.ts` so i
 logged and checked per record (`docs/safety-net.md`, `docs/per-record-revisions.md`). Design studies
 illustrate proposals; they do not establish completed features or approved
 schema changes. Tapping an activity opens its read-only view; the editor opens
-only from that view's Edit button (`docs/activity-view.md`). A place's map location is an address or
+only from that view's Edit button (`docs/activity-view.md`). The view is one scroll
+area with only the × and Close/Edit fixed, description before place, and map links
+folded into one Maps control (`docs/activity-view-layout.md`). A place's map location is an address or
 coordinates as typed; nothing is geocoded or converted (`docs/map-location.md`).
 The day map uses Google Maps Embed when `GOOGLE_MAPS_EMBED_KEY` is set in runtime
 configuration, and the schematic otherwise; the key is never committed. Guests
