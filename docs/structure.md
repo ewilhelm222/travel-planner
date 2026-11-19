@@ -8,7 +8,9 @@ deployed. No database migration is needed for this step.
 - **Places, stays & journeys** (toolbar; on a phone under **Plan & manage**)
   lists all three and lets you add, edit and delete them.
 - On the board, the **⌂ lodging line** opens that stay and a **journey card**
-  opens that journey.
+  opens that journey. Since November 19 a journey that carries a change of
+  stay area is shown on a travel bridge between the columns instead; see
+  [travel-bridge.md](travel-bridge.md).
 - In an activity, the **Place** list ends with **＋ Add new place…**. Fill in the
   name (and optionally the local-script name and addresses), choose **Add this
   place**, and carry on with the activity. What you had typed is kept.

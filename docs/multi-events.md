@@ -26,6 +26,9 @@ on desktop and phone.
   collapsed to a one-line trip bar once a trip has activities, long trips open
   in a seven-column week view, and both choices are remembered; see
   [layout.md](layout.md).
+- A change of stay area is shown as a gap with a travel bridge carrying the
+  journey, and the travel day in two parts; see
+  [travel-bridge.md](travel-bridge.md) (built November 19, not yet deployed).
 - Add, edit, move to another day, and delete activities. Drag-and-drop and keyboard
   moves between days, within a day, and to/from ideas are described in
   [drag-drop.md](drag-drop.md) (merged). Independent activities

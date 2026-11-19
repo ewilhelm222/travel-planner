@@ -8,6 +8,10 @@ Every move is one `PATCH /api/trip` with `action: "move"` and goes through the
 same atomic revision check as every other edit. The editor's **Day** field (tap the
 card, then **Edit**) remains the non-drag alternative.
 
+On a travel day shown in two parts, both parts take cards and the bridge between
+them does not; a card's part follows its place. See
+[travel-bridge.md](travel-bridge.md) (November 19).
+
 ## Desktop
 
 Press and drag a card. The card being moved is dimmed with a dashed outline and a

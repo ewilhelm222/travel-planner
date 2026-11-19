@@ -11,7 +11,7 @@ export const daysBetween = (from, to) => Math.round((Date.parse(`${to}T12:00:00Z
 
 // Who a list of participant ids stands for. A group stands for itself (members who are
 // not listed by name) and for each named member; a person stands for themselves only.
-function everyone(trip, ids) {
+export function travelersOf(trip, ids) {
   const who = new Set();
   const addGroup = g => { who.add(`group:${g.id}`); for (const p of peopleOf(trip)) if (p.familyId === g.id) who.add(p.id); };
   for (const id of ids || []) {
@@ -42,7 +42,7 @@ export function previewStayMove(trip, stayId, days) {
   if (!Number.isSafeInteger(days) || days === 0 || Math.abs(days) > 120) throw new Error("Choose a new check-in day different from the current one.");
   const to = { start: addDays(stay.start, days), end: addDays(stay.end, days) };
   if (to.start < trip.start || to.start > trip.end) throw new Error("The new check-in day is outside this trip's dates. Change the trip dates first.");
-  const moving = everyone(trip, stay.participants), involves = ids => [...everyone(trip, ids)].some(x => moving.has(x)), allMove = ids => [...everyone(trip, ids)].every(x => moving.has(x));
+  const moving = travelersOf(trip, stay.participants), involves = ids => [...travelersOf(trip, ids)].some(x => moving.has(x)), allMove = ids => [...travelersOf(trip, ids)].every(x => moving.has(x));
   const result = { stay: { id: stay.id, placeId: stay.placeId, participants: stay.participants, from: { start: stay.start, end: stay.end }, to }, days, shift: [], fixed: [], mixed: [], blocked: [], journeys: [], overlaps: [] };
   const inside = date => date >= to.start && date <= to.end;
   for (const a of trip.activities) {
