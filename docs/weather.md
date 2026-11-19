@@ -131,7 +131,7 @@ that has already ended there is not shown.
   parsing, classification, words, icons, the kept copy, and filling the lines.
 - `public/board.mjs` puts an empty line in every day header; `planner.js` and
   `guest.mjs` fill it in place when the answer arrives.
-- Offline shell cache is `waypoint-shell-v50`. Offline, a forecast kept by the
+- Offline shell cache is `waypoint-shell-v51`. Offline, a forecast kept by the
   browser is not shown; the lines stay empty.
 
 ## Checks

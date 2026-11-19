@@ -36,7 +36,7 @@ let weather = null, weatherFor = null, weatherRetries = 0;
 const weatherMemo = new Map();
 const KEPT = 'waypoint-guest-weather';
 const keptWeather = () => { try { const k = JSON.parse(localStorage.getItem(KEPT)); return k?.data && k.trip === `${trip.start}|${trip.title}` ? k : null; } catch { return null; } };
-const showWeather = () => applyWeather(document, weather, { units: unitsFor(navigator.language), loading: weatherFor !== revision, reserve: !!keptWeather() });
+const showWeather = () => applyWeather(document, weather, { units: unitsFor(navigator.language), loading: weatherFor === null, reserve: !!keptWeather() });
 async function loadWeather() {
     let answer = null;
     try {

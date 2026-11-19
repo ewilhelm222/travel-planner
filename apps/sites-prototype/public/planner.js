@@ -112,7 +112,7 @@
     const endpoint = path => `${path}?id=${encodeURIComponent(state.selected)}`;
     async function readiness() {
         try {
-            const cache = await caches.open('waypoint-shell-v50');
+            const cache = await caches.open('waypoint-shell-v51');
             state.offlineReady = (await Promise.all(['/offline.html', '/planner.js', '/planner.css', '/reading-copy.mjs', '/offline-export.mjs', '/board.mjs', '/participants.mjs', '/move.mjs', '/drag.mjs', '/activity-view.mjs', '/history.mjs', '/backup.mjs', '/structure.mjs', '/revisions.mjs', '/stay-move.mjs', '/maps.mjs', '/weather.mjs'].map(p => cache.match(p, { ignoreVary: true })))).every(Boolean);
             status();
         }
@@ -284,16 +284,20 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
         showLastEdits();
     }
     // ---- Weather under each date: fetched by the server for where each day's stay is; never stored ----
-    // `weather.data` answers for one saved revision of one trip. The last answer with a forecast is kept in this
+    // `weather.data` is the last answer for one trip. It stays on screen through later saves (moving a card does
+    // not change the weather) while it is asked for again in the background, in case a stay or place changed.
+    // The last answer with a forecast is kept in this
     // browser per trip: it holds the room for the line while loading, and stands in (with its own update time)
     // when a weather service does not answer. It is cleared on sign-out with everything else.
     const weatherMemo = new Map();
-    let weather = { key: null, at: 0, data: null, retry: false }, weatherLoading = false, weatherRetries = 0, weatherTimer = 0;
+    let weather = { key: null, trip: null, at: 0, data: null, retry: false }, weatherLoading = false, weatherRetries = 0, weatherTimer = 0;
     const weatherKey = () => state.snapshot ? `${state.snapshot.trip.id}:${state.snapshot.revision}` : null;
     const keptWeather = () => { try { const k = JSON.parse(localStorage.getItem(`waypoint-weather:${state.snapshot?.trip.id}`)); return k?.data ? k : null; } catch { return null; } };
     function showWeather() {
-        const current = weather.key === weatherKey();
-        applyWeather(document, current ? weather.data : null, { units: unitsFor(navigator.language), loading: !current && state.online && !state.needsSignIn, reserve: !!keptWeather() });
+        const have = !!state.snapshot && weather.trip === state.snapshot.trip.id;
+        applyWeather(document, have ? weather.data : null, { units: unitsFor(navigator.language), loading: !have && state.online && !state.needsSignIn, reserve: !!keptWeather() });
+        // Every redraw, including the partial one after a card is moved, makes sure the answer is for the plan now on screen.
+        loadWeather();
     }
     async function loadWeather() {
         const key = weatherKey();
@@ -318,18 +322,16 @@ ${t ? `${rail(t, state.day)}<div class="board-wrap${state.ideasClosed ? ' ideas-
                 localStorage.removeItem(`waypoint-weather:${trip.id}`);
         }
         catch { }
-        weather = { key, at: Date.now(), data: chosen.data, retry: chosen.retry };
+        weather = { key, trip: trip.id, at: Date.now(), data: chosen.data, retry: chosen.retry };
         weatherLoading = false;
-        showWeather();
         // A service did not answer: ask again in a couple of minutes, a few times, without anyone having to reload.
         clearTimeout(weatherTimer);
         if (chosen.retry && weatherRetries++ < 6)
             weatherTimer = setTimeout(loadWeather, 2.5 * 60 * 1000);
         else if (!chosen.retry)
             weatherRetries = 0;
-        // The plan was saved while this was on its way: ask once more for what is now on screen.
-        if (weatherKey() !== key)
-            loadWeather();
+        // Draws the answer, and asks once more if the plan was saved while this was on its way.
+        showWeather();
     }
     // ---- "Last edited by": read from the change log, never stored; shown to signed-in members only ----
     // `lastEdits.map` answers for one saved revision of one trip. After any save it is asked for again,
