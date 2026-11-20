@@ -132,7 +132,7 @@ that has already ended there is not shown.
   parsing, classification, words, icons, the kept copy, and filling the lines.
 - `public/board.mjs` puts an empty line in every day header; `planner.js` and
   `guest.mjs` fill it in place when the answer arrives.
-- Current offline shell cache is `waypoint-shell-v52`; weather persistence
+- Current offline shell cache is `waypoint-shell-v53`; weather persistence
   originally shipped with v51. Offline, a forecast kept by the
   browser is not shown; the lines stay empty.
 

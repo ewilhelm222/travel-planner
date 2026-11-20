@@ -1,8 +1,8 @@
 # Release history and current deployment
 
-Current live application: **version 26**, shell **v52**, runtime environment
+Current live application: **version 27**, shell **v53**, runtime environment
 revision **2**, deployed from GitHub app commit
-`3d96c4ab352196e34e5e834fb7cd6404fc4de951`. Version 25 is retained for rollback.
+`62c5bf52aa97fb7a92f151765e1d6b94a92b3276`. Version 26 is retained for rollback.
 This consolidation changes documentation only; it performs no deployment.
 
 | Versions | Record | Scope |
@@ -14,6 +14,7 @@ This consolidation changes documentation only; it performs no deployment.
 | 24 | [November 18](2026-11-18-v24.md) | Complete weather title text; shell v50; initial rollback then successful redeployment |
 | 25 | [November 19](2026-11-19-v25.md) | Activity-view layout and weather persistence; shell v51 |
 | 26 | [November 19](2026-11-19-v26.md) | Travel bridges and split days; shell v52 |
+| 27 | [November 19](2026-11-19-v27.md) | Google whole-trip map uses stay locations only; shell v53 |
 
 Use the [deployment verification procedure](../deployment-verification.md).
 The app-owned guest HTML comparison excludes only the narrowly identified
@@ -24,8 +25,10 @@ Cloudflare challenge script; assets, CSP and authorization checks stay separate.
 All existing organizer trips and the existing guest page loaded in version 26.
 Desktop bridges, split-day order, reading view, unsaved Edit journey form and
 offline readiness passed. The single-stay board had no bridge or split day.
-Live planner weather and a real planner Google map were verified in earlier
-releases; guest weather and a real guest Google map remain unverified.
+Version 27 verified real planner Whole trip and This day Google maps, stay-only
+selection, excluded endpoints/day visits, filtering, schematic choice, guest
+read-only behavior and offline readiness. Guest weather and a real guest
+Google day map remain unverified.
 Phone portrait/landscape overrides did not apply; physical-phone, touch-dragging,
 screen-reader and mainland-China behavior are not established. Local synthetic
 tests are not a substitute for these checks.
