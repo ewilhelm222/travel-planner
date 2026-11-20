@@ -1,4 +1,4 @@
-# Google Maps for the day map
+# Google Maps for day and whole-trip maps
 
 Status: Google day-map support deployed in version 20; the optional guest-map
 switch deployed in version 22. A real Google map was seen working in the
@@ -37,7 +37,19 @@ The schematic is drawn instead, as before, when:
 - the device is offline or the sign-in has expired;
 - the person chose the schematic.
 
-**Whole trip** is always the schematic.
+**Whole trip** now uses the same Google embed and fallbacks in the signed-in
+planner. It shows unique places with stays for the selected travelers, ordered
+by their first stay. Day trips, activity-only locations, airports and other
+journey-only endpoints are excluded. One stay location uses place mode; several
+use directions mode. Google’s suggested route is not the recorded transport
+plan, especially when travelers have parallel stays. The numbered list retains
+all stay dates. There is no country filter: a place with a stay is included.
+
+Guest sharing is unchanged: the guest whole-trip view remains schematic,
+and locations used only by stays are still not added to the guest projection.
+Offline reading, missing locations, unavailable Google, no key, and choosing
+the schematic keep the schematic fallback. Browser shell version 53 carries
+this update. This change is implemented in GitHub but has not been deployed.
 
 ## On the guest link (organizer's choice, November 18)
 

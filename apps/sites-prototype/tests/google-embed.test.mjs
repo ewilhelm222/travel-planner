@@ -6,7 +6,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { applyTripChange, publicTrip, thanksgivingExample, normalizeTrip, editorRestriction, editorDiffRestriction, EDITOR_TRIP_DETAILS } from '../lib/trips.mjs';
 import { diffTrips, fieldChanges, undoChange } from '../public/history.mjs';
 import { parallelTrip } from './fixtures/parallel-trip.mjs';
-import { dayMap, tripMap, dayEmbed, embedUrl, embedLocation, validEmbedKey, EMBED_MAX_WAYPOINTS } from '../public/maps.mjs';
+import { dayMap, tripMap, dayEmbed, tripEmbed, embedUrl, embedLocation, validEmbedKey, EMBED_MAX_WAYPOINTS } from '../public/maps.mjs';
 import { mapBodyHtml, mapSectionHtml } from '../public/map-panel.mjs';
 const read = path => readFileSync(new URL(path, import.meta.url), 'utf8');
 const KEY = 'AIzaSy' + 'TESTONLYnotARealKey0123456789abcd', DAY = '2027-04-13', enc = encodeURIComponent;
@@ -107,10 +107,11 @@ test('the Google map keeps the numbered list, the route in words and the links u
     assert.ok(!/<iframe[^>]* src=/.test(html), 'the frame has no address until the page gives it one, so nothing is sent before it is in view');
 });
 
-test('the whole-trip view never uses Google, and guests do only when the organizer switched it on', () => {
+test('the whole-trip view uses Google for stays; guests still need the organizer switch for day maps', () => {
     const trip = usable();
     const whole = mapSectionHtml(trip, { view: 'trip', embedKey: KEY, canEdit: true });
-    assert.ok(whole.includes('<svg') && !/<iframe|google\.com\/maps\/embed/.test(whole));
+    assert.ok(whole.includes('<iframe') && !whole.includes('<svg'));
+    assert.equal(frameSrc(whole), embedUrl(tripEmbed(tripMap(trip)), KEY));
     assert.equal(tripMap(trip).kind, 'trip');
     // Off, which is how every existing trip reads: guests are sent no location, so there is nothing to give Google.
     assert.equal(trip.guestMap, false);
@@ -219,4 +220,37 @@ test('both pages fall back by themselves when Google does not load, and remember
     assert.match(guestPage, /localStorage\.setItem\('waypoint-guest-map-style', mapStyle\)/);
     assert.equal(planner.match(/mapView: state\.mapView, mapStyle: state\.mapStyle,/g).length, 2);
     assert.match(read('../public/planner.css'), /\.map-frame \{ display: block; width: 100%; max-width: 760px; aspect-ratio: 16 \/ 10;/);
+});
+
+
+test('whole-trip Google map includes only filtered stay places, once, in first-stay order', () => {
+    const trip = usable();
+    trip.places.push({ id: 'airport', name: 'Foreign airport', locationText: 'Synthetic foreign airport' }, { id: 'visit', name: 'Day visit', locationText: 'Synthetic day visit' });
+    trip.legs.unshift({ id: 'flight', from: 'airport', to: 'kyoto', date: '2027-04-10', mode: 'Flight', participants: ['cedar'] });
+    trip.activities.push({ id: 'visit', title: 'Day trip', placeId: 'visit', date: DAY, participants: ['cedar'], order: 100 });
+    const before = structuredClone(trip), model = tripMap(trip);
+    assert.deepEqual(model.nodes.map(n => n.id), ['kyoto', 'osaka']);
+    assert.ok(model.edges.every(e => ['kyoto', 'osaka'].includes(e.from) && ['kyoto', 'osaka'].includes(e.to)));
+    const html = mapBodyHtml(trip, { view: 'trip', embedKey: KEY });
+    assert.equal(frameSrc(html), embedUrl(tripEmbed(model), KEY));
+    assert.match(html, /stay locations in first-stay order/);
+    assert.ok(!/Foreign airport|Day visit|Synthetic foreign airport|Synthetic day visit/.test(html));
+    assert.equal(tripEmbed(tripMap(trip, { filter: 'birch' })).mode, 'place');
+    assert.ok(dayMap(trip, { day: DAY }).stops.some(s => s.id === 'visit'), 'the day map retains day visits');
+    assert.deepEqual(trip, before, 'map generation does not change itinerary records');
+    trip.stays.forEach(s => { s.showOnGuest = true; });
+    assert.ok(!mapBodyHtml(publicTrip({ ...trip, guestMap: true }), { view: 'trip', guest: true, embedKey: KEY }).includes('<iframe'), 'guest whole-trip map remains schematic even with explicitly shared stays');
+});
+
+test('whole-trip Google map preserves the existing schematic fallbacks', () => {
+    const trip = usable(), options = { view: 'trip', embedKey: KEY };
+    for (const patch of [{ embedKey: '' }, { mapStyle: 'schematic' }, { embedFailed: true }]) {
+        const html = mapBodyHtml(trip, { ...options, ...patch });
+        assert.ok(html.includes('<svg') && !html.includes('<iframe'));
+    }
+    assert.match(mapBodyHtml(trip, { ...options, mapStyle: 'schematic' }), /Show the whole trip on Google Maps/);
+    assert.ok(!tripEmbed(tripMap(place(trip, 'osaka', { locationText: '', coordSystem: '' }))).ok);
+    assert.deepEqual(tripEmbed(tripMap({ ...trip, stays: [] })), { ok: false, reason: '' });
+    const many = { kind: 'trip', nodes: Array.from({ length: 23 }, (_, i) => ({ name: `Stay ${i}`, place: { address: `${i} Row` } })) };
+    assert.match(tripEmbed(many).reason, /at most 22 stops in one map and this trip has 23/);
 });

@@ -12,6 +12,18 @@ A change of stay area is drawn as a travel bridge between the columns: see
 The sections below preserve the initial feasibility
 proof and its verification history.
 
+## Pending deployment: stay-only whole-trip Google map
+
+Implemented in GitHub on November 19, 2026; not deployed in this change.
+Whole trip uses Google Maps for the selected travelers’ unique stay locations,
+excluding day trips and journey-only endpoints. This day and guest-sharing
+boundaries remain unchanged. Browser shell v53. No schema or runtime changes.
+See [Google map behavior](google-maps-embed.md).
+
+Validation: 243 Node tests passed, 3 browser tests skipped (Playwright unavailable);
+type check, production build and diff whitespace checks passed. A real Google
+frame and phone rendering still need deployment verification.
+
 ## Original feasibility result
 
 [Open the private prototype](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site).

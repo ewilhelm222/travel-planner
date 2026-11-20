@@ -75,7 +75,7 @@ test('a move with no transport entered still gets the gap and a bridge, with a q
     assert.deepEqual([plan.moves[0].legs.length, plan.moves[0].split, plan.moves[0].dep, plan.moves[0].arr], [0, '2027-05-05', '2027-05-05', '2027-05-05']);
     assert.deepEqual(columns(html).slice(2, 5), ['2027-05-05:before', 'bridge:2027-05-05', '2027-05-05:after']);
     assert.match(html, /<button type="button" class="bridge-card quiet" data-bridge="2027-05-05~2027-05-05~tokyo~kyoto"[^>]*>.*?How are we getting there\? Not entered yet\..*?>Add<\/span>/);
-    assert.deepEqual(tripMap(t).edges.filter(e => e.kind === 'order').map(e => `${e.from}>${e.to}`), ['tokyo>kyoto'], 'the whole-trip map draws the same connection');
+    assert.deepEqual(tripMap(t).edges.filter(e => e.kind === 'order').map(e => `${e.from}>${e.to}`), ['tokyo>kyoto', 'kyoto>osaka'], 'the whole-trip map connects stay locations, leaving station endpoints out');
     // The guest link never carries journeys. With stays shared, a guest sees that the group moves, and nothing to open.
     const shared = trip(i => i.stays.forEach(s => { s.showOnGuest = true; })), guest = board(publicTrip(shared), { guest: true });
     assert.equal(publicTrip(shared).legs.length, 0);

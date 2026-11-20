@@ -101,9 +101,9 @@ const hideKey = url => url.replace(/key=[^&]+/, 'key=…');
     await page.click('[data-map-style="google"]');
     check(`${label}: "Show this day on Google Maps" brings it back`, await loaded());
 
-    // ---------- Whole trip stays a schematic ----------
+    // ---------- Whole trip shows stay locations on Google ----------
     await page.evaluate(() => document.querySelector('[data-map-view="trip"]').click());
-    check(`${label}: the whole-trip view never uses Google`, await page.evaluate(() => !document.querySelector('#maps-body iframe') && /Whole trip for everyone/.test(document.querySelector('#maps-body').textContent) && !/sent to Google|on Google Maps/.test(document.querySelector('#maps-body').textContent)));
+    check(`${label}: the whole-trip view uses Google for stay locations`, await page.evaluate(() => !!document.querySelector('#maps-body iframe') && /Whole trip for everyone/.test(document.querySelector('#maps-body').textContent) && /stay location/.test(document.querySelector('#maps-body').textContent)));
     await page.evaluate(() => document.querySelector('[data-map-view="day"]').click());
 
     // ---------- A stop with no usable location: schematic, with the reason ----------

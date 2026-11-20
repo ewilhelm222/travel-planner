@@ -3,7 +3,7 @@
 // names only, so a guest map is always drawn in plan order and carries no address, coordinates or link.
 import { escape } from './board.mjs';
 import { participantRecord } from './participants.mjs';
-import { tripMap, dayMap, mapSvg, mapCaption, routeText, placeLinks, activityLinks, describeLocation, dayEmbed, embedUrl } from './maps.mjs';
+import { tripMap, dayMap, mapSvg, mapCaption, routeText, placeLinks, activityLinks, describeLocation, dayEmbed, tripEmbed, embedUrl } from './maps.mjs';
 
 /** One labelled row of outside links. Reviewed links are solid; searches and directions are dashed and say what they are. */
 export function linkRow(group, name) {
@@ -26,19 +26,19 @@ export function placeDetails(p, { guest = false, canEdit = false, directions = f
 /**
  * The body of the Map panel for one view. `view` is "day" or "trip". `dayName` formats a date.
  * If the drawing cannot be made, the numbered list and its links are still shown, with a sentence saying so.
- * `embedKey` turns on Google Maps for the day; `mapStyle` "schematic" and `embedFailed` put the schematic back.
+ * `embedKey` turns on Google Maps; `mapStyle` "schematic" and `embedFailed` put the schematic back.
  */
 export function mapBodyHtml(trip, { view = 'day', filter = 'all', day, compact = false, guest = false, canEdit = false, dayName = d => d, draw = mapSvg, embedKey = '', mapStyle = 'google', embedFailed = false } = {}) {
     const whole = view === 'trip', who = filter === 'all' ? 'everyone' : (participantRecord(trip, filter)?.name || 'the selected travelers');
     const model = whole ? tripMap(trip, { filter, compact }) : dayMap(trip, { filter, day, compact });
     const title = whole ? `Whole trip for ${who}: ${model.nodes.length} place${model.nodes.length === 1 ? '' : 's'}` : `${dayName(day)} for ${who}: ${model.stops.length} stop${model.stops.length === 1 ? '' : 's'}`;
-    const empty = whole ? guest ? 'No stays are shared on this guest link, so there is no whole-trip map. Choose “This day” to see the day’s stops.' : 'No stays or journeys for this selection yet. Add them under “Places, stays & journeys”.' : `Nothing with a place on ${dayName(day)} for this selection.`;
+    const empty = whole ? guest ? 'No stays are shared on this guest link, so there is no whole-trip map. Choose “This day” to see the day’s stops.' : 'No stays for this selection yet. Add them under “Places, stays & journeys”.' : `Nothing with a place on ${dayName(day)} for this selection.`;
     const details = p => placeDetails(p, { guest, canEdit, directions: !whole });
     const list = whole
         ? model.nodes.map(n => `<li id="map-stop-${n.n}" tabindex="-1"><span class="map-stop" aria-hidden="true">${n.n}</span><div><strong>${escape(n.name)}</strong>${n.detail ? `<small>Staying ${escape(n.detail)}</small>` : ''}${details(n.place)}</div></li>`).join('')
         : model.stops.map(s => `<li id="map-stop-${s.n}" tabindex="-1"><span class="map-stop" aria-hidden="true">${s.n}</span><div><strong>${escape(s.name)}</strong><span class="map-acts">${s.activities.map(a => `<button type="button" class="text-button map-activity" data-detail="${escape(a.id)}">${escape(a.time || 'Time to confirm')} · ${escape(a.title)}</button>`).join('')}</span>${details(s.place)}</div></li>`).join('');
     // Plans with no place are never dropped: each can be opened, and one with its own address still gets map links.
-    const loose = !whole && model.unplaced.length ? `<div class="map-unplaced"><p><strong>Location to confirm (${model.unplaced.length}).</strong> ${guest ? 'These are in the day’s plan; where they happen is not set yet.' : 'These are in the day’s plan but cannot be drawn until they have a place. Open one and choose Edit to give it a place.'}</p><ul class="map-unplaced-list">${model.unplaced.map(a => { const links = activityLinks(a, { guest }); return `<li><button type="button" class="text-button map-activity" data-detail="${escape(a.id)}">${escape(a.time || 'Time to confirm')} · ${escape(a.title)}</button>${links.search ? `<small>${escape(a.address)}</small>${linkRow(links.search, a.title)}${linkRow(links.directions, a.title)}` : ''}</li>`; }).join('')}</ul></div>` : whole && model.missing ? `<p class="map-unplaced">${model.missing} stay${model.missing === 1 ? '' : 's'} or journey${model.missing === 1 ? '' : 's'} for this selection ${model.missing === 1 ? 'has' : 'have'} a place still to confirm and ${model.missing === 1 ? 'is' : 'are'} not drawn.</p>` : '';
+    const loose = !whole && model.unplaced.length ? `<div class="map-unplaced"><p><strong>Location to confirm (${model.unplaced.length}).</strong> ${guest ? 'These are in the day’s plan; where they happen is not set yet.' : 'These are in the day’s plan but cannot be drawn until they have a place. Open one and choose Edit to give it a place.'}</p><ul class="map-unplaced-list">${model.unplaced.map(a => { const links = activityLinks(a, { guest }); return `<li><button type="button" class="text-button map-activity" data-detail="${escape(a.id)}">${escape(a.time || 'Time to confirm')} · ${escape(a.title)}</button>${links.search ? `<small>${escape(a.address)}</small>${linkRow(links.search, a.title)}${linkRow(links.directions, a.title)}` : ''}</li>`; }).join('')}</ul></div>` : whole && model.missing ? `<p class="map-unplaced">${model.missing} stay${model.missing === 1 ? '' : 's'} for this selection ${model.missing === 1 ? 'has' : 'have'} a place still to confirm and ${model.missing === 1 ? 'is' : 'are'} not drawn.</p>` : '';
     let drawing = '';
     if (model.nodes.length > 1) {
         try {
@@ -50,16 +50,15 @@ export function mapBodyHtml(trip, { view = 'day', filter = 'all', day, compact =
     }
     else if (model.nodes.length)
         drawing = `<p class="map-caption map-nothing">Nothing to draw yet: a map needs at least two places${whole ? '' : ' on this day'}.${guest ? '' : ' A place is positioned from its coordinates. A typed address is used for map-app searches, not for the drawing. Use Edit place to add either.'}</p>`;
-    // Google Maps for the day, when the organizer has configured a key and every stop has something Google
-    // can place. Never for the whole trip. The guest page is given a key, and its stops a location, only when
+    // Google Maps uses the day stops or the whole trip’s stay locations, when every place is usable. The guest page is given a key, and its stops a location, only when
     // the organizer switched the Google map on for the guest link; otherwise it has neither and draws the schematic. The frame has no
     // address until the page gives it one as it scrolls into view, so nothing is sent before then.
-    const embed = !whole && embedKey ? dayEmbed(model) : null, url = embed?.ok ? embedUrl(embed, embedKey) : '';
+    const embed = embedKey && (!whole || !guest) ? (whole ? tripEmbed(model) : dayEmbed(model)) : null, url = embed?.ok ? embedUrl(embed, embedKey) : '';
     if (url && mapStyle !== 'schematic' && !embedFailed) {
-        drawing = `<div class="map-google" id="map-google"><iframe class="map-frame" id="map-frame" title="${escape(`Google Maps: ${title}`)}" data-src="${escape(url)}" referrerpolicy="strict-origin" allowfullscreen></iframe><p class="map-caption">Google Maps, ${embed.mode === 'place' ? 'this stop' : `directions through the ${embed.count} stops in itinerary order`}. The stops’ addresses or coordinates are sent to Google to show it. ${embed.mode === 'place' ? '' : 'The route and times are Google’s suggestion, not part of the plan. '}It does not load in mainland China. <button type="button" class="text-button" data-map-style="schematic">Show the schematic instead</button></p></div>`;
+        drawing = `<div class="map-google" id="map-google"><iframe class="map-frame" id="map-frame" title="${escape(`Google Maps: ${title}`)}" data-src="${escape(url)}" referrerpolicy="strict-origin" allowfullscreen></iframe><p class="map-caption">Google Maps, ${whole ? (embed.mode === 'place' ? 'this stay location' : `directions through the ${embed.count} stay locations in first-stay order`) : (embed.mode === 'place' ? 'this stop' : `directions through the ${embed.count} stops in itinerary order`)}. The stops’ addresses or coordinates are sent to Google to show it. ${embed.mode === 'place' ? '' : 'The route and times are Google’s suggestion, not part of the plan. '}It does not load in mainland China. <button type="button" class="text-button" data-map-style="schematic">Show the schematic instead</button></p></div>`;
     }
     else if (url)
-        drawing += `<p class="map-caption map-switch">${embedFailed ? '<span role="status">Google Maps did not load, so this is the schematic.</span> ' : ''}<button type="button" class="text-button" data-map-style="google">${embedFailed ? 'Try Google Maps again' : 'Show this day on Google Maps'}</button></p>`;
+        drawing += `<p class="map-caption map-switch">${embedFailed ? '<span role="status">Google Maps did not load, so this is the schematic.</span> ' : ''}<button type="button" class="text-button" data-map-style="google">${embedFailed ? 'Try Google Maps again' : whole ? 'Show the whole trip on Google Maps' : 'Show this day on Google Maps'}</button></p>`;
     else if (embed && embed.reason && model.nodes.length)
         drawing += `<p class="map-caption map-switch">${escape(guest ? embed.reason.replace(/ Add one under Edit place\.$/, '') : embed.reason)}</p>`;
     const route = routeText(model);
