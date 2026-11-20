@@ -60,8 +60,9 @@ A **Map** panel sits below the schedule, with two views:
 - **This day**: the selected day's activities in itinerary order, grouped into
   numbered stops by place. Activities with no place yet are listed under
   "Location to confirm" instead of being dropped.
-- **Whole trip**: the places where the selected travelers stay or travel
-  between, with their journeys as arrows in date order.
+- **Whole trip**: the selected travelers’ unique stay locations in first-stay order,
+  excluding day trips and journey-only endpoints. Uses Google Maps when
+  configured, with the schematic fallback; see [Google Maps](google-maps-embed.md).
 
 Since November 19 a travel day is drawn in the order the board shows it (the
 place being left, then the place reached), and a change of stay area with no

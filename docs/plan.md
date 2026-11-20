@@ -23,7 +23,7 @@ Existing Trello and Google Workspace approaches have produced successful trips. 
 | Participants | Switch between families, selected people, and the entire trip; support overlapping and different plans. |
 | Rearrangement | Make manual editing easy. Warnings about affected plans are useful; automatic itinerary changes are out of scope. |
 | Moving a stay | Explicitly offer to shift flexible activities by the same number of days. Leave fixed bookings unchanged and flag conflicts. |
-| Maps | Whole-trip and within-day views using pins and ordered schematic arrows. External directions are sufficient initially. |
+| Maps | Whole-trip shows stay locations only, excluding day trips and journey-only endpoints, on Google Maps like the within-day view. Preserve participant filters and schematic fallbacks. External directions are sufficient. |
 | Devices | Full desktop browser editing; a good phone view with small edits. |
 | Connectivity | Online editing only. The last successfully downloaded itinerary must remain readable offline. |
 | Privacy | Trips are private by default. The organizer may enable a revocable read-only guest link for a limited schedule projection. Private planning notes and lodging details remain protected. |

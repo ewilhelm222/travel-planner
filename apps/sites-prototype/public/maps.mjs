@@ -172,7 +172,13 @@ export function embedLocation(place) {
  * when it cannot be: no stops, a stop with no usable location, or more waypoints than the embed takes.
  */
 export function dayEmbed(model) {
-  const stops = model?.kind === "day" ? model.stops : [];
+  return stopsEmbed(model?.kind === "day" ? model.stops : [], "day");
+}
+/** Whole-trip Google map uses the same stay-only places as its list and schematic. */
+export function tripEmbed(model) {
+  return stopsEmbed(model?.kind === "trip" ? model.nodes : [], "trip");
+}
+function stopsEmbed(stops, scope) {
   if (!stops.length) return { ok: false, reason: "" };
   const missing = stops.filter(s => !embedLocation(s.place));
   if (missing.length) {
@@ -181,7 +187,7 @@ export function dayEmbed(model) {
   }
   const at = stops.map(s => embedLocation(s.place));
   if (at.length === 1) return { ok: true, mode: "place", q: at[0], count: 1 };
-  if (at.length - 2 > EMBED_MAX_WAYPOINTS) return { ok: false, reason: `Shown as a schematic: Google Maps takes at most ${EMBED_MAX_WAYPOINTS + 2} stops in one map and this day has ${at.length}.` };
+  if (at.length - 2 > EMBED_MAX_WAYPOINTS) return { ok: false, reason: `Shown as a schematic: Google Maps takes at most ${EMBED_MAX_WAYPOINTS + 2} stops in one map and this ${scope} has ${at.length}.` };
   return { ok: true, mode: "directions", origin: at[0], destination: at.at(-1), waypoints: at.slice(1, -1), count: at.length };
 }
 /** The embed address. The key travels in it, as Google's embed requires; it is never stored in a trip or in source. */
@@ -240,18 +246,18 @@ function layout(nodes, compact = false) {
 
 const node = (trip, placeId) => { const place = (trip.places || []).find(p => p.id === placeId); return place ? { id: place.id, place, name: place.name, localName: place.localName || "" } : null; };
 
-/** Whole trip: the places the selected travelers stay at or travel between, and their journeys in date order. */
+/** Whole trip: unique stay locations for the selected travelers, and journeys between those locations. */
 export function tripMap(trip, { filter = "all", compact = false } = {}) {
   const shown = record => matchesSelection(record, filter, trip);
   const stays = (trip.stays || []).filter(shown).sort((a, b) => a.start.localeCompare(b.start) || a.id.localeCompare(b.id));
   const legs = (trip.legs || []).filter(shown).sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
   const ids = [];
   const add = id => { if (id && !ids.includes(id)) ids.push(id); };
-  // Plan order: by the date each place first appears for the selected travelers.
-  [...stays.map(s => ({ date: s.start, ids: [s.placeId] })), ...legs.map(l => ({ date: l.date, ids: [l.from, l.to] }))].sort((a, b) => a.date.localeCompare(b.date)).forEach(e => e.ids.forEach(add));
+  // Stay order only: day trips and intermediate journey endpoints are not overnight bases.
+  stays.forEach(s => add(s.placeId));
   const nodes = ids.map(id => node(trip, id)).filter(Boolean);
   nodes.forEach((n, i) => { n.n = i + 1; n.detail = stays.filter(s => s.placeId === n.id).map(s => `${s.start} → ${s.end}`).join(", "); });
-  let edges = legs.filter(l => l.from && l.to && l.from !== l.to).map(l => ({ from: l.from, to: l.to, label: `${l.mode || "Journey"} · ${l.date}`, kind: "journey" }));
+  let edges = legs.filter(l => ids.includes(l.from) && ids.includes(l.to) && l.from !== l.to).map(l => ({ from: l.from, to: l.to, label: `${l.mode || "Journey"} · ${l.date}`, kind: "journey" }));
   // With no journeys entered, connect consecutive stays so the order of the trip is still visible.
   if (!edges.length) edges = stays.slice(1).map((s, i) => ({ from: stays[i].placeId, to: s.placeId, label: "", kind: "order" })).filter(e => e.from && e.to && e.from !== e.to);
   // A change of stay area with no journey entered is a bridge on the board; draw it here too, as a planned connection.
@@ -259,7 +265,7 @@ export function tripMap(trip, { filter = "all", compact = false } = {}) {
     const from = m.fromStays[0]?.placeId, to = m.toStays[0]?.placeId;
     if (!m.legs.length && from && to && from !== to) edges.push({ from, to, label: "", kind: "order" });
   }
-  const missing = stays.filter(s => !s.placeId).length + legs.filter(l => !l.from || !l.to).length;
+  const missing = stays.filter(s => !nodes.some(n => n.id === s.placeId)).length;
   return { kind: "trip", nodes, edges, missing, ...layout(nodes, compact) };
 }
 
