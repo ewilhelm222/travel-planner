@@ -93,8 +93,8 @@ At the end of the original feasibility pass, adding/deleting activities, full dr
 
 ## Source and deployment
 
-Current deployed application: **version 26**, shell **v52**, runtime revision **2**.
-See [the release index](releases/README.md), [version 26](releases/2026-11-19-v26.md)
+Current deployed application: **version 27**, shell **v53**, runtime revision **2**.
+See [the release index](releases/README.md), [version 27](releases/2026-11-19-v27.md)
 and the [Cloudflare-aware deployment checks](deployment-verification.md).
 Documentation commits after the pinned release do not change the live Site;
 GitHub main and the deployed app commit must be reported separately.

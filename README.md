@@ -10,9 +10,9 @@ import/export, offline reading, organizer-managed guest links, and a traveler
 roster with family/group and individual activity assignments. The adopted visual
 system, also used by the published interface, is **Night Market**.
 
-Live application: **saved version 26**, deployed November 19, 2026, from
-GitHub app commit `3d96c4ab352196e34e5e834fb7cd6404fc4de951`; offline shell
-**v52**, runtime revision **2**. Documentation merges do not redeploy the Site.
+Live application: **saved version 27**, deployed November 19, 2026, from
+GitHub app commit `62c5bf52aa97fb7a92f151765e1d6b94a92b3276`; offline shell
+**v53**, runtime revision **2**. Documentation merges do not redeploy the Site.
 See [release history and verification limits](docs/releases/README.md).
 
 Deployed features include History/undo and manual backup, structure editing,

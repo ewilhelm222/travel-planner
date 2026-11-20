@@ -1,6 +1,6 @@
 # Multiple trips, events, and guest schedules
 
-Status: version 26 deployed November 19, 2026 (America/Los_Angeles), shell v52,
+Status: version 27 deployed November 19, 2026 (America/Los_Angeles), shell v53,
 runtime revision 2. The public Site entry point is separately protected by
 server-side trip membership and write authorization. See the
 [current release index](releases/README.md) for provenance and verification

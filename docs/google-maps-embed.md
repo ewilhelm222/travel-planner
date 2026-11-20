@@ -1,10 +1,13 @@
 # Google Maps for day and whole-trip maps
 
-Status: Google day-map support deployed in version 20; the optional guest-map
-switch deployed in version 22. A real Google map was seen working in the
-signed-in planner in versions 22–24. Version 26 verified bridge ordering, not a
-fresh Google-map rendering check. A real Google map on the guest page remains
-unverified. See [release history](releases/README.md). No database migration.
+Status: Whole trip Google Maps deployed November 19, 2026 in version 27
+(PR #46), shell v53. Live Chrome verified stay-only inclusion, first-stay
+order, endpoint/day-visit exclusion, participant selection, schematic choice
+and return to Google. This day still rendered a real Google map. Guest
+whole-trip behavior remains non-Google; a real guest day Google map remains
+unverified. See [release 27](releases/2026-11-19-v27.md) for exact checks and
+limits. Day support originally shipped in version 20 and the guest day-map
+switch in version 22. No database migration.
 
 **Stop locations are sent to Google.** When the Google day map is shown, the
 addresses or coordinates of that day's stops go to Google in the map's address,
@@ -49,7 +52,7 @@ Guest sharing is unchanged: the guest whole-trip view remains schematic,
 and locations used only by stays are still not added to the guest projection.
 Offline reading, missing locations, unavailable Google, no key, and choosing
 the schematic keep the schematic fallback. Browser shell version 53 carries
-this update. This change is implemented in GitHub but has not been deployed.
+this update, deployed in version 27.
 
 ## On the guest link (organizer's choice, November 18)
 
