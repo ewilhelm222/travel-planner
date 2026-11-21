@@ -1,5 +1,5 @@
 import { getChatGPTUser } from "../../chatgpt-auth";
-import { body, db, response, isCreator, snapshot, userView, failed } from "../../../lib/trip-store";
+import { body, db, response, isCreator, userView, failed } from "../../../lib/trip-store";
 import { normalizeTrip, thanksgivingExample, upgradeLegacy } from "../../../lib/trips.mjs";
 import { createSampleTrip } from "../../../lib/prototype.mjs";
 export const dynamic = "force-dynamic";
