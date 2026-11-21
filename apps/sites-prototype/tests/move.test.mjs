@@ -30,6 +30,8 @@ test("dropping before a card sets day order; other fields are untouched", () => 
   const [first, second, third] = dayIds(trip, "2026-11-27");
   const { trip: next } = moveActivity(trip, { activityId: third, date: "2026-11-27", beforeId: first });
   assert.deepEqual(dayIds(next, "2026-11-27").slice(0, 3), [third, first, second]);
+  // `order` is destructured only to leave it out of the comparison.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const strip = t => t.activities.map(({ order, ...rest }) => rest);
   assert.deepEqual(strip(next), strip(trip), "Only order changes on a same-day reorder.");
   // Another day keeps its order.

@@ -167,7 +167,7 @@ export function enableDrag(options) {
 
   function autoScroll() {
     if (!drag) return;
-    const { x, y } = drag, h = window.innerHeight, dockTop = drag.dockEl.getBoundingClientRect().top;
+    const { x, y } = drag, dockTop = drag.dockEl.getBoundingClientRect().top;
     const board = document.querySelector('#itinerary.can-drag');
     let scrolled = false;
     // Vertical page scroll near the top edge or just above the dock.
