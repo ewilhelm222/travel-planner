@@ -1,9 +1,11 @@
 # Release history and current deployment
 
-Current live application: **version 26**, shell **v52**, runtime environment
-revision **2**, deployed from GitHub app commit
-`3d96c4ab352196e34e5e834fb7cd6404fc4de951`. Version 25 is retained for rollback.
-This consolidation changes documentation only; it performs no deployment.
+Current live application: **version 28**, shell **v54**, runtime environment
+revision **2**, deployed from pinned GitHub commit
+`98e33bd74db6dc19157a405d581bb9cabb1f0b15` (PR #49). Actual prior live
+version **27** is retained for rollback. See the [version 28 record](2026-11-21-v28.md)
+for actual Site provenance, checks and remaining limits. The older consolidation
+and its historical verification limits below are preserved.
 
 | Versions | Record | Scope |
 | --- | --- | --- |
@@ -14,12 +16,14 @@ This consolidation changes documentation only; it performs no deployment.
 | 24 | [November 18](2026-11-18-v24.md) | Complete weather title text; shell v50; initial rollback then successful redeployment |
 | 25 | [November 19](2026-11-19-v25.md) | Activity-view layout and weather persistence; shell v51 |
 | 26 | [November 19](2026-11-19-v26.md) | Travel bridges and split days; shell v52 |
+| 27 | [Retained provenance in version 28 record](2026-11-21-v28.md#provenance-and-rollback) | Whole-trip Google Maps; shell v53; prior live rollback |
+| 28 | [November 21](2026-11-21-v28.md) | Weather uncertainty and accessible Details; shell v54 |
 
 Use the [deployment verification procedure](../deployment-verification.md).
 The app-owned guest HTML comparison excludes only the narrowly identified
 Cloudflare challenge script; assets, CSP and authorization checks stay separate.
 
-## Current verification limits
+## Historical version 26 verification limits
 
 All existing organizer trips and the existing guest page loaded in version 26.
 Desktop bridges, split-day order, reading view, unsaved Edit journey form and
