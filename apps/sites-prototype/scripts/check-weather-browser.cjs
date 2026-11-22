@@ -13,7 +13,7 @@ const check = (name, ok, extra = '') => { if (!ok) failed++; console.log(ok ? 'o
 // to ask) and the forecast service's answer are both made up here; the browser does the rest.
 const DATES = ['2026-11-25', '2026-11-26', '2026-11-27', '2026-11-28'];
 const ROWS = [[80, 31, 0, 9, 3], [90, 0, 11, 0, -6], [70, 6, 3, 3, -1], [5, 0, 0, 12, 1]];
-const FORECAST = { timezone: 'America/Los_Angeles', daily: { time: DATES, weather_code: ROWS.map(() => 3), precipitation_probability_max: ROWS.map(r => r[0]), precipitation_sum: ROWS.map(r => r[1] + r[2]), rain_sum: ROWS.map(r => r[1]), showers_sum: ROWS.map(() => 0), snowfall_sum: ROWS.map(r => r[2]), temperature_2m_max: ROWS.map(r => r[3]), temperature_2m_min: ROWS.map(r => r[4]) } };
+const FORECAST = { timezone: 'America/Los_Angeles', daily: { time: DATES, weather_code: [61, 73, 61, 3], precipitation_probability_max: ROWS.map(r => r[0]), precipitation_sum: ROWS.map(r => r[1] + r[2]), rain_sum: ROWS.map(r => r[1]), showers_sum: ROWS.map(() => 0), snowfall_sum: ROWS.map(r => r[2]), temperature_2m_max: ROWS.map(r => r[3]), temperature_2m_min: ROWS.map(r => r[4]) } };
 const PLAN = { points: [{ lat: 38.25, lng: -120.35, where: 'Pine Flat cabin (made up)' }], dates: Object.fromEntries([...DATES, '2026-11-29'].map(d => [d, 0])) };
 const METEO = 'https://api.open-meteo.com/**';
 (async () => {
@@ -47,7 +47,7 @@ const METEO = 'https://api.open-meteo.com/**';
     const first = await measure();
     check(`${label}: before the first forecast, the line takes no room`, first.every(x => x.line === 0 && x.text === ''), JSON.stringify(first.map(x => [x.line, x.text])));
     release();
-    await page.waitForSelector('.day-weather .weather-precip');
+    await page.waitForSelector('.day-weather .weather-summary');
     // The trip is now known to have a forecast: on the next visit the room is kept while it loads, so nothing jumps.
     let release2;
     const held2 = new Promise(r => { release2 = r; });
@@ -63,15 +63,16 @@ const METEO = 'https://api.open-meteo.com/**';
     const before = await measure();
     check(`${label}: while loading again, every line is empty and keeps its room`, before.every(x => x.text === '' && x.line > 0), JSON.stringify(before.map(x => [x.line, x.text])));
     release2();
-    await page.waitForSelector('.day-weather .weather-precip');
+    await page.waitForSelector('.day-weather .weather-summary');
     const after = await measure();
     console.log('     ', JSON.stringify(after.map(x => x.text.replace(/\n/g, ' | '))));
     check(`${label}: header and first place start at the same height with and without a forecast`, JSON.stringify(before.map(x => [x.header, x.city])) === JSON.stringify(after.map(x => [x.header, x.city])), JSON.stringify([before, after].map(m => m.map(x => [x.header, x.city]))));
+    check(`${label}: summary stays one line with temperatures visible`, await page.$$eval('.agenda-day:visible .weather-summary', buttons => buttons.every(e => { const t=e.querySelector('.weather-temp').getBoundingClientRect(), c=e.getBoundingClientRect(); return e.scrollWidth <= e.clientWidth + 1 && t.right <= c.right + 1 && t.top >= c.top && t.bottom <= c.bottom; })));
     check(`${label}: every column's header is the same height`, new Set(after.map(x => x.header)).size === 1 && new Set(after.map(x => x.city)).size === 1);
-    check(`${label}: the weather button reserves equal height under the date`, after.every(x => x.line === after[0].line && x.line >= 80 && x.line <= 90 && x.under >= 0));
+    check(`${label}: a compact single weather line reserves equal height under each date`, after.every(x => x.line === after[0].line && x.line >= 28 && x.line <= 44 && x.under >= 0));
     if (viewport.width < 600) {
       // Phone portrait shows one day at a time: step through the days.
-      for (const [date, name, want] of [['2026-11-25', 'wet', /Rain possible/], ['2026-11-26', 'snowy', /Snow possible/], ['2026-11-28', 'dry', /^Overcast/], ['2026-11-29', 'unavailable', /^—/]]) {
+      for (const [date, name, want] of [['2026-11-25', 'wet', /Rain/], ['2026-11-26', 'snowy', /Snow/], ['2026-11-28', 'dry', /^Cloudy/], ['2026-11-29', 'unavailable', /^—/]]) {
         await page.click(`.medallion[data-day="${date}"]`);
         await page.waitForSelector(`.agenda-day[data-date="${date}"][data-selected=true] .day-weather > *`, { state: 'attached' });
         const text = await page.$eval(`.agenda-day[data-date="${date}"] .day-weather`, e => e.innerText.trim());
@@ -83,7 +84,7 @@ const METEO = 'https://api.open-meteo.com/**';
     }
     else {
       const texts = after.map(x => x.text);
-      check(`${label}: precipitation leads each line`, /^Rain possible/.test(texts[0]) && /^Snow possible/.test(texts[1]) && /^Rain \/ snow possible/.test(texts[2] || 'Rain / snow possible'));
+      check(`${label}: precipitation leads each line`, /^Rain/.test(texts[0]) && /^Snow/.test(texts[1]) && /^Rain\/snow/.test(texts[2] || 'Rain/snow'));
       await page.$eval('#itinerary', e => e.scrollIntoView({ block: 'start' }));
       await page.evaluate(() => scrollBy(0, -150));
       await page.screenshot({ path: `${SHOTS}/${label}.jpg`, quality: 85 });
@@ -94,25 +95,23 @@ const METEO = 'https://api.open-meteo.com/**';
       }
     }
     check(`${label}: wet and snowy days are marked on the day chips, dry and unknown days are not`, await page.$$eval('.medallion[data-day]', chips => chips.map(c => c.querySelector('.medallion-weather')?.className.split(' ')[1] || '').join(',')) === 'rain,snow,mixed,,');
-    check(`${label}: the chip says it in words`, /Forecast: Snow possible\. Peak hourly precipitation chance 90 percent/.test(await page.getAttribute('.medallion[data-day="2026-11-26"]', 'aria-label')));
+    check(`${label}: the chip says it in words`, /Snow · High/.test(await page.getAttribute('.medallion[data-day="2026-11-26"]', 'aria-label')));
     check(`${label}: no sideways page scroll`, await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
-    check(`${label}: the line carries when the forecast was updated`, /Forecast for Pine Flat cabin \(made up\)\. Updated /.test(await page.getAttribute('.day-weather[data-weather="2026-11-26"]', 'title')));
+    check(`${label}: hover is a short forecast, without place or explanation`, /^Snow · High .*Click for details\.$/.test(await page.getAttribute('.day-weather[data-weather="2026-11-26"]', 'title')));
     const note = await page.$eval('#weather-note', e => ({ text: e.textContent, shown: !!e.offsetParent }));
-    check(`${label}: the note under the schedule says when and from where`, /retrieved .*Open-Meteo\.com/.test(note.text) && (note.shown || viewport.height <= 520), note.text);
+    check(`${label}: the note under the schedule says when and from where`, /Weather checked .*Open-Meteo/.test(note.text) && (note.shown || viewport.height <= 520), note.text);
 
     if (viewport.width < 600) await page.click('.medallion[data-day="2026-11-25"]');
     const summary = page.locator('.agenda-day:visible .weather-summary').first();
     await summary.focus();
     await page.keyboard.press('Enter');
     await page.waitForSelector('.weather-details[open]');
-    check(`${label}: keyboard opens readable probability, amount and uncertainty details`, /not an? all-day|not the chance of precipitation at any time/.test(await page.textContent('.weather-details')) && /Rain forecast · daily total/.test(await page.textContent('.weather-details')));
+    check(`${label}: keyboard opens readable probability, amount and uncertainty details`, /not an all-day probability/.test(await page.textContent('.weather-details')) && /Rain · day total/.test(await page.textContent('.weather-details')));
     check(`${label}: details open at the heading and forecast values`, await page.$eval('.weather-details', e => e.scrollTop === 0 && e.querySelector('h2').getBoundingClientRect().top >= 0));
     check(`${label}: details fit the viewport`, await page.$eval('.weather-details', e => e.scrollWidth <= e.clientWidth + 1));
+    if (viewport.height >= 800) check(`${label}: brief details do not fill the screen`, await page.$eval('.weather-details', e => e.getBoundingClientRect().height < 650));
     await page.screenshot({ path: `${SHOTS}/${label}-details.jpg`, quality: 85 });
-    const explanation = page.locator('.weather-explanation');
-    await explanation.locator('summary').focus();
-    await page.keyboard.press('Enter');
-    check(`${label}: the probability explanation expands by keyboard`, await explanation.getAttribute('open') !== null);
+    if (label === 'desktop-week') await page.locator('.weather-details').screenshot({ path: `${SHOTS}/compact-details.png` });
     await page.keyboard.press('Escape');
     check(`${label}: Escape closes details and returns keyboard focus`, await summary.evaluate(e => document.activeElement === e));
 
@@ -123,13 +122,13 @@ const METEO = 'https://api.open-meteo.com/**';
       await page.keyboard.press('Shift+ArrowRight');
       await page.waitForFunction(r => /Revision (\d+)/.exec(document.querySelector('#status')?.textContent || '')?.[1] > r, revBefore);
       const moved = await measure();
-      check(`${label}: after a card is moved to another day the weather lines are still there`, /^Rain possible/.test(moved[0].text) && /^Snow possible/.test(moved[1].text) && await rev() > revBefore, JSON.stringify(moved.map(x => x.text.slice(0, 14))));
+      check(`${label}: after a card is moved to another day the weather lines are still there`, /^Rain/.test(moved[0].text) && /^Snow/.test(moved[1].text) && await rev() > revBefore, JSON.stringify(moved.map(x => x.text.slice(0, 14))));
       await page.waitForTimeout(700);
-      check(`${label}: and still there once the background check has come back`, /^Snow possible/.test((await measure())[1].text));
+      check(`${label}: and still there once the background check has come back`, /^Snow/.test((await measure())[1].text));
       await page.focus('#itinerary .agenda-day[data-date="2026-11-27"] .activity');
       await page.keyboard.press('Shift+ArrowLeft');
       await page.waitForTimeout(900);
-      check(`${label}: and after it is moved back`, /^Snow possible/.test((await measure())[1].text));
+      check(`${label}: and after it is moved back`, /^Snow/.test((await measure())[1].text));
     }
 
     // No forecast for any day: the line is given back in every column, and the organizer is told why.
@@ -138,8 +137,8 @@ const METEO = 'https://api.open-meteo.com/**';
     // The service stops answering: the forecast this browser saw last stands in, with its own update time.
     await page.evaluate(id => { const k = 'waypoint-weather:' + id, v = JSON.parse(localStorage.getItem(k)); v.data.updatedAt = new Date(Date.now() - 3600e3).toISOString(); localStorage.setItem(k, JSON.stringify(v)); }, id);
     await page.reload();
-    await page.waitForSelector('.day-weather .weather-precip', { state: 'attached' });
-    check(`${label}: when the service does not answer, the last forecast seen is still shown`, /Snow possible|Rain possible/.test(await page.$eval('#itinerary', e => e.textContent)) && /retrieved/.test(await page.textContent('#weather-note')));
+    await page.waitForSelector('.day-weather .weather-summary', { state: 'attached' });
+    check(`${label}: when the service does not answer, the last forecast seen is still shown`, /Snow|Rain/.test(await page.$eval('#itinerary', e => e.textContent)) && /Weather checked/.test(await page.textContent('#weather-note')));
     // A browser that never saw a forecast has nothing to show.
     await page.evaluate(id => localStorage.removeItem('waypoint-weather:' + id), id);
     await page.reload();
@@ -165,14 +164,14 @@ const METEO = 'https://api.open-meteo.com/**';
       check(`${label}: guest weather route answers with the rounded point and no place name`, realGuest.status === 200 && JSON.stringify(realGuest.json.points) === '[{"lat":38.25,"lng":-120.35}]' && !JSON.stringify(realGuest.json).includes('Pine'));
       check(`${label}: guest weather route refuses a wrong token`, (await page.evaluate(async () => (await fetch('/api/shared-weather', { headers: { Authorization: 'Share ' + 'A'.repeat(43) } })).status)) === 404);
       await guest.goto(share.json.url);
-      await guest.waitForSelector('.day-weather .weather-precip');
+      await guest.waitForSelector('.day-weather .weather-summary');
       const day = viewport.width < 600 ? '2026-11-25' : '2026-11-26';
-      check(`${label}: guests see the same weather line`, /Snow possible|Rain possible/.test(await guest.$eval(`.agenda-day[data-date="${day}"] .day-weather`, e => e.innerText)));
+      check(`${label}: guests see the same weather line`, /Snow|Rain/.test(await guest.$eval(`.agenda-day[data-date="${day}"] .day-weather`, e => e.innerText)));
       check(`${label}: guests are not told the place`, !/Pine/.test(await guest.getAttribute(`.day-weather[data-weather="${day}"]`, 'title')));
       const guestSummary = guest.locator('.agenda-day:visible .weather-summary').first();
       await guestSummary.click();
       await guest.waitForSelector('.weather-details[open]');
-      check(`${label}: guest details explain uncertainty and omit the private place`, /peak hourly|Peak hourly/.test(await guest.textContent('.weather-details')) && !/Pine Flat/.test(await guest.textContent('.weather-details')));
+      check(`${label}: guest details explain uncertainty and omit the private place`, /peak hour/.test(await guest.textContent('.weather-details')) && !/Pine Flat/.test(await guest.textContent('.weather-details')));
       await guest.keyboard.press('Escape');
       // The forecast service refuses a guest: nothing is said about it.
       await guest.unroute(METEO);

@@ -4,6 +4,28 @@ Research and implementation: November 21, 2026. Requested by the organizer for
 outdoor planning, primarily by California families. This is a presentation
 update, not a new forecast provider or a claim of improved forecast accuracy.
 
+## November 22 refinement — current presentation
+
+The organizer found the first pass too large and verbose. The board now has a
+single quiet line: daily condition/icon plus smaller high/low. Percentages live
+only in brief click-through details. Hover is one short forecast sentence.
+The details dialog contains the few forecast values, one hourly-probability
+explanation, place scope and source/time; the tutorial and extended disclaimers
+are removed. The provider's daily weather code leads the condition, so trace
+amounts and peak-hour probabilities do not create an alarmist headline that
+conflicts with the code's cloudy forecast. Existing fetching and values remain.
+Desktop height is 28 px; phone touch height is 44 px. Temperatures use 13 px
+secondary text beside the 14 px condition. A long condition can shorten
+without hiding temperatures. The details dialog sizes to content on phones too.
+This supersedes the information hierarchy described in the November 21 study
+below. Its research remains background, not a requirement to show all its text.
+
+Local validation: all 245 Node tests passed (3 unrelated browser tests skipped).
+The dedicated weather browser suite passed all 121 assertions at desktop, week,
+phone portrait and phone landscape sizes, including single-line bounds, visible
+temperatures, compact dialog height, keyboard/focus, guests and saved fallback.
+Physical phones, assistive technology and hosted publication remain unverified.
+
 ## Evidence and decisions
 
 | Evidence | Waypoint decision |

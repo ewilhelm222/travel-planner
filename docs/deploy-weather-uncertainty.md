@@ -1,6 +1,6 @@
 # Deployment prompt — weather uncertainty
 
-Deploy the merged weather-uncertainty PR from `ewilhelm222/travel-planner` to the
+Deploy the latest merged compact-weather refinement PR from `ewilhelm222/travel-planner` to the
 existing Waypoint Site, following the Sites workflow and repository AGENTS.md.
 Resolve the PR's merge commit and pin its full GitHub SHA before packaging. Do
 not assume the current branch or a newer main commit is the reviewed artifact.
@@ -20,7 +20,7 @@ supported build helper. The synthetic browser regression script is
 `scripts/check-weather-browser.cjs` (requires Playwright, Chrome, loopback dev
 server and a disposable local database with existing migrations). Review desktop
 and phone summaries and dialogs. Record exact results and any unperformed checks.
-Source shell version is v54 in planner.js and sw.js. Keep any later shell-version
+Source shell version is v55 in planner.js and sw.js. Keep any later shell-version
 change explicit rather than silently mixing code from another release.
 
 Synchronize only the app subtree to the same Site's deployment checkout; retain
@@ -35,9 +35,10 @@ Cloudflare challenge normalization in deployment-verification.md. Independently
 verify CSP and signed-out API denials. Do not expose private trip data in logs.
 
 Using an existing authorized owner session, read the existing trip only: verify
-possible conditions, “Precip N% peak hourly”, high/low, Details, separate daily
-rain/new-snow totals, less-than trace amounts where applicable, retrieval time,
-and the probability explanation. Check Enter/Space, Escape and focus return,
+the single condition/icon line with smaller high/low and no percentage.
+Click the line and verify the brief details, separate daily rain/new-snow totals,
+trace amounts where applicable, checked time and short hourly-chance explanation.
+Verify hover stays one short sentence and the phone dialog sizes to its content. Check Enter/Space, Escape and focus return,
 phone portrait/landscape and week view. Do not edit a real itinerary to generate
 weather cases; use local invented forecasts for edge cases. If no live trace or
 snow case exists, record that limit. Use an existing guest link only if authorized;

@@ -946,44 +946,39 @@ dialog.activity-view h2 { margin: 6px 0 10px; overflow-wrap: anywhere; outline: 
 .map-caption .text-button { min-height: 44px; }
 @media (orientation: landscape) and (max-height: 500px) { .map-frame { aspect-ratio: auto; height: 78vh; min-height: 0; } }
 @media print { .map-google { display: none; } }
-/* Weather: a full-size button exposes uncertainty to touch and keyboard users, not hover alone. */
+/* One quiet weather line. Temperatures stay visible; a long condition can shorten. */
 .agenda-date { display: grid; grid-template-columns: auto minmax(0, 1fr); row-gap: 6px; }
 .schedule-first .agenda-date { row-gap: 4px; }
-.day-weather { grid-column: 1 / -1; order: 9; height: 5.25rem; margin: 0; min-width: 0; color: var(--orchid); }
-.weather-summary { display: flex; flex-direction: column; justify-content: center; align-items: stretch; gap: 5px; width: 100%; height: 100%; min-height: 44px; padding: 6px 8px; border: 1px solid var(--orchid); border-radius: 12px; background: var(--dusk); color: var(--cream); text-align: left; font: 500 .875rem/1.2 var(--font-ui); cursor: pointer; }
-.weather-summary:hover { border-color: var(--lagoon); }
+.day-weather { grid-column: 1 / -1; order: 9; height: 28px; margin: 0; min-width: 0; color: var(--orchid); }
+.weather-summary { display: flex; align-items: center; gap: 8px; width: 100%; height: 100%; min-width: 0; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--orchid); text-align: left; font: 500 .875rem/1 var(--font-ui); cursor: pointer; white-space: nowrap; }
+.weather-summary:hover { color: var(--cream); }
 .weather-summary:focus-visible { outline: 3px solid var(--lagoon); outline-offset: 2px; }
-.weather-condition { display: flex; align-items: center; gap: 5px; min-width: 0; font-weight: 700; }
-.weather-condition > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.weather-summary.rain .weather-condition, .weather-summary.precip .weather-condition { color: var(--lagoon); }
+.weather-condition { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.weather-condition > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: underline dotted; text-underline-offset: 4px; }
 .weather-summary.ice .weather-condition, .weather-summary.storm .weather-condition { color: var(--ember); }
 .weather-icon { flex: 0 0 auto; }
-.weather-precip { font-size: .8125rem; color: var(--orchid); }
-.weather-bottom { display: flex; justify-content: space-between; gap: 4px; }
-.weather-temp { font: .8125rem/1.2 var(--font-mono); color: var(--cream); }
-.weather-more { font-size: .8125rem; color: var(--lagoon); text-decoration: underline; }
-.weather-none { color: var(--orchid); line-height: 24px; }
-.weather-note { margin: 0 0 6px; font: .875rem/1.5 var(--font-ui); color: var(--orchid); overflow-wrap: anywhere; }
+.weather-temp { flex: 0 0 auto; font: .8125rem/1 var(--font-mono); color: var(--orchid); }
+.weather-saved { flex: 0 0 auto; font-size: .8125rem; }
+.weather-none { color: var(--orchid); line-height: 28px; }
+.weather-note { margin: 0 0 6px; font: .8125rem/1.5 var(--font-ui); color: var(--orchid); overflow-wrap: anywhere; }
 .weather-note a { color: var(--lagoon); }
 body:not(.has-weather) .day-weather { display: none; }
+@media (pointer: coarse), (max-width: 559px), (max-width: 760px) and (orientation: portrait) { .day-weather { height: 44px; } }
 @media (max-width: 559px), (max-width: 760px) and (orientation: portrait) { .schedule-first .day-weather.none { display: none; } }
 .medallion-weather { position: absolute; left: -3px; top: -3px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--night); color: var(--lagoon); }
 .medallion-weather.snow, .medallion-weather.mixed, .medallion-weather.ice { background: var(--cream); color: var(--ink); }
 .medallion-weather .weather-icon { width: 14px; height: 14px; }
-.weather-details { width: min(36rem, calc(100vw - 24px)); box-sizing: border-box; max-height: calc(100dvh - 24px); overflow-y: auto; color: var(--ink); background: var(--cream); font: 1rem/1.5 var(--font-ui); }
+.weather-details { width: min(28rem, calc(100vw - 24px)); box-sizing: border-box; height: fit-content; max-height: calc(100dvh - 24px); overflow-y: auto; color: var(--ink); background: var(--cream); font: 1rem/1.5 var(--font-ui); margin: auto; border-radius: var(--radius); }
 .weather-details .dialog-heading { align-items: flex-start; }
-.weather-details h2 { margin: 0; font-size: 1.4rem; }
+.weather-details h2 { margin: 0; font-size: 1.25rem; }
 .weather-details .icon-button { flex-shrink: 0; min-width: 44px; min-height: 44px; }
 .weather-details a { color: var(--family-cedar-ink, #0b7a68); }
-.weather-values { display: grid; gap: 12px; }
+.weather-values { display: grid; gap: 10px; }
 .weather-values div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
 .weather-values dt { font-weight: 600; }
 .weather-values dd { margin: 0; }
-.weather-explanation summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; text-decoration: underline; color: var(--family-birch-ink); font-weight: 600; }
-.weather-explanation summary::before { content: "+"; margin-right: 8px; }
-.weather-explanation[open] summary::before { content: "−"; }
-.weather-freshness { color: var(--muted); }
-@media print { .day-weather, .weather-note { color: black; } .weather-summary { background: none; border-color: black; color: black; } .weather-summary span { color: black !important; } .weather-more, .medallion-weather { display: none; } }
+.weather-caption, .weather-freshness { font-size: .875rem; color: var(--muted); }
+@media print { .day-weather, .weather-note { color: black; } .weather-summary, .weather-summary span { color: black !important; } .medallion-weather { display: none; } }
 
 /* Travel bridges (November 19). When the group changes to a different area, the board leaves a gap and draws
    a bridge in it carrying the transport. A travel day is shown in two parts, either side of the bridge.
