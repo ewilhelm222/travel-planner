@@ -1,9 +1,11 @@
 # Release history and current deployment
 
-Current live application: **version 26**, shell **v52**, runtime environment
-revision **2**, deployed from GitHub app commit
-`3d96c4ab352196e34e5e834fb7cd6404fc4de951`. Version 25 is retained for rollback.
-This consolidation changes documentation only; it performs no deployment.
+Current live application: **version 29**, shell **v55**, runtime environment
+revision **2**, deployed from pinned merged PR #51 commit
+`b020aae515df0f331bc88b4d479bc56a2007d713`. Actual prior live version **28**
+is retained for rollback. See [version 29](2026-11-22-v29.md) for provenance,
+completed checks and remaining live-browser limits. Earlier consolidation and
+its historical limits are preserved below.
 
 | Versions | Record | Scope |
 | --- | --- | --- |
@@ -15,11 +17,14 @@ This consolidation changes documentation only; it performs no deployment.
 | 25 | [November 19](2026-11-19-v25.md) | Activity-view layout and weather persistence; shell v51 |
 | 26 | [November 19](2026-11-19-v26.md) | Travel bridges and split days; shell v52 |
 
+Version 27/28 actual retained provenance and version 28 documentation PR #50
+are identified in the [version 29 record](2026-11-22-v29.md).
+
 Use the [deployment verification procedure](../deployment-verification.md).
 The app-owned guest HTML comparison excludes only the narrowly identified
 Cloudflare challenge script; assets, CSP and authorization checks stay separate.
 
-## Current verification limits
+## Historical version 26 verification limits
 
 All existing organizer trips and the existing guest page loaded in version 26.
 Desktop bridges, split-day order, reading view, unsaved Edit journey form and
