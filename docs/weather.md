@@ -8,42 +8,54 @@ automatic retry in version 23, and again in later releases. Guest forecast
 rendering and physical-phone behavior remain unverified. See
 [release history](releases/README.md). No database migration.
 
+## Weather communication update — November 21, 2026
+
+Implemented in source; publication is a separate release. See the
+[research and design decisions](weather-communication.md) and
+[deployment prompt](deploy-weather-uncertainty.md). Earlier deployment evidence
+below remains dated evidence, not verification of this update.
+
 ## For planners and guests
 
-Every day header has one more line, directly under the date: the forecast for
-where that day's stay is.
+Each date has a three-row weather button using Night Market colors. It shows
+possible conditions, `Precip 35% peak hourly`, and explicit high/low temperatures.
+The percentage is Open-Meteo's **maximum hourly precipitation probability** on
+that date, not the probability of precipitation at any point during the whole
+day. It is never relabeled as a separate rain or snow probability. All supplied
+percentages, including low ones and zero, are retained. Missing probabilities
+say unavailable. No probabilities are adjusted for California users.
 
-- **Precipitation first.** An icon and a few words: `Rain 80%`, `Snow 90% · 4 in`,
-  `Rain & snow 70% · 1.2 in snow`, or a quiet `Dry`. The percentage is the chance
-  of precipitation. The expected amount is shown for snow, and for rain from
-  about 0.4 in (10 mm); from about 1 in (25 mm) it reads `Heavy rain`.
-- **Temperature second**, smaller: high/low, e.g. `32°/21°`. In a narrow column
-  it is the first thing dropped.
-- A wet day is a lit pill (teal outline for rain, solid teal for heavy rain,
-  cream for snow and mixed); a dry day is plain quiet text.
-- Wet and snowy days also get a small icon on their day chip. Dry days and days
-  with no forecast leave the chip as it was.
-- **The line takes room only when there is a forecast.** If no day of the trip
-  has one, the line is given back and the header is as it was before. If some
-  days have one, every column keeps the line so cards stay level, and a day
-  without one shows a faint dash. One day at a time (phone, upright), a day
-  without a forecast gives its line back too.
-- A day has no forecast when the date is past the 16-day range or already over,
-  the stay has no usable location, or the lookup failed. Nothing is invented
-  and no averages are shown.
-- When the whole trip has none, signed-in people get one sentence under the
-  schedule saying why: nothing to look up, a name or address that was not
-  found, a service that did not answer (with what it answered, e.g.
-  `HTTP 429`), or dates out of range. Guests are told nothing.
-- Hovering a line shows all of it in words (a narrow column cuts it short),
-  then where and when. Nothing more than the line itself is added.
-- Under the schedule a note says when the forecast was updated and credits the
-  source. The same time is in each line's tooltip, and for signed-in people the
-  tooltip also names the place the forecast is for.
-- Units follow the reader's browser: °F and inches for a United States locale,
-  otherwise °C, mm and cm.
-- Guests see the same line. They are not shown the place, and their browser
-  receives only the stay's location rounded to about a kilometre.
+- Conditions come from model amounts and weather codes. No snow is inferred
+  solely from temperature; unknown precipitation type stays unspecified.
+  Cloudy/foggy days use corresponding icons instead of the former Dry/sun icon.
+  Thunderstorms and freezing rain keep explicit labels. A daily total alone is
+  not described as heavy rain: it does not establish hourly intensity.
+- A small positive snow total is described as trace when below the displayed
+  unit's 0.1 threshold. US rainfall uses hundredths of an inch: `<0.01 in`
+  for a trace, and `0.08 in` for a measurable small shower. Other positive
+  amounts below 0.1 are shown as `<0.1`, not rounded up.
+- **Details** opens a native reading dialog by click, touch, Enter or Space.
+  It gives rain and new snowfall daily totals separately, temperatures with
+  units, probability meaning, retrieval time, uncertainty and stay-location
+  scope. Missing amounts say unavailable; zero stays zero. Model amounts are
+  estimates, not amounts conditional on rain occurring. Snowfall is not snow
+  already on the ground. Forecasts a week or more ahead get an outlook reminder;
+  it is not a calculated confidence score. Escape/Close restores focus.
+- Signed-in readers may see the stay's name in details. Guests receive no extra
+  location information: the dialog uses the same nameless weather projection.
+  Dialogs live inside the app root and disappear when it is replaced, including
+  sign-out, access failure or trip change.
+- Every populated date keeps the same weather height; temperatures no longer
+  disappear in narrow columns. If some dates lack forecasts, those columns
+  reserve the space. No forecasts means no weather space. A phone showing one
+  date gives the space back when that date has no forecast.
+- The source/retrieval note stays visible in landscape too. Forecast retrieval
+  time is explicitly distinguished from the model issue time. A forecast kept
+  after a failed refresh says **Saved** on the button and in the source note;
+  forecasts retrieved at least two hours ago also mark the button Saved and
+  say Older forecast in Details. The existing one-day expiry remains.
+- Units follow browser locale: °F/inches for US readers; °C/mm/cm otherwise.
+  No forecast is invented outside the 16-day window or when lookup fails.
 
 ## Where the location comes from
 
@@ -132,7 +144,7 @@ that has already ended there is not shown.
   parsing, classification, words, icons, the kept copy, and filling the lines.
 - `public/board.mjs` puts an empty line in every day header; `planner.js` and
   `guest.mjs` fill it in place when the answer arrives.
-- Current offline shell cache is `waypoint-shell-v52`; weather persistence
+- Source offline shell cache is `waypoint-shell-v54`; weather persistence
   originally shipped with v51. Offline, a forecast kept by the
   browser is not shown; the lines stay empty.
 
@@ -183,7 +195,9 @@ described non-commercial private app subject to attribution and usage limits.
 That dated reading is preserved in the version 19/21 history; it is not a new
 terms review. No China-readiness claim is made.
 
-## Screenshots (synthetic trip; the forecast is made up)
+## Historical screenshots (before the November 21 communication update)
+
+These show the earlier one-line display, with synthetic forecasts.
 
 | Wet | Snowy | Dry | No forecast | Guest |
 | --- | --- | --- | --- | --- |

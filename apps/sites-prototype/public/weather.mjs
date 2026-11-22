@@ -6,81 +6,67 @@
 // Temperature follows, smaller. A day with no forecast shows a quiet dash, never a guess.
 import { escape } from './board.mjs';
 
-// Thresholds, in the service's metric units.
-const SNOW_CM = 0.1;        // any measurable snow is a snow day
-const RAIN_MM = 1;          // less than this with a low chance still reads as dry
-const LIKELY = 30;          // chance (%) at which a day with no measurable amount reads as wet
-const AMOUNT_RAIN_MM = 10;  // rain amount is shown from here (about 0.4 in)
-const HEAVY_RAIN_MM = 25;   // "Heavy rain" from here (about 1 in)
+// Probabilities and model amounts answer different questions. Never infer snow from temperature alone.
 const SNOW_CODES = new Set([71, 73, 75, 77, 85, 86]);
+const RAIN_CODES = new Set([51, 53, 55, 61, 63, 65, 80, 81, 82]);
+const ICE_CODES = new Set([56, 57, 66, 67]);
+const STORM_CODES = new Set([95, 96, 99]);
 const num = v => typeof v === 'number' && Number.isFinite(v) ? v : null;
+const probability = v => num(v) !== null && v >= 0 && v <= 100 ? v : null;
 
-/**
- * What kind of day it is, from one day's forecast:
- *   { kind: 'rain' | 'snow' | 'mixed' | 'dry', heavy, chance, rainMm, snowCm }
- * `chance` is null when the service gave none.
- */
 export function classify(day) {
-    const rainMm = num(day?.rainMm) ?? 0, snowCm = num(day?.snowCm) ?? 0, chance = num(day?.chance), high = num(day?.high);
-    const snowy = snowCm >= SNOW_CM, likely = chance !== null && chance >= LIKELY;
-    let kind = 'dry';
-    if (snowy)
-        kind = rainMm >= RAIN_MM ? 'mixed' : 'snow';
-    else if (rainMm >= RAIN_MM || (likely && rainMm > 0))
-        kind = 'rain';
-    else if (likely)
-        // Likely, but no amount given: the weather code or a freezing day says which.
-        kind = SNOW_CODES.has(day?.code) || (high !== null && high <= 1) ? 'snow' : 'rain';
-    return { kind, heavy: kind === 'rain' && rainMm >= HEAVY_RAIN_MM, chance, rainMm, snowCm };
+    const rainMm = num(day?.rainMm), snowCm = num(day?.snowCm), chance = probability(day?.chance);
+    const snow = snowCm > 0 || SNOW_CODES.has(day?.code), rain = rainMm > 0 || RAIN_CODES.has(day?.code);
+    const kind = STORM_CODES.has(day?.code) ? 'storm' : ICE_CODES.has(day?.code) ? 'ice' : snow && rain ? 'mixed' : snow ? 'snow' : rain ? 'rain' : chance >= 20 ? 'precip' : 'dry';
+    return { kind, chance, rainMm, snowCm };
 }
 
 /** 'us' (°F, inches) for a United States locale, otherwise 'metric' (°C, mm, cm). */
 export function unitsFor(locale) {
-    try {
-        return new Intl.Locale(locale).maximize().region === 'US' ? 'us' : 'metric';
-    }
-    catch {
-        return 'metric';
-    }
+    try { return new Intl.Locale(locale).maximize().region === 'US' ? 'us' : 'metric'; }
+    catch { return 'metric'; }
 }
-const short = n => n < 2 ? String(Math.max(0.1, Math.round(n * 10) / 10)) : String(Math.round(n));
-const snowAmount = (cm, units) => units === 'us' ? `${short(cm / 2.54)} in` : `${short(cm)} cm`;
-const rainAmount = (mm, units) => units === 'us' ? `${short(mm / 25.4)} in` : `${Math.round(mm)} mm`;
+// Show small positive quantities without rounding them up into a larger forecast.
+export function weatherAmount(value, type, units) {
+    if (num(value) === null) return 'Unavailable';
+    const n = units === 'us' ? value / (type === 'snow' ? 2.54 : 25.4) : value;
+    const unit = units === 'us' ? 'in' : type === 'snow' ? 'cm' : 'mm';
+    if (n === 0) return `0 ${unit}`;
+    const precision = units === 'us' && type === 'rain' ? 2 : 1;
+    const minimum = precision === 2 ? 0.01 : 0.1;
+    if (n < minimum) return `<${minimum} ${unit} (trace)`;
+    return `${Number(n.toFixed(precision))} ${unit}`;
+}
 const degrees = (c, units) => Math.round(units === 'us' ? c * 9 / 5 + 32 : c);
-const WORDS = { rain: 'Rain', snow: 'Snow', mixed: 'Rain & snow', dry: 'Dry' };
+const CONDITIONS = { 0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Overcast', 45: 'Fog possible', 48: 'Freezing fog possible' };
+const WORDS = { rain: 'Rain possible', snow: 'Snow possible', mixed: 'Rain / snow possible', precip: 'Precipitation possible', ice: 'Freezing rain possible', storm: 'Thunderstorms possible' };
 
-/** The words of the line: `{ kind, heavy, precip, temp, spoken }`. `temp` is '' when the service gave none. */
 export function weatherWords(day, units = 'metric') {
-    const c = classify(day), wet = c.kind !== 'dry';
-    let precip = c.heavy ? 'Heavy rain' : WORDS[c.kind];
-    // A dry day stays quiet: its chance is only mentioned when it is not negligible.
-    if (c.chance !== null && (wet || c.chance >= 20))
-        precip += wet ? ` ${Math.round(c.chance)}%` : ` · ${Math.round(c.chance)}%`;
-    let amount = '';
-    if (c.kind === 'snow' && c.snowCm >= SNOW_CM)
-        amount = snowAmount(c.snowCm, units);
-    else if (c.kind === 'mixed')
-        amount = `${snowAmount(c.snowCm, units)} snow`;
-    else if (c.kind === 'rain' && c.rainMm >= AMOUNT_RAIN_MM)
-        amount = rainAmount(c.rainMm, units);
-    if (amount)
-        precip += ` · ${amount}`;
-    const high = num(day?.high), low = num(day?.low);
-    const temp = high !== null && low !== null ? `${degrees(high, units)}°/${degrees(low, units)}°` : '';
-    const chanceSpoken = c.chance === null ? '' : `, ${Math.round(c.chance)} percent chance of precipitation`;
-    const spoken = `Forecast: ${c.heavy ? 'heavy rain' : c.kind === 'mixed' ? 'rain and snow' : c.kind}${chanceSpoken}${amount ? `, about ${amount.replace(' in', ' inches').replace(' cm', ' centimetres').replace(' mm', ' millimetres')}` : ''}.${temp ? ` High ${degrees(high, units)}, low ${degrees(low, units)} degrees ${units === 'us' ? 'Fahrenheit' : 'Celsius'}.` : ''}`;
-    return { kind: c.kind, heavy: c.heavy, precip, temp, spoken };
+    const c = classify(day);
+    let condition = WORDS[c.kind] || CONDITIONS[day?.code] || 'Conditions unavailable';
+    if (c.snowCm > 0 && c.snowCm < (units === 'us' ? 0.254 : 0.1))
+        condition = c.kind === 'mixed' ? 'Rain / trace snow possible' : c.kind === 'snow' ? 'Trace snow possible' : condition;
+    const precip = c.chance === null ? 'Precip chance unavailable' : `Precip ${Math.round(c.chance)}% peak hourly`;
+    const high = num(day?.high), low = num(day?.low), unit = units === 'us' ? 'F' : 'C';
+    const temp = [high !== null ? `H ${degrees(high, units)}°` : '', low !== null ? `L ${degrees(low, units)}°` : ''].filter(Boolean).join(' / ');
+    const spoken = `Forecast: ${condition}. ${c.chance === null ? 'Precipitation chance unavailable.' : `Peak hourly precipitation chance ${Math.round(c.chance)} percent; not an all-day probability.`}${high !== null ? ` High ${degrees(high, units)} degrees ${unit}.` : ''}${low !== null ? ` Low ${degrees(low, units)} degrees ${unit}.` : ''}`;
+    return { kind: c.kind, condition, precip, temp, spoken };
 }
 
 // Line icons in the current text colour. Each is decorative beside its word; `label` gives it a text alternative where it stands alone.
 const SHAPES = {
+    cloud: '<path d="M4 12a3.5 3.5 0 0 1 0-7 4.5 4.5 0 0 1 8 1 3 3 0 0 1 0 6z"/>',
+    fog: '<path d="M2 5h12M1 8h14M3 11h10"/>',
+    precip: '<path d="M8 2C6 5 3 8 3 10a5 5 0 0 0 10 0c0-2-3-5-5-8z"/>',
+    storm: '<path d="M4 8a3 3 0 0 1 0-6 4 4 0 0 1 7 1 2.5 2.5 0 0 1 1 5M8 7l-3 4h4l-2 4"/>',
+    ice: '<path d="M3 4h10M5 7l-1 3M9 7l-1 3M12 12v3M10.5 13.5h3"/>',
     rain: '<path d="M5 9.5a3 3 0 0 1 .4-6 4 4 0 0 1 7.6 1 2.5 2.5 0 0 1-.5 5z"/><path d="M5.5 12l-1 2.5M8.5 12l-1 2.5M11.5 12l-1 2.5"/>',
     snow: '<path d="M8 1.5v13M2.4 4.75l11.2 6.5M13.6 4.75L2.4 11.25"/><path d="M6.3 2.6L8 4.2l1.7-1.6M6.3 13.4L8 11.8l1.7 1.6"/>',
     mixed: '<path d="M5 9.5a3 3 0 0 1 .4-6 4 4 0 0 1 7.6 1 2.5 2.5 0 0 1-.5 5z"/><path d="M5 12l-1 2.5"/><path d="M10.5 11.2v3.6M8.9 12.1l3.2 1.8M12.1 12.1l-3.2 1.8"/>',
     dry: '<circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/>',
 };
 export function weatherIcon(kind, label = '') {
-    return `<svg class="weather-icon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" ${label ? `role="img" aria-label="${escape(label)}"` : 'aria-hidden="true"'}>${label ? `<title>${escape(label)}</title>` : ''}${SHAPES[kind] || SHAPES.dry}</svg>`;
+    return `<svg class="weather-icon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" ${label ? `role="img" aria-label="${escape(label)}"` : 'aria-hidden="true"'}>${label ? `<title>${escape(label)}</title>` : ''}${SHAPES[kind] || SHAPES.precip}</svg>`;
 }
 
 /** When the forecast was fetched, in the reader's own time: "Nov 17, 3:10 PM". */
@@ -90,14 +76,56 @@ export const updatedLabel = (iso, locale) => { const d = new Date(iso); return N
  * The inside of one day's weather line. `day` is that date's forecast or nothing.
  * `state` is 'loading' while the first answer is on its way: the line is then empty, and the same height.
  */
-export function weatherLine(day, { units = 'metric', loading = false } = {}) {
-    if (loading)
-        return '';
-    if (!day)
-        return '<span class="weather-none" aria-hidden="true">—</span><span class="sr-only">No forecast for this day</span>';
+const iconFor = day => {
+    const kind = classify(day).kind;
+    if (kind !== 'dry') return kind;
+    return [0, 1].includes(day?.code) ? 'dry' : [2, 3].includes(day?.code) ? 'cloud' : [45, 48].includes(day?.code) ? 'fog' : 'precip';
+};
+export function weatherLine(day, { units = 'metric', loading = false, saved = false, date = '' } = {}) {
+    if (loading) return '';
+    if (!day) return '<span class="weather-none" aria-hidden="true">—</span><span class="sr-only">No forecast for this day</span>';
     const w = weatherWords(day, units);
-    // The icon's text alternative is the spoken sentence that follows it; the visible words repeat it for sighted readers.
-    return `<span class="weather-precip ${w.kind}${w.heavy ? ' heavy' : ''}" aria-hidden="true">${weatherIcon(w.kind)}<span>${escape(w.precip)}</span></span>${w.temp ? `<span class="weather-temp" aria-hidden="true">${escape(w.temp)}</span>` : ''}<span class="sr-only">${escape(w.spoken)}</span>`;
+    return `<button type="button" class="weather-summary ${w.kind}" aria-haspopup="dialog"><span class="weather-condition" aria-hidden="true">${weatherIcon(iconFor(day))}<span>${escape(w.condition)}</span></span><span class="weather-precip" aria-hidden="true">${escape(w.precip)}</span><span class="weather-bottom" aria-hidden="true"><span class="weather-temp">${escape(w.temp)}</span><span class="weather-more">${saved ? 'Saved · ' : ''}Details</span></span><span class="sr-only">${date ? `Weather for ${escape(date)}. ` : ''}${saved ? 'Saved forecast. ' : ''}${escape(w.spoken)} Open weather details.</span></button>`;
+}
+
+export const PROBABILITY_HELP = 'Peak hourly chance is the highest chance of more than 0.1 mm of precipitation in any one hour at this location on this local date. It is not the chance of precipitation at any time during the whole day, the percentage of the day it will rain, or the amount. Rain and snow share this probability; it is not a separate snow chance.';
+export function weatherDetails(day, { date, units = 'metric', updatedAt, locale, now = Date.now() } = {}) {
+    const w = weatherWords(day, units), unit = units === 'us' ? '°F' : '°C';
+    const dateLabel = new Date(`${date}T12:00:00Z`).toLocaleDateString(locale, { timeZone: 'UTC', weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+    const fetched = updatedLabel(updatedAt, locale), age = now - Date.parse(updatedAt);
+    const daysAhead = Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${day.today || date}T00:00:00Z`)) / 86400000);
+    const row = (label, value) => `<div><dt>${label}</dt><dd>${escape(value)}</dd></div>`;
+    return `<div class="dialog-heading"><h2 id="weather-details-title">Weather · ${escape(dateLabel)}</h2><button type="button" class="icon-button" data-weather-close aria-label="Close weather details">×</button></div><p>${escape(w.condition)}${day.where ? ` · ${escape(day.where)}` : ''}</p><dl class="weather-values">${row('High / low', [num(day.high) !== null ? `${degrees(day.high, units)}${unit}` : 'Unavailable', num(day.low) !== null ? `${degrees(day.low, units)}${unit}` : 'Unavailable'].join(' / '))}${row('Peak hourly precipitation chance', classify(day).chance === null ? 'Unavailable' : `${Math.round(day.chance)}%`)}${row('Rain forecast · daily total', weatherAmount(day.rainMm, 'rain', units))}${row('New snow forecast · daily total', weatherAmount(day.snowCm, 'snow', units))}</dl><p>The percentage describes the likeliest hour, not the whole day. Rain and snow amounts are separate model estimates.</p><details class="weather-explanation"><summary>How to read this forecast</summary><p>${PROBABILITY_HELP}</p><p>A brief shower can register measurable precipitation. Even a high chance does not mean steady rain. Neither the percentage nor the daily total tells you when it will happen or how long it will last. Amounts are model estimates, not guaranteed totals or amounts conditional on rain occurring. New snow is snowfall, not snow already on the ground.</p></details><p>${daysAhead >= 7 ? 'A week or more ahead: use this as an outlook and check again closer to the day. ' : ''}Timing, amounts and rain versus snow can change. This forecast is for the stay, not every activity; nearby mountain elevations can have different weather.</p><p class="weather-freshness">${age >= 2 * 3600000 ? 'Older forecast · ' : ''}${fetched ? `Forecast retrieved ${escape(fetched)} (your local time).` : 'Retrieval time unavailable.'} This is the retrieval time, not the model issue time.</p><p>Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</a>.</p><div class="dialog-actions"><button type="button" class="secondary" data-weather-close>Close</button></div>`;
+}
+
+// One delegated handler survives board redraws and works on the planner and guest page alike.
+const weatherViews = new WeakMap();
+function wireWeather(document, weather, options) {
+    if (!document.addEventListener) return;
+    const existing = weatherViews.get(document);
+    if (existing) { existing.weather = weather; existing.options = options; return; }
+    const state = { weather, options };
+    weatherViews.set(document, state);
+    document.addEventListener('click', event => {
+        const trigger = event.target.closest?.('.weather-summary');
+        if (!trigger) return;
+        const date = trigger.closest('[data-weather]')?.dataset.weather, day = state.weather?.days?.[date];
+        if (!day || document.querySelector('dialog[open]')) return;
+        const dialog = document.createElement('dialog');
+        dialog.className = 'weather-details';
+        dialog.setAttribute('aria-labelledby', 'weather-details-title');
+        dialog.innerHTML = weatherDetails(day, { ...state.options, date, updatedAt: state.weather.updatedAt });
+        (document.querySelector('#app, #guest-app') || document.body).append(dialog);
+        dialog.addEventListener('click', e => { if (e.target.closest('[data-weather-close]')) dialog.close(); });
+        dialog.addEventListener('close', () => {
+            dialog.remove();
+            const replacement = [...document.querySelectorAll('.day-weather[data-weather]')].find(line => line.dataset.weather === date)?.querySelector('.weather-summary');
+            (trigger.isConnected ? trigger : replacement)?.focus();
+        }, { once: true });
+        dialog.showModal();
+        dialog.querySelector('[data-weather-close]').focus({ preventScroll: true });
+        dialog.scrollTop = 0;
+    });
 }
 /** The note under the schedule saying when the forecast was fetched and where it came from. */
 export const weatherNote = () => '<p class="weather-note" id="weather-note" hidden></p>';
@@ -120,17 +148,18 @@ const WHY = {
  * for a trip that had a forecast last time, so the columns do not jump when it arrives.
  */
 export function applyWeather(document, weather, { units = 'metric', loading = false, reserve = false, locale } = {}) {
+    wireWeather(document, weather, { units, locale });
     const days = weather?.days || {}, updated = weather?.updatedAt ? updatedLabel(weather.updatedAt, locale) : '', any = Object.keys(days).length > 0;
     document.body?.classList?.toggle('has-weather', any || (loading && reserve));
     for (const line of document.querySelectorAll?.('.day-weather[data-weather]') || []) {
         const day = days[line.dataset.weather];
-        line.innerHTML = weatherLine(day, { units, loading: loading && !day });
+        line.innerHTML = weatherLine(day, { units, date: line.dataset.weather, loading: loading && !day, saved: weather?.saved === true || Date.now() - Date.parse(weather?.updatedAt) >= 2 * 3600000 });
         line.classList?.toggle('none', !day && !loading);
         // On hover: the whole line in words first, since a narrow column cuts it short, then where and when.
         // The note under the schedule says where and when for everyone.
         if (day) {
             const w = weatherWords(day, units);
-            line.title = `${w.precip}${w.temp ? ` · ${w.temp}` : ''}\n${day.where ? `Forecast for ${day.where}. ` : ''}${updated ? `Updated ${updated}. ` : ''}Weather data by Open-Meteo.com`;
+            line.title = `${w.condition} · ${w.precip}${w.temp ? ` · ${w.temp}` : ''}\n${day.where ? `Forecast for ${day.where}. ` : ''}${updated ? `Updated ${updated}. ` : ''}${PROBABILITY_HELP} Weather data by Open-Meteo.com`;
         }
         else
             line.removeAttribute('title');
@@ -152,7 +181,7 @@ export function applyWeather(document, weather, { units = 'metric', loading = fa
     if (note) {
         const why = !any && weather?.why && WHY[weather.why.reason] ? WHY[weather.why.reason](weather.why) : '';
         note.hidden = !any && !why;
-        note.innerHTML = any ? `Forecast for where each day’s stay is${updated ? `, updated ${escape(updated)}` : ''}. Days without one are outside the forecast range or have no usable stay location. Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</a>.` : why;
+        note.innerHTML = any ? `${weather.saved ? 'Saved forecast · ' : ''}Forecast for each day’s stay${updated ? ` · retrieved ${escape(updated)}` : ''}. Percentages are peak hourly precipitation chances, not all-day probabilities. Tap a forecast for amounts and uncertainty. Days without one are outside the forecast range or have no usable stay location. Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</a>.` : why;
     }
     return any;
 }
@@ -177,7 +206,7 @@ export function chooseWeather(answer, kept, { now = Date.now(), today = '' } = {
     if (has(old) && age >= 0 && age < 24 * 60 * 60 * 1000) {
         const days = Object.fromEntries(Object.entries(old.days).filter(([date]) => date >= today));
         if (Object.keys(days).length)
-            return { data: { ...old, days }, keep: kept, retry: true };
+            return { data: { ...old, days, saved: true }, keep: kept, retry: true };
     }
     return { data: answer, keep: null, retry: true };
 }
@@ -213,7 +242,7 @@ export function parseForecast(data, fetchedAt) {
         // A day the service left blank is not a dry day: it is no forecast.
         if (total === null && rain === null && snow === null)
             return;
-        days[date] = { chance: at('precipitation_probability_max', i), rainMm: (rain ?? 0) + (showers ?? 0), snowCm: snow ?? 0, precipMm: total ?? 0, high: at('temperature_2m_max', i), low: at('temperature_2m_min', i), code: at('weather_code', i) };
+        days[date] = { chance: at('precipitation_probability_max', i), rainMm: rain !== null && showers !== null ? rain + showers : null, snowCm: snow, precipMm: total, high: at('temperature_2m_max', i), low: at('temperature_2m_min', i), code: at('weather_code', i) };
     });
     return { timezone: data.timezone, fetchedAt, days };
 }
@@ -262,7 +291,7 @@ export async function fetchWeather(plan, { fetch: fetchFn = globalThis.fetch, no
         // The day boundary is the stay's own: a day that has ended there is no longer forecast.
         if (!day || date < localDate(now(), forecast.timezone))
             continue;
-        result.days[date] = { ...day, ...(points[i].where ? { where: points[i].where } : {}) };
+        result.days[date] = { ...day, today: localDate(now(), forecast.timezone), ...(points[i].where ? { where: points[i].where } : {}) };
         if (!result.updatedAt || forecast.fetchedAt < result.updatedAt)
             result.updatedAt = forecast.fetchedAt;
     }

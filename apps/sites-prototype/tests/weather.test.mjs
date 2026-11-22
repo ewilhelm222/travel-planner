@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { thanksgivingExample, applyTripChange, publicTrip } from '../lib/trips.mjs';
 import { board } from '../public/board.mjs';
-import { classify, weatherWords, weatherLine, weatherIcon, unitsFor, applyWeather, chooseWeather, fetchWeather, parseForecast, localDate, forecastUrl, FORECAST_URL } from '../public/weather.mjs';
+import { classify, weatherWords, weatherAmount, weatherDetails, weatherLine, weatherIcon, unitsFor, applyWeather, chooseWeather, fetchWeather, parseForecast, localDate, forecastUrl, FORECAST_URL } from '../public/weather.mjs';
 import { weatherPlan, stayLocation, stayLocations, memoryCache, retry, GEOCODE_URL } from '../lib/weather.mjs';
 retry.delayMs = 0;
 // The two halves together, as a visit runs them: the server works out where (`cache` is its lookup cache),
@@ -40,51 +40,64 @@ function service({ forecast, places = {}, fail = false } = {}) {
 const NOW = () => new Date('2026-11-20T18:00:00Z');
 const day = kind => { const [chance, rainMm, snowCm, high, low] = ROWS[kind]; return { chance, rainMm, snowCm, high, low, code: 3 }; };
 
-test('rain, snow, mixed and dry days are told apart, with heavy rain marked', () => {
-    assert.equal(classify(day('rain')).kind, 'rain');
-    assert.equal(classify(day('snow')).kind, 'snow');
-    assert.equal(classify(day('mixed')).kind, 'mixed');
-    assert.equal(classify(day('dry')).kind, 'dry');
-    assert.equal(classify(day('heavy')).heavy, true);
-    assert.equal(classify(day('rain')).heavy, false);
-    assert.equal(classify({ chance: 10, rainMm: 0.3, snowCm: 0, high: 12, low: 3 }).kind, 'dry', 'a trace with a low chance is still a dry day');
-    assert.equal(classify({ chance: 60, rainMm: 0, snowCm: 0, high: 9, low: 2, code: 61 }).kind, 'rain', 'likely, no amount yet');
-    assert.equal(classify({ chance: 60, rainMm: 0, snowCm: 0, high: -2, low: -9, code: 3 }).kind, 'snow', 'likely on a freezing day reads as snow');
-    assert.equal(classify({ chance: 60, rainMm: 0, snowCm: 0, high: 6, low: 0, code: 73 }).kind, 'snow', 'the weather code says snow');
-    assert.equal(classify({ chance: null, rainMm: 0, snowCm: 0.4, high: 1, low: -3 }).kind, 'snow', 'any measurable snow is a snow day');
+test('phase follows forecast amounts or weather codes, never temperature or probability alone', () => {
+    for (const kind of ['rain', 'snow', 'mixed', 'dry']) assert.equal(classify(day(kind)).kind, kind);
+    assert.equal(classify({ chance: 35, rainMm: 0, snowCm: 0, high: -2, code: 3 }).kind, 'precip');
+    assert.equal(classify({ chance: 60, rainMm: 0, snowCm: 0, high: -2, code: 73 }).kind, 'snow');
+    assert.equal(classify({ chance: 10, rainMm: 0.3, snowCm: 0, code: 3 }).kind, 'rain', 'a trace is possible, not a promise of a dry day');
+    assert.equal(classify({ chance: 0, rainMm: 0, snowCm: 0, code: 95 }).kind, 'storm');
+    assert.equal(classify({ code: 66 }).kind, 'ice');
+    assert.equal(classify({ chance: 101 }).chance, null);
 });
 
-test('the words lead with precipitation, its chance and the amount for snow or heavy rain; temperature comes after', () => {
-    assert.deepEqual(weatherWords(day('snow'), 'us'), { kind: 'snow', heavy: false, precip: 'Snow 90% · 4 in', temp: '32°/21°', spoken: 'Forecast: snow, 90 percent chance of precipitation, about 4 inches. High 32, low 21 degrees Fahrenheit.' });
-    assert.equal(weatherWords(day('snow'), 'metric').precip, 'Snow 90% · 9 cm');
-    assert.equal(weatherWords(day('rain'), 'us').precip, 'Rain 80% · 0.6 in');
-    assert.equal(weatherWords({ ...day('rain'), rainMm: 4 }, 'us').precip, 'Rain 80%', 'ordinary rain has no amount');
-    assert.equal(weatherWords(day('heavy'), 'us').precip, 'Heavy rain 95% · 1.6 in');
-    assert.equal(weatherWords(day('heavy'), 'metric').precip, 'Heavy rain 95% · 40 mm');
-    assert.equal(weatherWords(day('mixed'), 'us').precip, 'Rain & snow 70% · 1.2 in snow');
-    assert.equal(weatherWords(day('dry'), 'us').precip, 'Dry', 'a dry day is quiet: no chance shown when it is negligible');
-    assert.equal(weatherWords({ ...day('dry'), chance: 25 }, 'us').precip, 'Dry · 25%');
-    assert.equal(weatherWords(day('dry'), 'metric').temp, '14°/2°');
-    assert.equal(weatherWords({ ...day('dry'), high: null }, 'us').temp, '', 'no temperature is shown rather than half of one');
+test('probabilities keep their hourly meaning and small or missing amounts remain honest', () => {
+    assert.equal(weatherWords(day('rain'), 'us').precip, 'Precip 80% peak hourly');
+    assert.equal(weatherWords(day('dry'), 'us').condition, 'Overcast');
+    assert.equal(weatherWords(day('dry'), 'us').precip, 'Precip 5% peak hourly');
+    assert.equal(weatherWords({ ...day('dry'), chance: null }).precip, 'Precip chance unavailable');
+    assert.equal(weatherWords({ ...day('dry'), code: null }).condition, 'Conditions unavailable');
+    assert.equal(weatherWords({ ...day('dry'), high: null }, 'us').temp, 'L 36°');
+    assert.equal(weatherAmount(0.1, 'snow', 'us'), '<0.1 in (trace)');
+    assert.equal(weatherAmount(0.2, 'rain', 'us'), '<0.01 in (trace)');
+    assert.equal(weatherAmount(2, 'rain', 'us'), '0.08 in', 'measurable rain is not called a trace');
+    assert.equal(weatherAmount(31, 'rain', 'us'), '1.22 in');
+    assert.equal(weatherAmount(0, 'rain', 'us'), '0 in');
+    assert.equal(weatherAmount(null, 'snow', 'us'), 'Unavailable');
+    assert.equal(weatherAmount(3, 'snow', 'us'), '1.2 in');
+    assert.equal(weatherAmount(40, 'rain', 'metric'), '40 mm');
     assert.equal(unitsFor('en-US'), 'us');
     assert.equal(unitsFor('en-GB'), 'metric');
     assert.equal(unitsFor('not a locale'), 'metric');
 });
 
-test('each kind of day renders with precipitation first, an icon and a spoken alternative', () => {
+test('weather is a keyboard and touch button; condition icons do not turn cloudy days sunny', () => {
     for (const kind of ['rain', 'snow', 'mixed', 'dry']) {
         const html = weatherLine(day(kind), { units: 'us' });
-        assert.match(html, new RegExp(`^<span class="weather-precip ${kind}" aria-hidden="true"><svg class="weather-icon"`), `${kind} leads the line`);
-        assert.ok(html.indexOf('weather-precip') < html.indexOf('weather-temp'), 'temperature comes after precipitation');
-        assert.match(html, /<span class="sr-only">Forecast: /, 'the icon and words have a text alternative');
+        assert.match(html, new RegExp(`^<button type="button" class="weather-summary ${kind}" aria-haspopup="dialog">`));
+        assert.match(html, /peak hourly/);
+        assert.match(html, /Open weather details/);
     }
-    assert.match(weatherLine(day('snow'), { units: 'us' }), />Snow 90% · 4 in<\/span><\/span><span class="weather-temp" aria-hidden="true">32°\/21°<\/span>/);
-    assert.match(weatherLine(day('heavy'), { units: 'us' }), /class="weather-precip rain heavy"/);
-    assert.match(weatherIcon('snow', 'Snow'), /role="img" aria-label="Snow"><title>Snow<\/title>/, 'an icon standing alone is labelled');
-    assert.match(weatherIcon('rain'), /aria-hidden="true"/);
-    assert.equal(weatherLine(null, { loading: true }), '', 'loading is an empty line');
-    assert.equal(weatherLine(null), '<span class="weather-none" aria-hidden="true">—</span><span class="sr-only">No forecast for this day</span>', 'no forecast is a quiet dash, not an error');
-    assert.ok(!/error|fail|unavailable/i.test(weatherLine(null)));
+    assert.match(weatherLine(day('dry')), /Overcast/);
+    assert.ok(!weatherLine(day('dry')).includes(weatherIcon('dry')), 'overcast uses a cloud, not sun');
+    assert.match(weatherIcon('snow', 'Snow'), /role="img" aria-label="Snow"/);
+    assert.equal(weatherLine(null, { loading: true }), '');
+    assert.match(weatherLine(null), /No forecast for this day/);
+});
+
+test('details separate probability, rain, snowfall and uncertainty with no guest location leak', () => {
+    const options = { date: '2026-11-28', units: 'us', updatedAt: '2026-11-20T18:00:00Z', now: Date.parse('2026-11-20T21:00:00Z'), locale: 'en-US' };
+    const html = weatherDetails({ ...day('mixed'), snowCm: 0.1, today: '2026-11-20', where: 'Pine <Flat>' }, options);
+    assert.match(html, /Pine &lt;Flat&gt;/);
+    assert.match(html, /&lt;0.1 in \(trace\)/);
+    assert.match(html, /not a separate snow chance/);
+    assert.match(html, /not the chance of precipitation at any time during the whole day/);
+    assert.match(html, /week or more ahead/);
+    assert.match(html, /Older forecast/);
+    assert.match(html, /not the model issue time/);
+    assert.match(html, /not guaranteed totals/);
+    assert.match(weatherDetails({ ...day('rain'), rainMm: 2 }, options), /0.08 in/);
+    assert.ok(!weatherDetails(day('mixed'), options).includes('Pine'));
+    assert.ok(!weatherDetails({ ...day('mixed'), today: '2026-11-27' }, options).includes('week or more ahead'));
 });
 
 test('every day header carries the weather line, in the planner and for guests, and its height is fixed', async () => {
@@ -94,7 +107,8 @@ test('every day header carries the weather line, in the planner and for guests, 
         assert.match(html, /<\/h2><p class="day-weather" data-weather="2026-11-25"><\/p><\/header>/, 'directly under the date, inside the header');
     }
     const css = await source('public/planner.css');
-    assert.match(css, /\.day-weather \{[^}]*height: 24px;[^}]*overflow: hidden;[^}]*white-space: nowrap;/, 'one line of fixed height when the trip has a forecast');
+    assert.match(css, /\.day-weather \{[^}]*height: 5\.25rem;/, 'equal forecast space keeps columns aligned');
+    assert.match(css, /\.weather-summary \{[^}]*min-height: 44px;/, 'usable touch target');
     assert.match(css, /body:not\(\.has-weather\) \.day-weather \{ display: none; \}/, 'and no line at all when it has none');
     assert.ok(!JSON.stringify(publicTrip(trip)).includes('38.2541'), 'the stay location still never reaches the guest trip');
 });
@@ -104,18 +118,19 @@ test('the page fills lines, day chips and the note in place', () => {
     const lines = [el({ weather: '2026-11-25' }), el({ weather: '2026-11-26' }), el({ weather: '2026-11-27' })], chips = [el({ day: '2026-11-25' }, 'Wednesday, November 25'), el({ day: '2026-11-26' }, 'Thursday, November 26')], note = el({});
     const body = el({}), document = { body, querySelectorAll: s => s.startsWith('.day-weather') ? lines : chips, querySelector: () => note };
     applyWeather(document, { days: { '2026-11-25': { ...day('snow'), where: 'Pine <Flat>' }, '2026-11-26': day('dry') }, updatedAt: '2026-11-20T18:00:00Z' }, { units: 'us', locale: 'en-US' });
-    assert.match(lines[0].innerHTML, /Snow 90% · 4 in/);
-    assert.match(lines[0].title, /^Snow 90% · 4 in · 32°\/21°\nForecast for Pine <Flat>\. Updated Nov 20, .*Weather data by Open-Meteo\.com$/, 'hovering gives the whole line, which a narrow column may cut short, then where and when');
-    assert.match(lines[1].title, /^Dry · 57°\/36°\n/);
-    assert.match(lines[1].innerHTML, /weather-precip dry/);
+    assert.match(lines[0].innerHTML, /Precip 90% peak hourly/);
+    assert.match(lines[0].title, /Snow possible · Precip 90% peak hourly · H 32° \/ L 21°/);
+    assert.match(lines[0].title, /Forecast for Pine <Flat>/);
+    assert.match(lines[1].title, /Overcast · Precip 5% peak hourly/);
+    assert.match(lines[1].innerHTML, /weather-summary dry/);
     assert.match(lines[2].innerHTML, /weather-none/, 'a day without a forecast gets the quiet dash');
     assert.equal(lines[2].title, '');
     assert.ok(body.classes.has('has-weather') && lines[2].classes.has('none') && !lines[0].classes.has('none'), 'the lines take room because some day has a forecast');
     assert.match(chips[0].added, /class="medallion-weather snow"/, 'a snowy day is marked on its chip');
-    assert.match(chips[0].getAttribute('aria-label'), /^Wednesday, November 25\. Forecast: snow, 90 percent/, 'and said in its label');
+    assert.match(chips[0].getAttribute('aria-label'), /^Wednesday, November 25\. Forecast: Snow possible\. Peak hourly precipitation chance 90 percent/, 'and said in its label');
     assert.equal(chips[1].added, '', 'a dry day leaves its chip alone');
     assert.equal(note.hidden, false);
-    assert.match(note.innerHTML, /updated Nov 20, .*Weather data by <a href="https:\/\/open-meteo\.com\/"/);
+    assert.match(note.innerHTML, /retrieved Nov 20, .*Weather data by <a href="https:\/\/open-meteo\.com\/"/);
     applyWeather(document, null, { loading: true });
     assert.deepEqual(lines.map(l => l.innerHTML), ['', '', ''], 'loading leaves the lines empty');
     assert.equal(note.hidden, true);
@@ -315,9 +330,9 @@ test('the browser keeps the last forecast it saw and shows it when the service d
     assert.deepEqual(chooseWeather(good, null, { now }), { data: good, keep: { data: good }, retry: false });
     const failed = { days: {}, updatedAt: null, failed: true, why: { reason: 'forecast-failed', detail: 'HTTP 429' } };
     const stood = chooseWeather(failed, { data: good }, { now, today: '2026-11-20' });
-    assert.deepEqual(stood.data, good, 'the kept forecast stands in, update time and all');
+    assert.deepEqual(stood.data, { ...good, saved: true }, 'the kept forecast stands in, update time and all');
     assert.equal(stood.retry, true);
-    assert.deepEqual(chooseWeather(null, { data: good }, { now, today: '2026-11-20' }).data, good, 'also when the request itself fails');
+    assert.deepEqual(chooseWeather(null, { data: good }, { now, today: '2026-11-20' }).data, { ...good, saved: true }, 'also when the request itself fails');
     assert.deepEqual(Object.keys(chooseWeather(failed, { data: good }, { now, today: '2026-11-25' }).data.days), ['2026-11-25'], 'days that are over are dropped');
     assert.deepEqual(chooseWeather(failed, { data: good }, { now: now + 25 * 3600 * 1000, today: '2026-11-20' }), { data: failed, keep: null, retry: true }, 'a forecast more than a day old is not shown');
     assert.deepEqual(chooseWeather(failed, null, { now }), { data: failed, keep: null, retry: true });
@@ -345,4 +360,15 @@ test('the weather stays on screen when the plan is saved, and is asked for again
     assert.match(show, /loadWeather\(\);\s+\}\s*$/, 'every redraw, including the one after a move, asks again if the plan has moved on');
     const refresh = planner.slice(planner.indexOf('function refreshBoard('), planner.indexOf('function refreshBoard(') + 700);
     assert.match(refresh, /it\.innerHTML = board\([^;]+;\s+showWeather\(\);/, 'the redraw after a move fills the lines again');
+});
+
+
+test('unavailable amount fields survive parsing without becoming zero', () => {
+    const body = forecastBody('2026-11-20', {});
+    body.daily.rain_sum[0] = null;
+    body.daily.snowfall_sum[0] = null;
+    const parsed = parseForecast(body, '2026-11-20T18:00:00Z').days['2026-11-20'];
+    assert.equal(parsed.rainMm, null);
+    assert.equal(parsed.snowCm, null);
+    assert.equal(weatherAmount(parsed.rainMm, 'rain', 'us'), 'Unavailable');
 });

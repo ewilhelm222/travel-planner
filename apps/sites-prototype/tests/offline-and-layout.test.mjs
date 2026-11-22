@@ -61,7 +61,7 @@ test("actual client retains an expired-session copy until explicit sign-out", as
     }
     return elements.get(selector);
   };
-  const document = { querySelector: element, addEventListener: (event, handler) => events.set(event, handler) };
+  const document = { querySelector: element, addEventListener: (event, handler) => events.set(event, [...(events.get(event) || []), handler]) };
   const localStorage = { getItem: name => storage.get(name), setItem: (name, value) => storage.set(name, value), removeItem: name => storage.delete(name) };
   let destination;
   const execute = new Function("document", "navigator", "window", "localStorage", "fetch", "location", `return ${script}`);
@@ -72,7 +72,7 @@ test("actual client retains an expired-session copy until explicit sign-out", as
   assert.ok(storage.has(key), "Expired auth must not erase the downloaded trip.");
   assert.match(element("#status").innerHTML, /Sign-in expired · reading only/);
   assert.match(element("#app").innerHTML, /Sign in to update/);
-  await events.get("click")({ target: { closest: () => ({ id: "sign-out", dataset: {}, disabled: false }) } });
+  for (const handler of events.get("click")) await handler({ target: { closest: selector => selector !== "button" ? null : ({ id: "sign-out", dataset: {}, disabled: false }) } });
   assert.equal(storage.has(key), false, "Explicit sign-out still erases the reading copy.");
   assert.equal(destination, "/signout-with-chatgpt?return_to=%2F");
 });

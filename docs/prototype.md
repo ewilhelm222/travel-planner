@@ -24,6 +24,22 @@ Validation: 243 Node tests passed, 3 browser tests skipped (Playwright unavailab
 type check, production build and diff whitespace checks passed. A real Google
 frame and phone rendering still need deployment verification.
 
+## Pending deployment: weather uncertainty
+
+Implemented in source on November 21, 2026; publication is separate. Weather
+now identifies peak hourly probability, possible conditions and explicit high/low.
+Touch/keyboard Details separates daily rain/new snowfall totals and uncertainty;
+trace amounts do not round up, clouds are not drawn as sunshine, and temperature
+alone does not imply snow. Source shell v54. No new schema, service or runtime
+configuration. See [research and validation](weather-communication.md) and the
+[deployment prompt](deploy-weather-uncertainty.md).
+
+Validation: 245 Node tests passed, 3 unrelated browser tests skipped; typecheck,
+production build and lint (0 errors) passed. The dedicated local synthetic weather
+browser suite passed at desktop, week, phone portrait and phone landscape sizes,
+including guest privacy, keyboard/focus and cached fallback. Physical phones,
+screen readers and production verification remain outstanding.
+
 ## Original feasibility result
 
 [Open the private prototype](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site).
