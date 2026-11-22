@@ -15,47 +15,38 @@ Implemented in source; publication is a separate release. See the
 [deployment prompt](deploy-weather-uncertainty.md). Earlier deployment evidence
 below remains dated evidence, not verification of this update.
 
+## Compact weather update — November 22, 2026
+
+This source update supersedes the November 21 three-row presentation. Publication
+is a separate step; it does not establish that the hosted Site has this version.
+
 ## For planners and guests
 
-Each date has a three-row weather button using Night Market colors. It shows
-possible conditions, `Precip 35% peak hourly`, and explicit high/low temperatures.
-The percentage is Open-Meteo's **maximum hourly precipitation probability** on
-that date, not the probability of precipitation at any point during the whole
-day. It is never relabeled as a separate rain or snow probability. All supplied
-percentages, including low ones and zero, are retained. Missing probabilities
-say unavailable. No probabilities are adjusted for California users.
+- **One line:** a condition icon and short label, followed by smaller high/low
+  temperatures. No percentage, card border, or separate Details link on the board.
+  The line is 28 px on desktop, with a 44 px touch target on phones. Long labels
+  may shorten; temperatures stay visible. The entire line opens details.
+- **Use the provider's daily condition.** Clear, cloudy, fog, rain, showers, snow,
+  freezing rain and thunderstorms come from the daily weather code. When that
+  code is absent, use the available amounts/precipitation indication. Trace
+  amounts or an hourly probability do not override a cloudy daily condition.
+  Meaningful rain and snow together can still show Rain/snow.
+- **Short hover:** condition, high/low with units, and “Click for details.” A saved
+  forecast is marked. No explanatory paragraph, private place name or timestamp.
+- **Brief click-through:** date, condition, signed-in place name, high/low,
+  peak-hour precipitation chance, rain total, new snow when relevant, checked
+  time and Open-Meteo credit. One sentence explains the hourly probability and
+  stay scope. No weather tutorial, confidence score or long uncertainty text.
+- **Preserve accuracy:** forecast provider, coordinates, probability values,
+  temperatures and fetching behavior are unchanged. Rain keeps hundredths of an
+  inch; tiny positive snow amounts keep the less-than trace label. Missing values
+  remain unavailable. Units follow browser locale. Guest details omit the place.
+- Weather stays aligned across dates, survives card moves, and takes no space
+  when none is available. Saved/older indicators and the existing one-day expiry
+  remain. Keyboard opening, Escape/Close and focus return are preserved.
 
-- Conditions come from model amounts and weather codes. No snow is inferred
-  solely from temperature; unknown precipitation type stays unspecified.
-  Cloudy/foggy days use corresponding icons instead of the former Dry/sun icon.
-  Thunderstorms and freezing rain keep explicit labels. A daily total alone is
-  not described as heavy rain: it does not establish hourly intensity.
-- A small positive snow total is described as trace when below the displayed
-  unit's 0.1 threshold. US rainfall uses hundredths of an inch: `<0.01 in`
-  for a trace, and `0.08 in` for a measurable small shower. Other positive
-  amounts below 0.1 are shown as `<0.1`, not rounded up.
-- **Details** opens a native reading dialog by click, touch, Enter or Space.
-  It gives rain and new snowfall daily totals separately, temperatures with
-  units, probability meaning, retrieval time, uncertainty and stay-location
-  scope. Missing amounts say unavailable; zero stays zero. Model amounts are
-  estimates, not amounts conditional on rain occurring. Snowfall is not snow
-  already on the ground. Forecasts a week or more ahead get an outlook reminder;
-  it is not a calculated confidence score. Escape/Close restores focus.
-- Signed-in readers may see the stay's name in details. Guests receive no extra
-  location information: the dialog uses the same nameless weather projection.
-  Dialogs live inside the app root and disappear when it is replaced, including
-  sign-out, access failure or trip change.
-- Every populated date keeps the same weather height; temperatures no longer
-  disappear in narrow columns. If some dates lack forecasts, those columns
-  reserve the space. No forecasts means no weather space. A phone showing one
-  date gives the space back when that date has no forecast.
-- The source/retrieval note stays visible in landscape too. Forecast retrieval
-  time is explicitly distinguished from the model issue time. A forecast kept
-  after a failed refresh says **Saved** on the button and in the source note;
-  forecasts retrieved at least two hours ago also mark the button Saved and
-  say Older forecast in Details. The existing one-day expiry remains.
-- Units follow browser locale: °F/inches for US readers; °C/mm/cm otherwise.
-  No forecast is invented outside the 16-day window or when lookup fails.
+Source offline shell is v55. The source note below the board is now only the
+checked time and Open-Meteo credit. See [design decisions](weather-communication.md).
 
 ## Where the location comes from
 
@@ -73,7 +64,7 @@ place's name. If one cannot be found, the next is tried.
   map rules in [map-location.md](map-location.md) are unchanged: an address is
   still not positioned on the drawing.
 - **The place's name**, when there is nothing else ("Twain Harte" is enough).
-  For a looked-up address or name, the tooltip names what the lookup matched,
+  For a looked-up address or name, the signed-in details panel names what the lookup matched,
   so a wrong match can be noticed.
 
 When a day has several stays, the first one (in the trip's order) with a
@@ -144,7 +135,7 @@ that has already ended there is not shown.
   parsing, classification, words, icons, the kept copy, and filling the lines.
 - `public/board.mjs` puts an empty line in every day header; `planner.js` and
   `guest.mjs` fill it in place when the answer arrives.
-- Source offline shell cache is `waypoint-shell-v54`; weather persistence
+- Source offline shell cache is `waypoint-shell-v55`; weather persistence
   originally shipped with v51. Offline, a forecast kept by the
   browser is not shown; the lines stay empty.
 

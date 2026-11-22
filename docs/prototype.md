@@ -40,6 +40,16 @@ browser suite passed at desktop, week, phone portrait and phone landscape sizes,
 including guest privacy, keyboard/focus and cached fallback. Physical phones,
 screen readers and production verification remain outstanding.
 
+## Pending deployment: compact weather refinement
+
+November 22 source refinement replaces the three-row weather card with one
+condition/icon line and smaller high/low. Hourly percentages appear only in the
+brief details; hover and source notes are short. Daily conditions follow the
+provider's weather code, with amounts used when the code is unavailable.
+Source shell v55. Forecast values, services, privacy and schema are unchanged.
+See [weather behavior](weather.md). Publication and physical-device checks remain
+separate from local validation.
+
 ## Original feasibility result
 
 [Open the private prototype](https://travel-planner-ewilhelm-prototype.tortuga-1566.chatgpt.site).

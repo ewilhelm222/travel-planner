@@ -76,26 +76,44 @@ export const updatedLabel = (iso, locale) => { const d = new Date(iso); return N
  * The inside of one day's weather line. `day` is that date's forecast or nothing.
  * `state` is 'loading' while the first answer is on its way: the line is then empty, and the same height.
  */
-const iconFor = day => {
+// Use the provider's daily condition for the glance view. Tiny amounts and hourly
+// probabilities must not turn an otherwise cloudy forecast into a rain/snow headline.
+export function weatherCondition(day) {
+    const code = day?.code;
+    if (code === 0 || code === 1) return { label: code === 0 ? 'Clear' : 'Mostly clear', icon: 'dry', wet: false };
+    if (code === 2 || code === 3) return { label: code === 2 ? 'Partly cloudy' : 'Cloudy', icon: 'cloud', wet: false };
+    if (code === 45 || code === 48) return { label: code === 48 ? 'Freezing fog' : 'Fog', icon: 'fog', wet: false };
     const kind = classify(day).kind;
-    if (kind !== 'dry') return kind;
-    return [0, 1].includes(day?.code) ? 'dry' : [2, 3].includes(day?.code) ? 'cloud' : [45, 48].includes(day?.code) ? 'fog' : 'precip';
-};
+    if (STORM_CODES.has(code)) return { label: 'Thunderstorms', icon: 'storm', wet: true };
+    if (ICE_CODES.has(code)) return { label: 'Freezing rain', icon: 'ice', wet: true };
+    if (RAIN_CODES.has(code) || SNOW_CODES.has(code)) {
+        if (day.snowCm >= 0.254 && day.rainMm >= 1) return { label: 'Rain/snow', icon: 'mixed', wet: true };
+        if (SNOW_CODES.has(code)) return { label: 'Snow', icon: 'snow', wet: true };
+        return { label: [51, 53, 55].includes(code) ? 'Drizzle' : [80, 81, 82].includes(code) ? 'Showers' : 'Rain', icon: 'rain', wet: true };
+    }
+    const labels = { rain: 'Rain possible', snow: 'Snow possible', mixed: 'Rain/snow', precip: 'Precip. possible', ice: 'Freezing rain', storm: 'Thunderstorms', dry: 'Weather' };
+    return { label: labels[kind], icon: kind === 'dry' ? 'cloud' : kind, wet: kind !== 'dry' };
+}
+export function weatherHover(day, { units = 'metric', saved = false } = {}) {
+    const c = weatherCondition(day), unit = units === 'us' ? '°F' : '°C';
+    const temperatures = [num(day.high) !== null ? `High ${degrees(day.high, units)}${unit}` : '', num(day.low) !== null ? `low ${degrees(day.low, units)}${unit}` : ''].filter(Boolean).join(', ');
+    return `${saved ? 'Saved · ' : ''}${c.label}${temperatures ? ` · ${temperatures}` : ''}. Click for details.`;
+}
 export function weatherLine(day, { units = 'metric', loading = false, saved = false, date = '' } = {}) {
     if (loading) return '';
     if (!day) return '<span class="weather-none" aria-hidden="true">—</span><span class="sr-only">No forecast for this day</span>';
-    const w = weatherWords(day, units);
-    return `<button type="button" class="weather-summary ${w.kind}" aria-haspopup="dialog"><span class="weather-condition" aria-hidden="true">${weatherIcon(iconFor(day))}<span>${escape(w.condition)}</span></span><span class="weather-precip" aria-hidden="true">${escape(w.precip)}</span><span class="weather-bottom" aria-hidden="true"><span class="weather-temp">${escape(w.temp)}</span><span class="weather-more">${saved ? 'Saved · ' : ''}Details</span></span><span class="sr-only">${date ? `Weather for ${escape(date)}. ` : ''}${saved ? 'Saved forecast. ' : ''}${escape(w.spoken)} Open weather details.</span></button>`;
+    const c = weatherCondition(day);
+    const temp = [num(day.high) !== null ? `${degrees(day.high, units)}°` : '—', num(day.low) !== null ? `${degrees(day.low, units)}°` : '—'].join('/');
+    return `<button type="button" class="weather-summary ${c.icon}" aria-haspopup="dialog"><span class="weather-condition" aria-hidden="true">${weatherIcon(c.icon)}<span>${escape(c.label)}</span></span><span class="weather-temp" aria-hidden="true">${escape(temp)}</span>${saved ? '<span class="weather-saved" aria-hidden="true">Saved</span>' : ''}<span class="sr-only">${date ? `Weather for ${escape(date)}. ` : ''}${escape(weatherHover(day, { units, saved }).replace('Click for details.', 'Open weather details.'))}</span></button>`;
 }
 
-export const PROBABILITY_HELP = 'Peak hourly chance is the highest chance of more than 0.1 mm of precipitation in any one hour at this location on this local date. It is not the chance of precipitation at any time during the whole day, the percentage of the day it will rain, or the amount. Rain and snow share this probability; it is not a separate snow chance.';
 export function weatherDetails(day, { date, units = 'metric', updatedAt, locale, now = Date.now() } = {}) {
-    const w = weatherWords(day, units), unit = units === 'us' ? '°F' : '°C';
-    const dateLabel = new Date(`${date}T12:00:00Z`).toLocaleDateString(locale, { timeZone: 'UTC', weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
-    const fetched = updatedLabel(updatedAt, locale), age = now - Date.parse(updatedAt);
-    const daysAhead = Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${day.today || date}T00:00:00Z`)) / 86400000);
+    const c = weatherCondition(day), unit = units === 'us' ? '°F' : '°C';
+    const dateLabel = new Date(`${date}T12:00:00Z`).toLocaleDateString(locale, { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' });
+    const fetched = updatedLabel(updatedAt, locale), older = now - Date.parse(updatedAt) >= 2 * 3600000;
     const row = (label, value) => `<div><dt>${label}</dt><dd>${escape(value)}</dd></div>`;
-    return `<div class="dialog-heading"><h2 id="weather-details-title">Weather · ${escape(dateLabel)}</h2><button type="button" class="icon-button" data-weather-close aria-label="Close weather details">×</button></div><p>${escape(w.condition)}${day.where ? ` · ${escape(day.where)}` : ''}</p><dl class="weather-values">${row('High / low', [num(day.high) !== null ? `${degrees(day.high, units)}${unit}` : 'Unavailable', num(day.low) !== null ? `${degrees(day.low, units)}${unit}` : 'Unavailable'].join(' / '))}${row('Peak hourly precipitation chance', classify(day).chance === null ? 'Unavailable' : `${Math.round(day.chance)}%`)}${row('Rain forecast · daily total', weatherAmount(day.rainMm, 'rain', units))}${row('New snow forecast · daily total', weatherAmount(day.snowCm, 'snow', units))}</dl><p>The percentage describes the likeliest hour, not the whole day. Rain and snow amounts are separate model estimates.</p><details class="weather-explanation"><summary>How to read this forecast</summary><p>${PROBABILITY_HELP}</p><p>A brief shower can register measurable precipitation. Even a high chance does not mean steady rain. Neither the percentage nor the daily total tells you when it will happen or how long it will last. Amounts are model estimates, not guaranteed totals or amounts conditional on rain occurring. New snow is snowfall, not snow already on the ground.</p></details><p>${daysAhead >= 7 ? 'A week or more ahead: use this as an outlook and check again closer to the day. ' : ''}Timing, amounts and rain versus snow can change. This forecast is for the stay, not every activity; nearby mountain elevations can have different weather.</p><p class="weather-freshness">${age >= 2 * 3600000 ? 'Older forecast · ' : ''}${fetched ? `Forecast retrieved ${escape(fetched)} (your local time).` : 'Retrieval time unavailable.'} This is the retrieval time, not the model issue time.</p><p>Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</a>.</p><div class="dialog-actions"><button type="button" class="secondary" data-weather-close>Close</button></div>`;
+    const snow = day.snowCm > 0 || SNOW_CODES.has(day.code) || c.icon === 'mixed';
+    return `<div class="dialog-heading"><h2 id="weather-details-title">Weather · ${escape(dateLabel)}</h2><button type="button" class="icon-button" data-weather-close aria-label="Close weather details">×</button></div><p>${escape(c.label)}${day.where ? ` · ${escape(day.where)}` : ''}</p><dl class="weather-values">${row('High / low', [num(day.high) !== null ? `${degrees(day.high, units)}${unit}` : 'Unavailable', num(day.low) !== null ? `${degrees(day.low, units)}${unit}` : 'Unavailable'].join(' / '))}${row('Precip. chance (peak hour)', probability(day.chance) === null ? 'Unavailable' : `${Math.round(day.chance)}%`)}${row('Rain · day total', weatherAmount(day.rainMm, 'rain', units))}${snow ? row('New snow · day total', weatherAmount(day.snowCm, 'snow', units)) : ''}</dl><p class="weather-caption">Highest hourly chance, not an all-day probability. Forecast for the stay.</p><p class="weather-freshness">${older ? 'Older forecast · ' : ''}${fetched ? `Checked ${escape(fetched)} · ` : ''}<a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></p><div class="dialog-actions"><button type="button" class="secondary" data-weather-close>Close</button></div>`;
 }
 
 // One delegated handler survives board redraws and works on the planner and guest page alike.
@@ -158,8 +176,7 @@ export function applyWeather(document, weather, { units = 'metric', loading = fa
         // On hover: the whole line in words first, since a narrow column cuts it short, then where and when.
         // The note under the schedule says where and when for everyone.
         if (day) {
-            const w = weatherWords(day, units);
-            line.title = `${w.condition} · ${w.precip}${w.temp ? ` · ${w.temp}` : ''}\n${day.where ? `Forecast for ${day.where}. ` : ''}${updated ? `Updated ${updated}. ` : ''}${PROBABILITY_HELP} Weather data by Open-Meteo.com`;
+            line.title = weatherHover(day, { units, saved: weather?.saved === true || Date.now() - Date.parse(weather?.updatedAt) >= 2 * 3600000 });
         }
         else
             line.removeAttribute('title');
@@ -169,10 +186,10 @@ export function applyWeather(document, weather, { units = 'metric', loading = fa
         chip.querySelector('.medallion-weather')?.remove();
         const base = chip.dataset.label || chip.getAttribute('aria-label') || '';
         chip.dataset.label = base;
-        const day = days[chip.dataset.day], w = day ? weatherWords(day, units) : null;
-        if (w && w.kind !== 'dry') {
-            chip.insertAdjacentHTML('beforeend', `<span class="medallion-weather ${w.kind}" aria-hidden="true">${weatherIcon(w.kind)}</span>`);
-            chip.setAttribute('aria-label', `${base}. ${w.spoken}`);
+        const day = days[chip.dataset.day], w = day ? weatherCondition(day) : null;
+        if (w?.wet) {
+            chip.insertAdjacentHTML('beforeend', `<span class="medallion-weather ${w.icon}" aria-hidden="true">${weatherIcon(w.icon)}</span>`);
+            chip.setAttribute('aria-label', `${base}. ${weatherHover(day, { units }).replace(' Click for details.', '')}`);
         }
         else
             chip.setAttribute('aria-label', base);
@@ -181,7 +198,7 @@ export function applyWeather(document, weather, { units = 'metric', loading = fa
     if (note) {
         const why = !any && weather?.why && WHY[weather.why.reason] ? WHY[weather.why.reason](weather.why) : '';
         note.hidden = !any && !why;
-        note.innerHTML = any ? `${weather.saved ? 'Saved forecast · ' : ''}Forecast for each day’s stay${updated ? ` · retrieved ${escape(updated)}` : ''}. Percentages are peak hourly precipitation chances, not all-day probabilities. Tap a forecast for amounts and uncertainty. Days without one are outside the forecast range or have no usable stay location. Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</a>.` : why;
+        note.innerHTML = any ? `${weather.saved ? 'Saved forecast · ' : ''}${updated ? `Weather checked ${escape(updated)} · ` : ''}<a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>` : why;
     }
     return any;
 }

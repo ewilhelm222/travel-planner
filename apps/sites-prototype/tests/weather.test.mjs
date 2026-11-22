@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { thanksgivingExample, applyTripChange, publicTrip } from '../lib/trips.mjs';
 import { board } from '../public/board.mjs';
-import { classify, weatherWords, weatherAmount, weatherDetails, weatherLine, weatherIcon, unitsFor, applyWeather, chooseWeather, fetchWeather, parseForecast, localDate, forecastUrl, FORECAST_URL } from '../public/weather.mjs';
+import { classify, weatherWords, weatherCondition, weatherHover, weatherAmount, weatherDetails, weatherLine, weatherIcon, unitsFor, applyWeather, chooseWeather, fetchWeather, parseForecast, localDate, forecastUrl, FORECAST_URL } from '../public/weather.mjs';
 import { weatherPlan, stayLocation, stayLocations, memoryCache, retry, GEOCODE_URL } from '../lib/weather.mjs';
 retry.delayMs = 0;
 // The two halves together, as a visit runs them: the server works out where (`cache` is its lookup cache),
@@ -21,7 +21,7 @@ const ROWS = { rain: [80, 14, 0, 11, 4], snow: [90, 0, 9, 0, -6], mixed: [70, 6,
 function forecastBody(first, kinds, timezone = 'America/Los_Angeles') {
     const dates = Array.from({ length: 16 }, (_, i) => { const d = new Date(`${first}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + i); return d.toISOString().slice(0, 10); });
     const rows = dates.map((_, i) => ROWS[kinds[i] || 'dry']);
-    return { timezone, daily: { time: dates, weather_code: rows.map(() => 3), precipitation_probability_max: rows.map(r => r[0]), precipitation_sum: rows.map(r => r[1] + r[2]), rain_sum: rows.map(r => r[1]), showers_sum: rows.map(() => 0), snowfall_sum: rows.map(r => r[2]), temperature_2m_max: rows.map(r => r[3]), temperature_2m_min: rows.map(r => r[4]) } };
+    return { timezone, daily: { time: dates, weather_code: dates.map((_, i) => ({rain: 61, snow: 73, mixed: 61, dry: 3, heavy: 65})[kinds[i] || 'dry']), precipitation_probability_max: rows.map(r => r[0]), precipitation_sum: rows.map(r => r[1] + r[2]), rain_sum: rows.map(r => r[1]), showers_sum: rows.map(() => 0), snowfall_sum: rows.map(r => r[2]), temperature_2m_max: rows.map(r => r[3]), temperature_2m_min: rows.map(r => r[4]) } };
 }
 function service({ forecast, places = {}, fail = false } = {}) {
     const calls = [];
@@ -38,7 +38,7 @@ function service({ forecast, places = {}, fail = false } = {}) {
     return { fetch, calls };
 }
 const NOW = () => new Date('2026-11-20T18:00:00Z');
-const day = kind => { const [chance, rainMm, snowCm, high, low] = ROWS[kind]; return { chance, rainMm, snowCm, high, low, code: 3 }; };
+const day = kind => { const [chance, rainMm, snowCm, high, low] = ROWS[kind]; return { chance, rainMm, snowCm, high, low, code: ({rain: 61, snow: 73, mixed: 61, dry: 3, heavy: 65})[kind] }; };
 
 test('phase follows forecast amounts or weather codes, never temperature or probability alone', () => {
     for (const kind of ['rain', 'snow', 'mixed', 'dry']) assert.equal(classify(day(kind)).kind, kind);
@@ -70,34 +70,40 @@ test('probabilities keep their hourly meaning and small or missing amounts remai
     assert.equal(unitsFor('not a locale'), 'metric');
 });
 
-test('weather is a keyboard and touch button; condition icons do not turn cloudy days sunny', () => {
+test('the glance line follows provider conditions and keeps probabilities in details', () => {
     for (const kind of ['rain', 'snow', 'mixed', 'dry']) {
         const html = weatherLine(day(kind), { units: 'us' });
-        assert.match(html, new RegExp(`^<button type="button" class="weather-summary ${kind}" aria-haspopup="dialog">`));
-        assert.match(html, /peak hourly/);
+        assert.match(html, /^<button type="button" class="weather-summary/);
+        assert.match(html, /aria-haspopup="dialog"/);
+        assert.ok(!html.includes('%') && !html.includes('peak hourly'));
         assert.match(html, /Open weather details/);
     }
-    assert.match(weatherLine(day('dry')), /Overcast/);
-    assert.ok(!weatherLine(day('dry')).includes(weatherIcon('dry')), 'overcast uses a cloud, not sun');
-    assert.match(weatherIcon('snow', 'Snow'), /role="img" aria-label="Snow"/);
+    const conflicting = { ...day('mixed'), snowCm: 0.1, code: 3 };
+    assert.equal(weatherCondition(conflicting).label, 'Cloudy', 'trace amounts do not override the provider daily condition');
+    assert.match(weatherLine(conflicting), /Cloudy/);
+    assert.ok(!weatherLine(conflicting).includes(weatherIcon('dry')));
+    assert.match(weatherLine(day('rain'), { units: 'us' }), /52°\/39°/);
+    assert.equal(weatherHover(day('dry'), { units: 'us' }), 'Cloudy · High 57°F, low 36°F. Click for details.');
+    assert.ok(weatherHover(day('snow'), { units: 'us', saved: true }).length < 90);
+    assert.equal(weatherCondition({ code: 66 }).label, 'Freezing rain');
+    assert.equal(weatherCondition({ code: 95 }).label, 'Thunderstorms');
     assert.equal(weatherLine(null, { loading: true }), '');
     assert.match(weatherLine(null), /No forecast for this day/);
 });
 
-test('details separate probability, rain, snowfall and uncertainty with no guest location leak', () => {
+test('brief details separate chance and amounts, preserve trace precision and omit guest locations', () => {
     const options = { date: '2026-11-28', units: 'us', updatedAt: '2026-11-20T18:00:00Z', now: Date.parse('2026-11-20T21:00:00Z'), locale: 'en-US' };
-    const html = weatherDetails({ ...day('mixed'), snowCm: 0.1, today: '2026-11-20', where: 'Pine <Flat>' }, options);
+    const html = weatherDetails({ ...day('mixed'), snowCm: 0.1, where: 'Pine <Flat>' }, options);
     assert.match(html, /Pine &lt;Flat&gt;/);
     assert.match(html, /&lt;0.1 in \(trace\)/);
-    assert.match(html, /not a separate snow chance/);
-    assert.match(html, /not the chance of precipitation at any time during the whole day/);
-    assert.match(html, /week or more ahead/);
+    assert.match(html, /Precip\. chance \(peak hour\)/);
+    assert.match(html, /not an all-day probability/);
     assert.match(html, /Older forecast/);
-    assert.match(html, /not the model issue time/);
-    assert.match(html, /not guaranteed totals/);
+    assert.ok(!html.includes('<details') && !html.includes('model issue time'));
+    assert.ok(html.replace(/<[^>]*>/g, ' ').split(/\s+/).length < 100, 'the dialog stays brief');
     assert.match(weatherDetails({ ...day('rain'), rainMm: 2 }, options), /0.08 in/);
+    assert.ok(!weatherDetails(day('rain'), options).includes('New snow'), 'omit an irrelevant zero-snow row');
     assert.ok(!weatherDetails(day('mixed'), options).includes('Pine'));
-    assert.ok(!weatherDetails({ ...day('mixed'), today: '2026-11-27' }, options).includes('week or more ahead'));
 });
 
 test('every day header carries the weather line, in the planner and for guests, and its height is fixed', async () => {
@@ -107,8 +113,8 @@ test('every day header carries the weather line, in the planner and for guests, 
         assert.match(html, /<\/h2><p class="day-weather" data-weather="2026-11-25"><\/p><\/header>/, 'directly under the date, inside the header');
     }
     const css = await source('public/planner.css');
-    assert.match(css, /\.day-weather \{[^}]*height: 5\.25rem;/, 'equal forecast space keeps columns aligned');
-    assert.match(css, /\.weather-summary \{[^}]*min-height: 44px;/, 'usable touch target');
+    assert.match(css, /\.day-weather \{[^}]*height: 28px;/, 'equal forecast space keeps columns aligned');
+    assert.match(css, /@media \(pointer: coarse\)[^{]*\{ \.day-weather \{ height: 44px;/, 'usable touch target');
     assert.match(css, /body:not\(\.has-weather\) \.day-weather \{ display: none; \}/, 'and no line at all when it has none');
     assert.ok(!JSON.stringify(publicTrip(trip)).includes('38.2541'), 'the stay location still never reaches the guest trip');
 });
@@ -118,19 +124,19 @@ test('the page fills lines, day chips and the note in place', () => {
     const lines = [el({ weather: '2026-11-25' }), el({ weather: '2026-11-26' }), el({ weather: '2026-11-27' })], chips = [el({ day: '2026-11-25' }, 'Wednesday, November 25'), el({ day: '2026-11-26' }, 'Thursday, November 26')], note = el({});
     const body = el({}), document = { body, querySelectorAll: s => s.startsWith('.day-weather') ? lines : chips, querySelector: () => note };
     applyWeather(document, { days: { '2026-11-25': { ...day('snow'), where: 'Pine <Flat>' }, '2026-11-26': day('dry') }, updatedAt: '2026-11-20T18:00:00Z' }, { units: 'us', locale: 'en-US' });
-    assert.match(lines[0].innerHTML, /Precip 90% peak hourly/);
-    assert.match(lines[0].title, /Snow possible · Precip 90% peak hourly · H 32° \/ L 21°/);
-    assert.match(lines[0].title, /Forecast for Pine <Flat>/);
-    assert.match(lines[1].title, /Overcast · Precip 5% peak hourly/);
-    assert.match(lines[1].innerHTML, /weather-summary dry/);
+    assert.match(lines[0].innerHTML, /32°\/21°/);
+    assert.match(lines[0].title, /Snow · High 32°F, low 21°F\. Click for details\./);
+    assert.ok(lines[0].title.length < 90 && !lines[0].title.includes('Pine'));
+    assert.match(lines[1].title, /Cloudy · High 57°F, low 36°F/);
+    assert.match(lines[1].innerHTML, /weather-summary cloud/);
     assert.match(lines[2].innerHTML, /weather-none/, 'a day without a forecast gets the quiet dash');
     assert.equal(lines[2].title, '');
     assert.ok(body.classes.has('has-weather') && lines[2].classes.has('none') && !lines[0].classes.has('none'), 'the lines take room because some day has a forecast');
     assert.match(chips[0].added, /class="medallion-weather snow"/, 'a snowy day is marked on its chip');
-    assert.match(chips[0].getAttribute('aria-label'), /^Wednesday, November 25\. Forecast: Snow possible\. Peak hourly precipitation chance 90 percent/, 'and said in its label');
+    assert.match(chips[0].getAttribute('aria-label'), /^Wednesday, November 25\. Snow · High/, 'and said in its label');
     assert.equal(chips[1].added, '', 'a dry day leaves its chip alone');
     assert.equal(note.hidden, false);
-    assert.match(note.innerHTML, /retrieved Nov 20, .*Weather data by <a href="https:\/\/open-meteo\.com\/"/);
+    assert.match(note.innerHTML, /Weather checked Nov 20, .*<a href="https:\/\/open-meteo\.com\/"/);
     applyWeather(document, null, { loading: true });
     assert.deepEqual(lines.map(l => l.innerHTML), ['', '', ''], 'loading leaves the lines empty');
     assert.equal(note.hidden, true);
